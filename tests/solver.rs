@@ -104,7 +104,7 @@ fn fix_release_restores_masks_and_frozen_messages_in_any_order() {
         let mut s = Solver::new(f.clone(), Options::default()).unwrap();
         let before = s.messages().to_vec();
         for v in [0, 63, 64, 65, 129, 7, 44] {
-            s.fix(v, v % 2 == 0).unwrap();
+            s.fix(v, v.is_multiple_of(2)).unwrap();
         }
         for v in [64, 44, 129, 0, 65, 7, 63] {
             s.release(v).unwrap();

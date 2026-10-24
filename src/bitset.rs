@@ -8,7 +8,7 @@ pub(crate) struct BitSet {
 impl BitSet {
     pub fn full(len: usize) -> Self {
         let mut words = vec![u64::MAX; len.div_ceil(64)];
-        if len % 64 != 0 {
+        if !len.is_multiple_of(64) {
             *words.last_mut().unwrap() = (1u64 << (len % 64)) - 1;
         }
         Self { words, count: len }
