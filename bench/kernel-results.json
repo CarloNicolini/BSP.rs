@@ -1,0 +1,135 @@
+{
+  "machine": "arm64",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "cpu_count": 8,
+  "rustc": "rustc 1.88.0 (6b00bc388 2025-06-23) (Homebrew)",
+  "cpp_compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "build_note": "Rust: -C target-cpu=native, opt-level=3, ThinLTO, one codegen unit. C++: AppleClang -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -march=native -flto; matching Release bsp_core, OpenMP off.",
+  "damping": 0.2,
+  "initial_messages": "0.05 + 0.25*((edge*37)%997)/997",
+  "sha256": {
+    "target/release/bsp-rust": "f9e7a8b1f0ef70cb24391f46cb3a5aa326e921f222dac9a8c1419ce30f34af88",
+    "/private/tmp/bsp-cpp-kernel": "0e18996d877269d933ea76a42dff20dcb1afc8ad2f6dfa1cea9fd71a64e162bc",
+    "rust/src/solver.rs": "e86d06c18ef4204a5f55e0ba10f2076bbf7937a8095498ac188c446d4ed6f61b",
+    "rust/bench/cpp_kernel.cpp": "e708c8a217eff5c9d3c82993e5ccdd50ae270f5d5cf9723ba7a645c9694078a8",
+    "Cargo.lock": "d232629ffeb1eb1a55dc35d75fb6e5a90a0b0495fd0fae3752533327d2385373"
+  },
+  "rows": [
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 10000,
+      "edges": 126000,
+      "sweeps": 30,
+      "seconds": {
+        "rust": 0.045501917,
+        "cpp": 0.069719084
+      },
+      "speedup": 1.532223005021964,
+      "max_message_error": 2.681188604469753e-13,
+      "samples": {
+        "rust": [
+          0.04564575,
+          0.045501917,
+          0.044787584,
+          0.045688083,
+          0.044876292
+        ],
+        "cpp": [
+          0.066418667,
+          0.070390666,
+          0.06759125,
+          0.069719084,
+          0.069771625
+        ]
+      }
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 10000,
+      "edges": 380000,
+      "sweeps": 30,
+      "seconds": {
+        "rust": 0.1298475,
+        "cpp": 0.204118125
+      },
+      "speedup": 1.5719834806214983,
+      "max_message_error": 5.551115123125783e-16,
+      "samples": {
+        "rust": [
+          0.123317292,
+          0.123455833,
+          0.1298475,
+          0.142831667,
+          0.144006291
+        ],
+        "cpp": [
+          0.171798209,
+          0.20802,
+          0.18946104200000002,
+          0.204118125,
+          0.24150254200000001
+        ]
+      }
+    },
+    {
+      "k": 6,
+      "alpha": 40,
+      "n": 2000,
+      "edges": 480000,
+      "sweeps": 30,
+      "seconds": {
+        "rust": 0.171604875,
+        "cpp": 0.21091475
+      },
+      "speedup": 1.2290720179132442,
+      "max_message_error": 4.163336342344337e-16,
+      "samples": {
+        "rust": [
+          0.17385025,
+          0.173773209,
+          0.171604875,
+          0.170942208,
+          0.17144325
+        ],
+        "cpp": [
+          0.208340292,
+          0.21320195800000002,
+          0.21207050000000002,
+          0.21069062500000002,
+          0.21091475
+        ]
+      }
+    },
+    {
+      "k": 12,
+      "alpha": 20,
+      "n": 1000,
+      "edges": 240000,
+      "sweeps": 30,
+      "seconds": {
+        "rust": 0.073247625,
+        "cpp": 0.15990283400000002
+      },
+      "speedup": 2.183044624313758,
+      "max_message_error": 4.297253757905556e-31,
+      "samples": {
+        "rust": [
+          0.073033083,
+          0.073556292,
+          0.074249541,
+          0.073247625,
+          0.07093975
+        ],
+        "cpp": [
+          0.16004975000000002,
+          0.15781975,
+          0.15990283400000002,
+          0.157351041,
+          0.16002075000000002
+        ]
+      }
+    }
+  ]
+}

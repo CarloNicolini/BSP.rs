@@ -1,0 +1,12 @@
+BSP.rs is an independent Rust implementation of baseline Backtracking Survey
+Propagation and WalkSAT completion. It was extracted from the pybsp development
+workspace maintained by Carlo Nicolini.
+
+Algorithm and baseline reference: the original C++ BSP code by Raffaele Marino:
+https://github.com/CarloNicolini/pybsp
+The new Rust solver does not link to or invoke that C++ solver. The optional
+comparison harness in bench/cpp_kernel.cpp follows its GPL-licensed SP loop.
+
+This project is licensed under GPL-2.0-or-later. See LICENSE for GPL version 2;
+you may choose version 2 or a later version as provided by the license notice.
+The existing C++ research extensions are not part of this repository.

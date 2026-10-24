@@ -1,0 +1,106 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "note": "Record complete runs on shared inputs; do not infer a kernel speedup.\n\nC++ collects ten solutions and whitens them; Rust returns one checked solution.\nTheir search trajectories differ. Each worker has its own native process state.",
+  "rows": [
+    {
+      "k": 3,
+      "alpha": 2.5,
+      "n": 400,
+      "seed": 3,
+      "cpp": {
+        "status": "solved",
+        "reason": "",
+        "seconds": 0.02481329199508764,
+        "sp_sweeps_last_fixed_point": 9,
+        "steps": 1,
+        "solutions": 10,
+        "verified": true
+      },
+      "rust": {
+        "status": "sat",
+        "seconds": 0.0006866250187158585,
+        "sp_sweeps": 9,
+        "steps": 1,
+        "solutions": 1,
+        "decimations": 0,
+        "releases": 0,
+        "verified": true
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "seed": 3,
+      "cpp": {
+        "status": "solved",
+        "reason": "",
+        "seconds": 0.46693179197609425,
+        "sp_sweeps_last_fixed_point": 6247,
+        "steps": 1734,
+        "solutions": 10,
+        "verified": true
+      },
+      "rust": {
+        "status": "sat",
+        "seconds": 0.3915441669814754,
+        "sp_sweeps": 6247,
+        "steps": 1734,
+        "solutions": 1,
+        "decimations": 912,
+        "releases": 822,
+        "verified": true
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "seed": 2,
+      "cpp": {
+        "status": "failed",
+        "reason": "SP did not converge",
+        "seconds": 0.07249674998456612,
+        "sp_sweeps_last_fixed_point": null,
+        "steps": 0,
+        "solutions": 0,
+        "verified": false
+      },
+      "rust": {
+        "status": "non_converged",
+        "seconds": 0.05089458299335092,
+        "sp_sweeps": 1024,
+        "steps": 0,
+        "solutions": 0,
+        "decimations": 0,
+        "releases": 0,
+        "verified": false
+      }
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 400,
+      "seed": 3,
+      "cpp": {
+        "status": "solved",
+        "reason": "",
+        "seconds": 2.0809878330037463,
+        "sp_sweeps_last_fixed_point": 15080,
+        "steps": 4090,
+        "solutions": 10,
+        "verified": true
+      },
+      "rust": {
+        "status": "sat",
+        "seconds": 1.8489689590060152,
+        "sp_sweeps": 14593,
+        "steps": 4031,
+        "solutions": 1,
+        "decimations": 2121,
+        "releases": 1909,
+        "verified": true
+      }
+    }
+  ]
+}

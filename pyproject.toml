@@ -1,0 +1,24 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "pybsp-rust"
+version = "0.1.0"
+description = "Native Rust BSP solver with inspectable state"
+requires-python = ">=3.12"
+license = "GPL-2.0-or-later"
+readme = "README.md"
+dependencies = ["numpy>=2.0"]
+
+[tool.maturin]
+features = ["extension-module"]
+module-name = "pybsp_rust.bsp_rust"
+python-source = "python"
+
+[project.optional-dependencies]
+test = ["pytest>=8", "maturin>=1.8,<2"]
+
+[project.urls]
+Repository = "https://github.com/CarloNicolini/BSP.rs"
+Issues = "https://github.com/CarloNicolini/BSP.rs/issues"
