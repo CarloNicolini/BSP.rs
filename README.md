@@ -8,9 +8,9 @@ random k-SAT generation, DIMACS files, a Rust library, a JSON command-line tool,
 and Python bindings with NumPy state access. It requires no C++ solver or
 external SAT executable.
 
-Large graphs can use a multicore `f64` backend or an optional Apple Metal `f32`
-backend. Both the CLI and Python API expose hardware selection, worker limits,
-batch solving, and phase profiling. See [CPU and GPU execution](ACCELERATION.md)
+Large graphs can use a multicore `f64` backend, Apple Metal `f32`, or NVIDIA CUDA
+in `f64` or `f32`. Both the CLI and Python API expose hardware selection, worker
+limits, batch solving, and phase profiling. See [CPU and GPU execution](ACCELERATION.md)
 for builds, numerical behavior, and benchmark commands.
 
 BSP is a heuristic. Every returned SAT assignment is checked against the formula.

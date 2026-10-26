@@ -1,0 +1,10 @@
+[package]
+name = "bsp-cuda"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "GPL-2.0-or-later"
+description = "Synchronous CUDA compute boundary for BSP.rs"
+
+[lib]
+path = "src/lib.rs"

@@ -25,6 +25,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - run: cargo fmt --check
+      - run: cargo fmt --manifest-path crates/bsp-cuda/Cargo.toml --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --locked
       - run: cargo test --release --locked

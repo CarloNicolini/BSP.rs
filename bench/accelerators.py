@@ -1,6 +1,7 @@
-"""Paired CPU/Metal measurements using the installed native Python extension.
+"""Paired CPU/GPU measurements using the installed native Python extension.
 
 Build first: .venv/bin/maturin develop --release --features extension-module,metal
+For NVIDIA on Linux, use extension-module,cuda and --backends cpu cpu-parallel cuda cuda-f32.
 Run outside instrumentation/Metal validation. Profiling is a separate command.
 """
 import argparse
@@ -85,6 +86,8 @@ def main():
                     samples[backend].append(elapsed)
             if "cpu" in snapshots and "cpu-parallel" in snapshots:
                 np.testing.assert_array_equal(snapshots["cpu"],snapshots["cpu-parallel"])
+            if "cpu" in snapshots and "cuda" in snapshots:
+                np.testing.assert_allclose(snapshots["cpu"],snapshots["cuda"],rtol=0,atol=3e-13)
         differences = {b: float(np.max(np.abs(snapshots[b]-snapshots["cpu"]),initial=0)) for b in snapshots if "cpu" in snapshots}
         row = dict(k=k, alpha=alpha, n=n, edges=formula.edges, kind=kind, sweeps=args.sweeps,
                    samples=samples, seconds={b: statistics.median(v) for b,v in samples.items() if v},
@@ -109,9 +112,17 @@ def main():
             full.append(dict(k=k,alpha=alpha,n=n,backend=backend,seconds=elapsed,
                              jobs=[dict(seed=r.seed,status=r.status,seconds=r.wall_seconds,sp_sweeps=r.sp_sweeps,flips=r.flips,execution=r.execution) for r in results]))
             print(json.dumps(full[-1]),flush=True)
-    sources = [Path("Cargo.lock"),Path("Cargo.toml"),Path("build.rs"),Path(__file__)]+list(Path("src").glob("*.rs"))+list(Path("crates/bsp-metal/src").glob("*"))
+    sources = [Path("Cargo.lock"),Path("Cargo.toml"),Path("build.rs"),Path("pyproject.toml"),Path(__file__)]+list(Path("src").glob("*.rs"))
+    for crate in ["bsp-metal","bsp-cuda"]:
+        sources += [Path("crates")/crate/"Cargo.toml",Path("crates")/crate/"build.rs"]
+        sources += list((Path("crates")/crate/"src").glob("*"))
+    gpu_toolchain = None
+    if any(b.startswith("cuda") for b in args.backends):
+        gpu_toolchain = dict(nvcc=subprocess.check_output([os.environ.get("NVCC","nvcc"),"--version"],text=True).strip(),
+                            architecture=os.environ.get("BSP_CUDA_ARCH","61"),
+                            device=subprocess.check_output(["nvidia-smi","--query-gpu=name,driver_version,memory.total,compute_cap","--format=csv,noheader"],text=True).strip())
     report = dict(platform=platform.platform(),cpu_count=os.cpu_count(),rustc=subprocess.check_output(["rustc","--version"],text=True).strip(),
-                  configuration=vars(args)|{"output":str(args.output)},build=build,binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),max_rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                  configuration=vars(args)|{"output":str(args.output)},build=build,gpu_toolchain=gpu_toolchain,binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),max_rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                   sha256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},rows=rows,full=full)
     args.output.write_text(json.dumps(report,indent=2)+"\n")
 

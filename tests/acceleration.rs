@@ -1,3 +1,5 @@
+#[cfg(all(feature = "metal", target_os = "macos"))]
+mod common;
 use bsp_rust::{solve_many, Backend, ExecutionOptions, Formula, Options, SolveJob, Solver, Status};
 
 fn execution(backend: Backend) -> ExecutionOptions {
@@ -175,6 +177,19 @@ fn unavailable_metal_is_an_explicit_error() {
     .is_err());
 }
 
+#[cfg(not(all(feature = "cuda", target_os = "linux")))]
+#[test]
+fn unavailable_cuda_is_an_explicit_error() {
+    for backend in [Backend::Cuda, Backend::CudaF32] {
+        assert!(Solver::with_execution(
+            Formula::new(0, vec![]).unwrap(),
+            Options::default(),
+            execution(backend)
+        )
+        .is_err());
+    }
+}
+
 #[cfg(all(feature = "metal", target_os = "macos"))]
 mod metal {
     use super::*;
@@ -220,58 +235,6 @@ mod metal {
             assert_eq!(s.execution_report().fallbacks.len(), 1);
             assert_eq!(s.messages(), reference.messages());
         }
-    }
-    // Independent, deliberately quadratic f32 definition; no prefix/suffix code.
-    fn oracle(f: &Formula, eta: &[f64], fixed: &[i8], damping: f32) -> Vec<f64> {
-        let clauses = f.clauses();
-        let mut offsets = vec![0];
-        for cl in &clauses {
-            offsets.push(offsets.last().unwrap() + cl.len());
-        }
-        let active: Vec<_> = clauses
-            .iter()
-            .map(|cl| {
-                !cl.iter()
-                    .any(|&l| fixed[l.unsigned_abs() as usize - 1] == i8::from(l > 0))
-            })
-            .collect();
-        let mut out = vec![0.0; eta.len()];
-        for (c, cl) in clauses.iter().enumerate() {
-            if !active[c] {
-                continue;
-            }
-            for (target, &lit) in cl.iter().enumerate() {
-                if fixed[lit.unsigned_abs() as usize - 1] >= 0 {
-                    continue;
-                }
-                let mut product = 1.0f32;
-                for (j, &neighbor) in cl.iter().enumerate() {
-                    if target == j || fixed[neighbor.unsigned_abs() as usize - 1] >= 0 {
-                        continue;
-                    }
-                    let mut same = 1.0f32;
-                    let mut opposite = 1.0f32;
-                    for (b, other) in clauses.iter().enumerate() {
-                        if b == c || !active[b] {
-                            continue;
-                        }
-                        for (p, &l) in other.iter().enumerate() {
-                            if l == neighbor {
-                                same *= 1.0 - eta[offsets[b] + p] as f32;
-                            }
-                            if l == -neighbor {
-                                opposite *= 1.0 - eta[offsets[b] + p] as f32;
-                            }
-                        }
-                    }
-                    product *= (1.0 - opposite) * same / (opposite + (1.0 - opposite) * same);
-                }
-                let raw = if product < 1e-16 { 0.0 } else { product };
-                let e = offsets[c] + target;
-                out[e] = (raw + (eta[e] as f32 - raw) * damping) as f64;
-            }
-        }
-        out
     }
     fn close(a: &[f64], b: &[f64]) {
         for (e, (a, b)) in a.iter().zip(b).enumerate() {
@@ -341,7 +304,7 @@ mod metal {
                 .collect();
             s.set_messages(&eta).unwrap();
             for _ in 0..4 {
-                let expected = oracle(&f, s.messages(), s.assignment(), 0.2);
+                let expected = common::f32_oracle(&f, s.messages(), s.assignment(), 0.2);
                 s.sweep().unwrap();
                 close(s.messages(), &expected);
             }
@@ -349,13 +312,13 @@ mod metal {
             for (v, value) in [(0, true), (1, false), (3, true)] {
                 s.fix(v, value).unwrap();
             }
-            let expected = oracle(&f, s.messages(), s.assignment(), 0.2);
+            let expected = common::f32_oracle(&f, s.messages(), s.assignment(), 0.2);
             s.sweep().unwrap();
             close(s.messages(), &expected);
             for v in [1, 0, 3] {
                 s.release(v).unwrap();
             }
-            let expected = oracle(&f, s.messages(), s.assignment(), 0.2);
+            let expected = common::f32_oracle(&f, s.messages(), s.assignment(), 0.2);
             s.sweep().unwrap();
             close(s.messages(), &expected);
             assert_eq!(before.len(), s.messages().len());
@@ -376,6 +339,15 @@ mod metal {
     #[test]
     #[ignore = "requires an available Apple GPU; run explicitly with --ignored"]
     fn metal_handles_limits_numerical_fallback_and_verified_solutions() {
+        let (f, values) = common::excluded_underflow_case();
+        let mut cpu = Solver::new(f.clone(), Options::default()).unwrap();
+        let mut gpu =
+            Solver::with_execution(f, Options::default(), execution(Backend::Metal)).unwrap();
+        cpu.set_messages(&values).unwrap();
+        gpu.set_messages(&values).unwrap();
+        assert_eq!(cpu.sweep(), gpu.sweep());
+        assert_eq!(cpu.messages(), gpu.messages());
+        assert_eq!(gpu.execution_report().backend, Backend::Cpu);
         let mut clauses = Vec::new();
         for v in 2..=600 {
             clauses.push(vec![if v % 2 == 0 { 1 } else { -1 }, v]);
@@ -385,7 +357,7 @@ mod metal {
             Solver::with_execution(f.clone(), Options::default(), execution(Backend::Metal))
                 .unwrap();
         high.set_messages(&vec![0.002; f.edges()]).unwrap();
-        let expected = oracle(&f, high.messages(), high.assignment(), 0.0);
+        let expected = common::f32_oracle(&f, high.messages(), high.assignment(), 0.0);
         high.sweep().unwrap();
         close(high.messages(), &expected);
         assert_eq!(high.execution_report().backend, Backend::Metal);

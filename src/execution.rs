@@ -17,6 +17,8 @@ pub enum Backend {
     Cpu,
     CpuParallel,
     Metal,
+    Cuda,
+    CudaF32,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -42,6 +44,8 @@ pub struct ExecutionReport {
     pub allocated_bytes: usize,
     pub parallel_sweeps: u64,
     pub metal_sweeps: u64,
+    pub cuda_sweeps: u64,
+    pub device_error: Option<String>,
     pub observables_validations: u64,
     pub fallbacks: Vec<String>,
     pub phases: BTreeMap<String, Phase>,
@@ -55,6 +59,8 @@ pub(crate) struct Execution {
     pub batch_active: Option<Arc<AtomicUsize>>,
     #[cfg(all(feature = "metal", target_os = "macos"))]
     pub gpu: Option<bsp_metal::MetalSolver>,
+    #[cfg(all(feature = "cuda", target_os = "linux"))]
+    pub cuda: Option<bsp_cuda::CudaSolver>,
 }
 impl Execution {
     pub fn new(options: ExecutionOptions) -> Result<Self> {
@@ -80,13 +86,16 @@ impl Execution {
             report: ExecutionReport {
                 requested_backend: options.backend,
                 backend: options.backend,
-                precision: if options.backend == Backend::Metal {
+                precision: if matches!(options.backend, Backend::Metal | Backend::CudaF32) {
                     "f32"
                 } else {
                     "f64"
                 }
                 .into(),
-                threads: if options.backend == Backend::Metal {
+                threads: if matches!(
+                    options.backend,
+                    Backend::Metal | Backend::Cuda | Backend::CudaF32
+                ) {
                     1
                 } else {
                     threads
@@ -95,6 +104,8 @@ impl Execution {
                 allocated_bytes: 0,
                 parallel_sweeps: 0,
                 metal_sweeps: 0,
+                cuda_sweeps: 0,
+                device_error: None,
                 observables_validations: 0,
                 fallbacks: Vec::new(),
                 phases: BTreeMap::new(),
@@ -106,6 +117,8 @@ impl Execution {
             batch_active: None,
             #[cfg(all(feature = "metal", target_os = "macos"))]
             gpu: None,
+            #[cfg(all(feature = "cuda", target_os = "linux"))]
+            cuda: None,
         })
     }
     pub fn record(&mut self, name: &str, seconds: f64) {
@@ -172,6 +185,27 @@ pub fn solve_many(jobs: Vec<SolveJob>, execution: ExecutionOptions) -> Result<Ve
             .unwrap_or(1)
             .max(1);
         workers = workers.min((budget / largest).max(1));
+    }
+    #[cfg(all(feature = "cuda", target_os = "linux"))]
+    if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
+        let budget = bsp_cuda::device_budget().map_err(Error)? as usize / 2;
+        let largest = jobs
+            .iter()
+            .map(|j| {
+                j.formula.edges().saturating_mul(112)
+                    + j.formula.n().saturating_mul(128)
+                    + j.formula.m().saturating_mul(48)
+            })
+            .max()
+            .unwrap_or(1)
+            .max(1);
+        workers = workers.min((budget / largest).max(1));
+    }
+    #[cfg(not(all(feature = "cuda", target_os = "linux")))]
+    if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
+        return Err(Error(
+            "CUDA requires Linux and a build with --features cuda".into(),
+        ));
     }
     #[cfg(not(all(feature = "metal", target_os = "macos")))]
     if execution.backend == Backend::Metal {
@@ -266,8 +300,50 @@ impl Solver {
                     "Metal requires macOS and a build with --features metal".into(),
                 ));
             }
+            Backend::Cuda | Backend::CudaF32 => {
+                #[cfg(all(feature = "cuda", target_os = "linux"))]
+                {
+                    let fp32 = s.execution.options.backend == Backend::CudaF32;
+                    if fp32 && (s.options.damping as f32 == 1.0 || s.options.epsilon as f32 == 0.0)
+                    {
+                        s.cpu_fallback("epsilon or damping cannot be represented safely in f32");
+                    } else {
+                        if fp32 {
+                            for eta in &mut s.eta {
+                                *eta = (*eta as f32).min(f32::from_bits(0x3f7fffff)) as f64;
+                            }
+                            s.saved_eta.clone_from(&s.eta);
+                        }
+                        let f = &s.formula.0;
+                        let cuda = bsp_cuda::CudaSolver::new(
+                            bsp_cuda::Topology {
+                                n: f.n,
+                                offsets: &f.offsets,
+                                literals: &f.literals,
+                                edge_clause: &f.edge_clause,
+                                var_offsets: &f.var_offsets,
+                                var_edges: &f.var_edges,
+                            },
+                            &s.eta,
+                            fp32,
+                            s.execution.options.profile.is_some(),
+                        )
+                        .map_err(Error)?;
+                        s.execution.report.device = Some(cuda.device.clone());
+                        s.execution.report.allocated_bytes = cuda.allocated_bytes;
+                        s.execution.cuda = Some(cuda);
+                    }
+                }
+                #[cfg(not(all(feature = "cuda", target_os = "linux")))]
+                return Err(Error(
+                    "CUDA requires Linux and a build with --features cuda".into(),
+                ));
+            }
         }
         s.sync_messages();
+        if let Some(error) = &s.execution.report.device_error {
+            return Err(Error(error.clone()));
+        }
         if let Some(started) = setup {
             s.execution
                 .record("backend_setup", started.elapsed().as_secs_f64());
@@ -319,14 +395,40 @@ impl Solver {
                     .record("snapshots", started.elapsed().as_secs_f64());
             }
         }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if let Some(cuda) = &mut self.execution.cuda {
+            let started = self
+                .execution
+                .options
+                .profile
+                .as_ref()
+                .map(|_| Instant::now());
+            if let Err(error) = cuda.snapshot(&mut self.eta, &mut self.saved_eta) {
+                self.device_failure(error);
+            }
+            if let Some(started) = started {
+                self.execution
+                    .record("snapshots", started.elapsed().as_secs_f64());
+            }
+        }
     }
-    #[cfg(all(feature = "metal", target_os = "macos"))]
+    #[cfg(any(
+        all(feature = "metal", target_os = "macos"),
+        all(feature = "cuda", target_os = "linux")
+    ))]
     fn cpu_fallback(&mut self, reason: &str) {
         self.execution.report.fallbacks.push(reason.into());
         self.execution.report.backend = Backend::Cpu;
         self.execution.report.precision = "f64".into();
         self.execution.report.threads = 1;
-        self.execution.gpu = None;
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        {
+            self.execution.gpu = None;
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        {
+            self.execution.cuda = None;
+        }
     }
     pub(super) fn upload_messages(&mut self) {
         #[cfg(all(feature = "metal", target_os = "macos"))]
@@ -335,11 +437,28 @@ impl Solver {
                 self.cpu_fallback(&reason);
             }
         }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if self.execution.cuda.is_some() {
+            if self.execution.report.precision == "f32"
+                && (!bsp_cuda::safe_conversion(&self.eta)
+                    || !bsp_cuda::safe_conversion(&self.saved_eta))
+            {
+                self.cpu_fallback("unsafe CUDA f32 message conversion");
+            } else if let Some(cuda) = &mut self.execution.cuda {
+                if let Err(error) = cuda.upload(&self.eta, &self.saved_eta) {
+                    self.device_failure(error);
+                }
+            }
+        }
     }
     pub(super) fn gpu_assignment(&mut self, v: usize, value: i8) {
         #[cfg(all(feature = "metal", target_os = "macos"))]
         if let Some(gpu) = &mut self.execution.gpu {
             gpu.set_assignment(v, value);
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if let Some(cuda) = &mut self.execution.cuda {
+            cuda.set_assignment(v, value);
         }
         let _ = (v, value);
     }
@@ -391,11 +510,29 @@ impl Solver {
         self.execution.parallel = Some(scratch);
         Some(result)
     }
-    pub(super) fn metal_converge(
+    pub(super) fn gpu_converge(
         &mut self,
         single: bool,
     ) -> Option<std::result::Result<SpReport, Status>> {
-        self.metal_compute(single, if single { 1 } else { self.options.max_sweeps })
+        self.gpu_compute(single, if single { 1 } else { self.options.max_sweeps })
+    }
+    pub(super) fn gpu_compute(
+        &mut self,
+        single: bool,
+        limit: usize,
+    ) -> Option<std::result::Result<SpReport, Status>> {
+        if let Some(result) = self.metal_compute(single, limit) {
+            Some(result)
+        } else {
+            self.cuda_compute(single, limit)
+        }
+    }
+    #[cfg(all(feature = "cuda", target_os = "linux"))]
+    fn device_failure(&mut self, error: String) -> Status {
+        self.execution.report.device_error = Some(error);
+        self.terminal = Some(Status::NumericalFailure);
+        self.solution = None;
+        Status::NumericalFailure
     }
     pub(super) fn metal_compute(
         &mut self,
@@ -512,6 +649,133 @@ impl Solver {
             Some(result)
         }
         #[cfg(not(all(feature = "metal", target_os = "macos")))]
+        {
+            let _ = (single, limit);
+            None
+        }
+    }
+    pub(super) fn cuda_compute(
+        &mut self,
+        single: bool,
+        limit: usize,
+    ) -> Option<std::result::Result<SpReport, Status>> {
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        {
+            let mut gpu = self.execution.cuda.take()?;
+            let mut count = 0;
+            let mut batch = 1;
+            let mut fallback = None;
+            let result = (|| {
+                loop {
+                    self.check_stop()?;
+                    let report = gpu
+                        .sweeps(
+                            batch.min(limit - count),
+                            if single { -1.0 } else { self.options.epsilon },
+                            self.options.damping,
+                            count == 0,
+                        )
+                        .map_err(|e| self.device_failure(e))?;
+                    self.execution.record("gpu", report.gpu_seconds);
+                    self.execution
+                        .record("gpu_submission_and_wait", report.wall_seconds);
+                    for (name, seconds) in &report.phases {
+                        self.execution.record(name, *seconds);
+                    }
+                    count += report.sweeps;
+                    self.sp_sweeps += report.sweeps as u64;
+                    self.execution.report.cuda_sweeps += report.sweeps as u64;
+                    if report.numerical_error {
+                        fallback = Some("CUDA cavity arithmetic underflowed or became non-finite");
+                        return Err(Status::NumericalFailure);
+                    }
+                    if report.contradiction {
+                        return Err(Status::Contradiction);
+                    }
+                    if single && count >= limit {
+                        return Ok(SpReport {
+                            sweeps: count,
+                            residual: report.residual,
+                            complexity: 0.0,
+                            paramagnetic: false,
+                        });
+                    }
+                    if !single && report.residual <= self.options.epsilon {
+                        let obs = gpu.observables().map_err(|e| self.device_failure(e))?;
+                        self.execution.record("gpu", obs.gpu_seconds);
+                        for (name, seconds) in &obs.phases {
+                            self.execution.record(name, *seconds);
+                        }
+                        if obs.numerical_error {
+                            fallback = Some("CUDA observables became numerically unsafe");
+                            return Err(Status::NumericalFailure);
+                        }
+                        gpu.surveys(&mut self.surveys, &mut self.cert)
+                            .map_err(|e| self.device_failure(e))?;
+                        // Re-evaluate decision-sensitive observables in f64 on
+                        // the current rounded messages, without changing them.
+                        let guard =
+                            32.0 * if self.execution.report.precision == "f32" {
+                                f32::EPSILON as f64
+                            } else {
+                                f64::EPSILON
+                            } * self.formula.edges() as f64;
+                        let (complexity, paramagnetic) =
+                            if obs.paramagnetic || obs.complexity <= guard {
+                                gpu.snapshot(&mut self.eta, &mut self.saved_eta)
+                                    .map_err(|e| self.device_failure(e))?;
+                                self.execution.report.observables_validations += 1;
+                                self.timed("observables_f64_validation", Self::scalar_observables)?
+                            } else {
+                                (obs.complexity, obs.paramagnetic)
+                            };
+                        return Ok(SpReport {
+                            sweeps: count,
+                            residual: report.residual,
+                            complexity,
+                            paramagnetic,
+                        });
+                    }
+                    if count >= limit {
+                        return Err(Status::NonConverged);
+                    }
+                    // Target <=2ms of GPU work per cancellation checkpoint, cap at 16 sweeps.
+                    batch = ((0.002 / (report.gpu_seconds / report.sweeps.max(1) as f64)).floor()
+                        as usize)
+                        .clamp(1, 16);
+                }
+            })();
+            if let Some(reason) = fallback {
+                if let Err(error) = gpu
+                    .restore_checkpoint()
+                    .and_then(|()| gpu.snapshot(&mut self.eta, &mut self.saved_eta))
+                {
+                    self.execution.cuda = Some(gpu);
+                    return Some(Err(self.device_failure(error)));
+                }
+                self.cpu_fallback(reason);
+                return if single {
+                    Some((|| {
+                        let mut residual = 0.0;
+                        for _ in 0..limit {
+                            residual = self.sweep_inner()?;
+                        }
+                        Ok(SpReport {
+                            sweeps: limit,
+                            residual,
+                            complexity: 0.0,
+                            paramagnetic: false,
+                        })
+                    })())
+                } else {
+                    Some(self.converge_inner())
+                };
+            }
+            self.execution.report.allocated_bytes = gpu.allocated_bytes;
+            self.execution.cuda = Some(gpu);
+            Some(result)
+        }
+        #[cfg(not(all(feature = "cuda", target_os = "linux")))]
         {
             let _ = (single, limit);
             None

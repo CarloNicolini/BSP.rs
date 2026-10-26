@@ -1,0 +1,36 @@
+==37081== NVPROF is profiling process 37081, command: target/release/bsp-rust --backend cuda-f32 --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 30
+==37081== Profiling application: target/release/bsp-rust --backend cuda-f32 --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 30
+==37081== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   75.39%  60.125ms        30  2.0042ms  2.0012ms  2.0081ms  void cavities_simd<float>(Params)
+                   15.01%  11.968ms        30  398.94us  393.79us  402.55us  void clauses<float, unsigned int=3>(Params)
+                    3.78%  3.0130ms        42  71.738us     192ns  565.22us  [CUDA memcpy HtoD]
+                    2.69%  2.1483ms        34  63.185us     832ns  537.86us  [CUDA memcpy DtoH]
+                    2.43%  1.9364ms        30  64.548us  64.036us  65.028us  void residual_blocks<float>(Params)
+                    0.47%  375.45us        28  13.408us     735ns  31.714us  [CUDA memset]
+                    0.16%  127.82us        30  4.2600us  4.1280us  5.5040us  void residual_final<float>(Params)
+                    0.08%  62.180us         1  62.180us  62.180us  62.180us  [CUDA memcpy DtoD]
+      API calls:   57.22%  117.75ms       137  859.52us     570ns  117.62ms  cudaSetDevice
+                   36.48%  75.070ms       163  460.55us     900ns  2.4662ms  cudaStreamSynchronize
+                    3.09%  6.3690ms        77  82.713us  3.2600us  664.82us  cudaMemcpyAsync
+                    1.36%  2.8004ms        28  100.01us  2.9010us  230.17us  cudaFree
+                    0.80%  1.6524ms        28  59.012us  3.7410us  136.39us  cudaMalloc
+                    0.59%  1.2202ms       120  10.168us  3.5200us  665.37us  cudaLaunchKernel
+                    0.12%  238.68us        28  8.5240us  2.2900us  25.552us  cudaMemsetAsync
+                    0.09%  188.12us       114  1.6500us     120ns  70.646us  cuDeviceGetAttribute
+                    0.08%  157.50us         1  157.50us  157.50us  157.50us  cudaGetDeviceProperties
+                    0.07%  152.39us        60  2.5390us  1.7200us  29.152us  cudaEventRecord
+                    0.02%  43.264us        30  1.4420us  1.1700us  2.8700us  cudaEventElapsedTime
+                    0.02%  36.063us         1  36.063us  36.063us  36.063us  cudaStreamCreateWithFlags
+                    0.02%  31.072us         1  31.072us  31.072us  31.072us  cudaMemGetInfo
+                    0.01%  27.933us         1  27.933us  27.933us  27.933us  cuDeviceGetName
+                    0.01%  23.612us       120     196ns     150ns     690ns  cudaGetLastError
+                    0.01%  11.331us         2  5.6650us  1.0400us  10.291us  cudaEventCreate
+                    0.01%  10.611us         2  5.3050us     200ns  10.411us  cuDeviceGet
+                    0.00%  10.191us         1  10.191us  10.191us  10.191us  cudaStreamDestroy
+                    0.00%  4.1400us         2  2.0700us     670ns  3.4700us  cudaEventDestroy
+                    0.00%  3.5300us         1  3.5300us  3.5300us  3.5300us  cuDeviceGetPCIBusId
+                    0.00%  2.0110us         3     670ns     270ns  1.3310us  cuDeviceGetCount
+                    0.00%     680ns         1     680ns     680ns     680ns  cuDeviceTotalMem
+                    0.00%     460ns         1     460ns     460ns     460ns  cuModuleGetLoadingMode
+                    0.00%     210ns         1     210ns     210ns     210ns  cuDeviceGetUuid

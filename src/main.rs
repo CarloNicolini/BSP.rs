@@ -15,7 +15,7 @@ bsp-rust [OPTIONS] --generate K ALPHA N
   --max-flips N        Total WalkSAT flip budget across restarts
   --restarts N         WalkSAT restarts
   --timeout SECONDS    Cooperative time limit, including solver construction
-  --backend NAME       cpu (default), cpu-parallel, or metal (f32, optional build)
+  --backend NAME       cpu, cpu-parallel, metal (f32), cuda (f64), cuda-f32
   --threads N          CPU worker limit; 0 uses available CPUs
   --profile PATH       Write phase timings and execution metadata as JSON
   --options PATH       Read Options JSON before subsequent overrides
@@ -66,7 +66,13 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
                     "cpu" => Backend::Cpu,
                     "cpu-parallel" => Backend::CpuParallel,
                     "metal" => Backend::Metal,
-                    _ => return Err("backend must be cpu, cpu-parallel, or metal".into()),
+                    "cuda" => Backend::Cuda,
+                    "cuda-f32" => Backend::CudaF32,
+                    _ => {
+                        return Err(
+                            "backend must be cpu, cpu-parallel, metal, cuda, or cuda-f32".into(),
+                        )
+                    }
                 }
             }
             "--threads" => execution.threads = value.parse()?,

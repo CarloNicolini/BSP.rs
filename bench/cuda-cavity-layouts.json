@@ -1,0 +1,2093 @@
+{
+  "description": "Independent three-trial layout pilots; one discarded warmup and alternating backend order. f32 cavities use a warp or a scalar thread for degrees <=32; other degree bins are unchanged.",
+  "warp": {
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+    "cpu_count": 16,
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "configuration": {
+      "max_n": 100000,
+      "repeats": 3,
+      "sweeps": 30,
+      "threads": 8,
+      "full_seeds": 0,
+      "full_only": false,
+      "full_large": false,
+      "backends": [
+        "cpu",
+        "cpu-parallel",
+        "cuda",
+        "cuda-f32"
+      ],
+      "output": "/tmp/bsp-cuda-pilot.json"
+    },
+    "build": {
+      "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "build_profile": "release",
+      "rustflags": "",
+      "arch": "x86_64",
+      "os": "linux",
+      "package_version": "0.1.0"
+    },
+    "gpu_toolchain": {
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Fri_Jan__6_16:45:21_PST_2023\nCuda compilation tools, release 12.0, V12.0.140\nBuild cuda_12.0.r12.0/compiler.32267302_0",
+      "architecture": "61",
+      "device": "NVIDIA GeForce GTX 1060 3GB, 580.178.04, 3072 MiB, 6.1"
+    },
+    "binary_sha256": "2d11f2b01c95f895d9f9287f658b9c88229b15ab8e19f1d588b1a6576e7fe908",
+    "max_rss": 502580,
+    "sha256": {
+      "Cargo.lock": "11f3f5f7d2bfdf9ee2266d6f3931208ffafce2e6bf0667a9d59b565ecb425fad",
+      "Cargo.toml": "d870106783d28e0f285481b7315e8f3bf01203ab2b1b5b1b48c3525cb3c3a04d",
+      "build.rs": "edaeb924cd4eda14a146b9d6b218f50e77a2bb17f86fe539d69ffa7c5b8b92a7",
+      "pyproject.toml": "b470350e53e96b20e5e5ed9097456bb6c5ac9df8408b264c8066b4206e66e2ce",
+      "/home/carlo/workspace/BSP.rs/bench/accelerators.py": "f765499defb3ecc8102a393d9bd3b8ec10fa57fdb176d2569fa908c3cbedf2b7",
+      "src/bitset.rs": "4198ca1826d585c1ee0b1a66dbcfa51af414b9cf9abfc5daed113fdec113e242",
+      "src/python.rs": "970a281e6cd62da90261c68fc8ec21474723f48c0fe7d998cc2b72bf4f61341e",
+      "src/main.rs": "62b2ee3c31a2ae1737a9beac5547cf88d22ad730135555d5c873ce8a18c9c892",
+      "src/formula.rs": "df7d302ad609c08ee8d7da9cf3f8e97e3f8d9589de0cf61932d2473e955d6624",
+      "src/execution.rs": "c4c3f12564e164c6112f79df324b0d11b3a202ceeee036a38a8fbac45874a4b3",
+      "src/lib.rs": "40435973b4a209059bbc674da4f43289edead9c0f297d9d84b7b34ff3118839f",
+      "src/decision_heap.rs": "e1f15caa89af5ae898cd331cdd619bdbb40a10c41871ae84a3419696e3954e7d",
+      "src/solver.rs": "7bbfadd346cd11377e3c583c16e4e119f4e9e3eae67b569e370f8dd63bfef06f",
+      "src/walksat.rs": "8fd6c6303ac0ce75193231969e93b14a812781abaab1aad7ce3afa149c92d1d1",
+      "crates/bsp-metal/Cargo.toml": "14342af5cd417f36b158ab1cf81897797329413363201b80cdd04e0b3d6791d5",
+      "crates/bsp-metal/build.rs": "9ab76edbe8be972ad9f01fdba84328ad489249f89dbef3a32e33af827e0c17c5",
+      "crates/bsp-metal/src/bridge.m": "597947c224e3304330bbd58395e01233ddef554ed7d87327df49f438a15122db",
+      "crates/bsp-metal/src/kernels.metal": "6e26022bfaa9588104172c0315893060596c76bf0f1a4f29e91279e2b02bdc17",
+      "crates/bsp-metal/src/lib.rs": "810c72dfa4be13dd7e9f2209b32d18d2ba4a406ec1f53deed71203e59ae3952e",
+      "crates/bsp-cuda/Cargo.toml": "ae21c2d46c7a3c391b36e760c55c26abb81230f415f7531c63e6509560c2af66",
+      "crates/bsp-cuda/build.rs": "778b6c68e2ea450ca3d26cb965935b7116b4169ffbdb33b0c5cb825848c6d5eb",
+      "crates/bsp-cuda/src/kernels.cu": "563f8eb841a2086cd0d0112a8f6da8cfdd32bc3a1e9a25679ca9b6f32e16834e",
+      "crates/bsp-cuda/src/lib.rs": "13df5e60ff4c422195e0af4c2296bab811ffe777b5693459bd0128dcdbe0b063"
+    },
+    "rows": [
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 400,
+        "edges": 5040,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.0019345260006957687,
+            0.001849219999712659,
+            0.0017789250014175195
+          ],
+          "cpu-parallel": [
+            0.0018475399992894381,
+            0.0018284180005139206,
+            0.0018304889999853913
+          ],
+          "cuda": [
+            0.0019760190007218625,
+            0.001959447999979602,
+            0.0019525180032360367
+          ],
+          "cuda-f32": [
+            0.00048302599680027924,
+            0.0004816670007130597,
+            0.0004781160023412667
+          ]
+        },
+        "seconds": {
+          "cpu": 0.001849219999712659,
+          "cpu-parallel": 0.0018304889999853913,
+          "cuda": 0.001959447999979602,
+          "cuda-f32": 0.0004816670007130597
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 1.9581431826010132e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 392912,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 245628,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 1000,
+        "edges": 12600,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.004671553000662243,
+            0.004600757998559857,
+            0.004575555998599157
+          ],
+          "cpu-parallel": [
+            0.004588047002471285,
+            0.0044992200018896256,
+            0.004587196999636944
+          ],
+          "cuda": [
+            0.002120360000844812,
+            0.0021150899992790073,
+            0.0021229710000625346
+          ],
+          "cuda-f32": [
+            0.0006181069984450005,
+            0.0006200269999681041,
+            0.0006162669997138437
+          ]
+        },
+        "seconds": {
+          "cpu": 0.004600757998559857,
+          "cpu-parallel": 0.004587196999636944,
+          "cuda": 0.002120360000844812,
+          "cuda-f32": 0.0006181069984450005
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.520765082225651e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 963592,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 595348,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 10000,
+        "edges": 126000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.0494687319987861,
+            0.057601877000706736,
+            0.05156047100172145
+          ],
+          "cpu-parallel": [
+            0.040620931999001186,
+            0.03864589300064836,
+            0.03537038499780465
+          ],
+          "cuda": [
+            0.01126141200074926,
+            0.011223539000638993,
+            0.011252231000980828
+          ],
+          "cuda-f32": [
+            0.003260566998505965,
+            0.003244464998715557,
+            0.003227463999792235
+          ]
+        },
+        "seconds": {
+          "cpu": 0.05156047100172145,
+          "cpu-parallel": 0.03864589300064836,
+          "cuda": 0.011252231000980828,
+          "cuda-f32": 0.003244464998715557
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.797502797191598e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4608512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 9523728,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 5841116,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 100000,
+        "edges": 1260000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            1.007126349999453,
+            1.0080816730005608,
+            1.0062979520007502
+          ],
+          "cpu-parallel": [
+            0.2683628579979995,
+            0.2646566729999904,
+            0.2716569799995341
+          ],
+          "cuda": [
+            0.20410653500221088,
+            0.2034262849992956,
+            0.20398044099783874
+          ],
+          "cuda-f32": [
+            0.07726911099962308,
+            0.07731378500102437,
+            0.07816053400165401
+          ]
+        },
+        "seconds": {
+          "cpu": 1.007126349999453,
+          "cpu-parallel": 0.2683628579979995,
+          "cuda": 0.20398044099783874,
+          "cuda-f32": 0.07731378500102437
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.5521613978017896e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 46080512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 95124960,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 58298732,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 4,
+        "alpha": 9.5,
+        "n": 10000,
+        "edges": 380000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.15572304699890083,
+            0.1553228759985359,
+            0.158640737998212
+          ],
+          "cpu-parallel": [
+            0.0838581880016136,
+            0.06928520300061791,
+            0.07502098800250678
+          ],
+          "cuda": [
+            0.0492693349988258,
+            0.04895099100031075,
+            0.048950681997666834
+          ],
+          "cuda-f32": [
+            0.03429755099932663,
+            0.0343637759979174,
+            0.03431275200273376
+          ]
+        },
+        "seconds": {
+          "cpu": 0.15572304699890083,
+          "cpu-parallel": 0.07502098800250678,
+          "cuda": 0.04895099100031075,
+          "cuda-f32": 0.03431275200273376
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.115410956404773e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 13160512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 26254352,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 16081120,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 6,
+        "alpha": 40,
+        "n": 2000,
+        "edges": 480000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.2175627809992875,
+            0.218826120999438,
+            0.21791227100038668
+          ],
+          "cpu-parallel": [
+            0.08682378500088817,
+            0.08602938600233756,
+            0.0860588289979205
+          ],
+          "cuda": [
+            0.05400035599814146,
+            0.053757978002977325,
+            0.053855026002565864
+          ],
+          "cuda-f32": [
+            0.04453980900143506,
+            0.044617035000555916,
+            0.04480384899943601
+          ]
+        },
+        "seconds": {
+          "cpu": 0.21791227100038668,
+          "cpu-parallel": 0.0860588289979205,
+          "cuda": 0.053855026002565864,
+          "cuda-f32": 0.044617035000555916
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 1.7480797240287949e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 16048512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 31216464,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 18995456,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 12,
+        "alpha": 20,
+        "n": 1000,
+        "edges": 240000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.09340932900158805,
+            0.1094172740013164,
+            0.09107169100025203
+          ],
+          "cpu-parallel": [
+            0.056600635001814226,
+            0.054670049001288135,
+            0.0509918790012307
+          ],
+          "cuda": [
+            0.035255504997621756,
+            0.03491414000018267,
+            0.034993045999726746
+          ],
+          "cuda-f32": [
+            0.017213175997312646,
+            0.01713199000005261,
+            0.017159962000732776
+          ]
+        },
+        "seconds": {
+          "cpu": 0.09340932900158805,
+          "cpu-parallel": 0.054670049001288135,
+          "cuda": 0.034993045999726746,
+          "cuda-f32": 0.017159962000732776
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.1214315188530578e-27
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 7864512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 15051976,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 9102712,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 1000,
+        "edges": 12600,
+        "kind": "residual",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.0017804050003178418,
+            0.0017810350000218023,
+            0.0017753450010786764
+          ],
+          "cpu-parallel": [
+            0.0017888049987959675,
+            0.0017831249970186036,
+            0.0017796950014599133
+          ],
+          "cuda": [
+            0.002158223996957531,
+            0.0021560040004260372,
+            0.0021537130014621653
+          ],
+          "cuda-f32": [
+            0.0005266000007395633,
+            0.0005309509979269933,
+            0.0005235589997028001
+          ]
+        },
+        "seconds": {
+          "cpu": 0.0017804050003178418,
+          "cpu-parallel": 0.0017831249970186036,
+          "cuda": 0.0021560040004260372,
+          "cuda-f32": 0.0005266000007395633
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.3613791632838416e-11
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 963592,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 595348,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 10000,
+        "edges": 126130,
+        "kind": "mixed",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.04950456699953065,
+            0.056300864001968876,
+            0.049466964999737684
+          ],
+          "cpu-parallel": [
+            0.03423198800010141,
+            0.033148485999845434,
+            0.03552670700082672
+          ],
+          "cuda": [
+            0.014885709999362007,
+            0.014823664998402819,
+            0.014873798998451093
+          ],
+          "cuda-f32": [
+            0.006151017001684522,
+            0.006163128000480356,
+            0.006158506999781821
+          ]
+        },
+        "seconds": {
+          "cpu": 0.04950456699953065,
+          "cpu-parallel": 0.03423198800010141,
+          "cuda": 0.014873798998451093,
+          "cuda-f32": 0.006158506999781821
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.693253329244527e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4612680,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 9531556,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 5845816,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      }
+    ],
+    "full": []
+  },
+  "serial": {
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+    "cpu_count": 16,
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "configuration": {
+      "max_n": 100000,
+      "repeats": 3,
+      "sweeps": 30,
+      "threads": 8,
+      "full_seeds": 0,
+      "full_only": false,
+      "full_large": false,
+      "backends": [
+        "cpu",
+        "cpu-parallel",
+        "cuda",
+        "cuda-f32"
+      ],
+      "output": "/tmp/bsp-cuda-serial-pilot.json"
+    },
+    "build": {
+      "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "build_profile": "release",
+      "rustflags": "",
+      "arch": "x86_64",
+      "os": "linux",
+      "package_version": "0.1.0"
+    },
+    "gpu_toolchain": {
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Fri_Jan__6_16:45:21_PST_2023\nCuda compilation tools, release 12.0, V12.0.140\nBuild cuda_12.0.r12.0/compiler.32267302_0",
+      "architecture": "61",
+      "device": "NVIDIA GeForce GTX 1060 3GB, 580.178.04, 3072 MiB, 6.1"
+    },
+    "binary_sha256": "36e09e095626392fba6d91fcb370b511c6071991b6af5def5153bd5ceee0b064",
+    "max_rss": 503812,
+    "sha256": {
+      "Cargo.lock": "11f3f5f7d2bfdf9ee2266d6f3931208ffafce2e6bf0667a9d59b565ecb425fad",
+      "Cargo.toml": "d870106783d28e0f285481b7315e8f3bf01203ab2b1b5b1b48c3525cb3c3a04d",
+      "build.rs": "edaeb924cd4eda14a146b9d6b218f50e77a2bb17f86fe539d69ffa7c5b8b92a7",
+      "pyproject.toml": "b470350e53e96b20e5e5ed9097456bb6c5ac9df8408b264c8066b4206e66e2ce",
+      "/home/carlo/workspace/BSP.rs/bench/accelerators.py": "f765499defb3ecc8102a393d9bd3b8ec10fa57fdb176d2569fa908c3cbedf2b7",
+      "src/bitset.rs": "4198ca1826d585c1ee0b1a66dbcfa51af414b9cf9abfc5daed113fdec113e242",
+      "src/python.rs": "970a281e6cd62da90261c68fc8ec21474723f48c0fe7d998cc2b72bf4f61341e",
+      "src/main.rs": "62b2ee3c31a2ae1737a9beac5547cf88d22ad730135555d5c873ce8a18c9c892",
+      "src/formula.rs": "df7d302ad609c08ee8d7da9cf3f8e97e3f8d9589de0cf61932d2473e955d6624",
+      "src/execution.rs": "c4c3f12564e164c6112f79df324b0d11b3a202ceeee036a38a8fbac45874a4b3",
+      "src/lib.rs": "40435973b4a209059bbc674da4f43289edead9c0f297d9d84b7b34ff3118839f",
+      "src/decision_heap.rs": "e1f15caa89af5ae898cd331cdd619bdbb40a10c41871ae84a3419696e3954e7d",
+      "src/solver.rs": "7bbfadd346cd11377e3c583c16e4e119f4e9e3eae67b569e370f8dd63bfef06f",
+      "src/walksat.rs": "8fd6c6303ac0ce75193231969e93b14a812781abaab1aad7ce3afa149c92d1d1",
+      "crates/bsp-metal/Cargo.toml": "14342af5cd417f36b158ab1cf81897797329413363201b80cdd04e0b3d6791d5",
+      "crates/bsp-metal/build.rs": "9ab76edbe8be972ad9f01fdba84328ad489249f89dbef3a32e33af827e0c17c5",
+      "crates/bsp-metal/src/bridge.m": "597947c224e3304330bbd58395e01233ddef554ed7d87327df49f438a15122db",
+      "crates/bsp-metal/src/kernels.metal": "6e26022bfaa9588104172c0315893060596c76bf0f1a4f29e91279e2b02bdc17",
+      "crates/bsp-metal/src/lib.rs": "810c72dfa4be13dd7e9f2209b32d18d2ba4a406ec1f53deed71203e59ae3952e",
+      "crates/bsp-cuda/Cargo.toml": "ae21c2d46c7a3c391b36e760c55c26abb81230f415f7531c63e6509560c2af66",
+      "crates/bsp-cuda/build.rs": "778b6c68e2ea450ca3d26cb965935b7116b4169ffbdb33b0c5cb825848c6d5eb",
+      "crates/bsp-cuda/src/kernels.cu": "7d14026839ea2d0936c2bae2b5239d7d1b7cbe28ab742070847514aa137589fb",
+      "crates/bsp-cuda/src/lib.rs": "ff6f7e692827ba8a9b23f444349656eed8d1d94de526952c248556b8eda2579e"
+    },
+    "rows": [
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 400,
+        "edges": 5040,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.0017766849996405654,
+            0.0017533329992147628,
+            0.0017295010002271738
+          ],
+          "cpu-parallel": [
+            0.0017886560017359443,
+            0.0017489830024715047,
+            0.0017821550027292687
+          ],
+          "cuda": [
+            0.0023938949998409953,
+            0.0023788140024407767,
+            0.0023737129995424766
+          ],
+          "cuda-f32": [
+            0.0018260290016769432,
+            0.0018194889998994768,
+            0.0018224080013169441
+          ]
+        },
+        "seconds": {
+          "cpu": 0.0017533329992147628,
+          "cpu-parallel": 0.0017821550027292687,
+          "cuda": 0.0023788140024407767,
+          "cuda-f32": 0.0018224080013169441
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.1396997473832613e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 392912,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 247200,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 1000,
+        "edges": 12600,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.0049671540000417735,
+            0.004726995000964962,
+            0.0045297280012164265
+          ],
+          "cpu-parallel": [
+            0.005473166002047947,
+            0.00474781600132701,
+            0.004674120002164273
+          ],
+          "cuda": [
+            0.0027487539991852827,
+            0.0025653590018919203,
+            0.002563549001934007
+          ],
+          "cuda-f32": [
+            0.0018906340010289568,
+            0.0018923150018963497,
+            0.0018776629985950422
+          ]
+        },
+        "seconds": {
+          "cpu": 0.004726995000964962,
+          "cpu-parallel": 0.00474781600132701,
+          "cuda": 0.0025653590018919203,
+          "cuda-f32": 0.0018906340010289568
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.054311427108658e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 963592,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 599320,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 10000,
+        "edges": 126000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.04941719300040859,
+            0.057636281999293715,
+            0.05029061399909551
+          ],
+          "cpu-parallel": [
+            0.03977786799805472,
+            0.04009022299942444,
+            0.040186141999583924
+          ],
+          "cuda": [
+            0.011801749998994637,
+            0.011687100999552058,
+            0.011773589001677465
+          ],
+          "cuda-f32": [
+            0.0056415590006508864,
+            0.005638209000608185,
+            0.005647419999149861
+          ]
+        },
+        "seconds": {
+          "cpu": 0.05029061399909551,
+          "cpu-parallel": 0.04009022299942444,
+          "cuda": 0.011773589001677465,
+          "cuda-f32": 0.0056415590006508864
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.270231357932474e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4608512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 9523728,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 5881088,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 100000,
+        "edges": 1260000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            1.013801307999529,
+            1.0090411179990042,
+            1.0107986030016036
+          ],
+          "cpu-parallel": [
+            0.2620476949996373,
+            0.2672236899998097,
+            0.2612046249996638
+          ],
+          "cuda": [
+            0.20353996900303173,
+            0.2031334989987954,
+            0.20407288100250298
+          ],
+          "cuda-f32": [
+            0.17921295700216433,
+            0.17917290400146157,
+            0.17980825400081812
+          ]
+        },
+        "seconds": {
+          "cpu": 1.0107986030016036,
+          "cpu-parallel": 0.2620476949996373,
+          "cuda": 0.20353996900303173,
+          "cuda-f32": 0.17921295700216433
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.697348671116707e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 46080512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 95124960,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 58698704,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 4,
+        "alpha": 9.5,
+        "n": 10000,
+        "edges": 380000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.15859682600057567,
+            0.1585115300003963,
+            0.1582848420002847
+          ],
+          "cpu-parallel": [
+            0.08287321500029066,
+            0.08151427399934619,
+            0.07881717499913066
+          ],
+          "cuda": [
+            0.04920450100325979,
+            0.04916968800171162,
+            0.04921277199900942
+          ],
+          "cuda-f32": [
+            0.03683207300127833,
+            0.036822332000156166,
+            0.03684434299793793
+          ]
+        },
+        "seconds": {
+          "cpu": 0.1585115300003963,
+          "cpu-parallel": 0.08151427399934619,
+          "cuda": 0.04920450100325979,
+          "cuda-f32": 0.03683207300127833
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.2103773733572751e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 13160512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 26254352,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 16088400,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 6,
+        "alpha": 40,
+        "n": 2000,
+        "edges": 480000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.21705690399903688,
+            0.21807651999915834,
+            0.22144767499776208
+          ],
+          "cpu-parallel": [
+            0.08522398700006306,
+            0.08023381200109725,
+            0.08428125199861825
+          ],
+          "cuda": [
+            0.0541876269999193,
+            0.05409584999870276,
+            0.05425908399774926
+          ],
+          "cuda-f32": [
+            0.044569182999111945,
+            0.04453404999730992,
+            0.04455554299784126
+          ]
+        },
+        "seconds": {
+          "cpu": 0.21807651999915834,
+          "cpu-parallel": 0.08428125199861825,
+          "cuda": 0.0541876269999193,
+          "cuda-f32": 0.04455554299784126
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 1.7480797240287949e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 16048512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 31216464,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 18995456,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 12,
+        "alpha": 20,
+        "n": 1000,
+        "edges": 240000,
+        "kind": "dense",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.08676580500105047,
+            0.1006014939994202,
+            0.08657497000240255
+          ],
+          "cpu-parallel": [
+            0.049565622000955045,
+            0.05241470400142134,
+            0.05172606799897039
+          ],
+          "cuda": [
+            0.0353276409987302,
+            0.03518336899651331,
+            0.03534090100220055
+          ],
+          "cuda-f32": [
+            0.01723761599714635,
+            0.017226864998519886,
+            0.017229774999577785
+          ]
+        },
+        "seconds": {
+          "cpu": 0.08676580500105047,
+          "cpu-parallel": 0.05172606799897039,
+          "cuda": 0.0353276409987302,
+          "cuda-f32": 0.017229774999577785
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 2.1214315188530578e-27
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 7864512,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 15051976,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 9102712,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 1000,
+        "edges": 12600,
+        "kind": "residual",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.0017849949981609825,
+            0.0017918960002134554,
+            0.0017753749998519197
+          ],
+          "cpu-parallel": [
+            0.0018035570028587244,
+            0.0017996360002143774,
+            0.0018030169994744938
+          ],
+          "cuda": [
+            0.002201159000833286,
+            0.0021948390021861997,
+            0.002201358998718206
+          ],
+          "cuda-f32": [
+            0.001583378998475382,
+            0.001566568000271218,
+            0.00158158900012495
+          ]
+        },
+        "seconds": {
+          "cpu": 0.0017849949981609825,
+          "cpu-parallel": 0.0018030169994744938,
+          "cuda": 0.002201159000833286,
+          "cuda-f32": 0.00158158900012495
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.361379033179581e-11
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 963592,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 599320,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      },
+      {
+        "k": 3,
+        "alpha": 4.2,
+        "n": 10000,
+        "edges": 126130,
+        "kind": "mixed",
+        "sweeps": 30,
+        "samples": {
+          "cpu": [
+            0.05059429600078147,
+            0.058336827998573426,
+            0.050362417998258024
+          ],
+          "cpu-parallel": [
+            0.03870862600160763,
+            0.03784221599926241,
+            0.03847252799823764
+          ],
+          "cuda": [
+            0.015024105003249133,
+            0.014957688999857055,
+            0.015017855002952274
+          ],
+          "cuda-f32": [
+            0.008022924997931113,
+            0.00796970000010333,
+            0.008025955001357943
+          ]
+        },
+        "seconds": {
+          "cpu": 0.05059429600078147,
+          "cpu-parallel": 0.03847252799823764,
+          "cuda": 0.015017855002952274,
+          "cuda-f32": 0.008022924997931113
+        },
+        "max_message_error": {
+          "cpu": 0.0,
+          "cpu-parallel": 0.0,
+          "cuda": 0.0,
+          "cuda-f32": 3.352241237930542e-07
+        },
+        "errors": {},
+        "execution": {
+          "cpu": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cpu-parallel": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4612680,
+            "parallel_sweeps": 120,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 0,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda": {
+            "requested_backend": "cuda",
+            "backend": "cuda",
+            "precision": "f64",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 9531556,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          },
+          "cuda-f32": {
+            "requested_backend": "cuda-f32",
+            "backend": "cuda-f32",
+            "precision": "f32",
+            "threads": 1,
+            "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+            "allocated_bytes": 5885788,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "cuda_sweeps": 120,
+            "device_error": null,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      }
+    ],
+    "full": []
+  }
+}

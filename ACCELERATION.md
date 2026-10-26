@@ -1,9 +1,12 @@
-# CPU and Apple GPU execution
+# CPU and GPU execution
 
 The default solver remains single-threaded `f64`. Select `cpu-parallel` for large
 graphs while retaining the scalar arithmetic and decision order. Select `metal`
 explicitly to use `f32` messages on an Apple GPU. GPU trajectories can differ.
 Every SAT assignment is checked on the CPU against the original formula.
+On Linux, the optional `cuda` feature provides NVIDIA `cuda` (`f64`) and
+`cuda-f32` backends. See [CUDA execution](CUDA.md) for installation, device
+architecture selection, validation, and measured results.
 
 ## Build and run
 
@@ -93,7 +96,7 @@ Apple's [Metal language specification](https://developer.apple.com/metal/Metal-S
 excludes `double` and permits flushing subnormal values to zero.
 
 WalkSAT flips, unit propagation, and BSP decisions remain on the CPU. Independent
-searches run concurrently. CUDA and GPU WalkSAT chains are future work.
+searches run concurrently. GPU WalkSAT chains remain future work.
 
 ## Reproduce measurements
 

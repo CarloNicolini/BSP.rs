@@ -1,0 +1,13 @@
+========= COMPUTE-SANITIZER
+
+running 6 tests
+test cuda_batch_stops_after_the_first_failed_sweep ... ok
+test cuda_cooperative_cancellation_and_timeout ... ok
+test cuda_full_solves_and_batches_are_verified ... ok
+test cuda_limits_zero_factors_and_precision_recovery ... ok
+test cuda_sweeps_and_graph_mutations_match_cpu ... ok
+test invalid_cuda_topology_is_rejected_without_device_access ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 43.69s
+
+========= ERROR SUMMARY: 0 errors

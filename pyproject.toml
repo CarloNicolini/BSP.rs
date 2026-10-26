@@ -19,6 +19,9 @@ include = [
     { path = "crates/bsp-metal/Cargo.toml", format = "sdist" },
     { path = "crates/bsp-metal/build.rs", format = "sdist" },
     { path = "crates/bsp-metal/src/*", format = "sdist" },
+    { path = "crates/bsp-cuda/Cargo.toml", format = "sdist" },
+    { path = "crates/bsp-cuda/build.rs", format = "sdist" },
+    { path = "crates/bsp-cuda/src/*", format = "sdist" },
 ]
 
 [project.optional-dependencies]

@@ -115,7 +115,7 @@ def test_parallel_execution_batch_order_and_profile(tmp_path):
     solve(formulas[0],execution=ExecutionOptions(profile=profile))
     assert json.loads(profile.read_text())["execution"]["phases"]["cavities"]["calls"] > 0
     with pytest.raises(ValueError):
-        ExecutionOptions(backend="cuda")
+        ExecutionOptions(backend="unknown-backend")
     with pytest.raises(ValueError):
         ExecutionOptions(threads=1025)
     with pytest.raises(ValueError):

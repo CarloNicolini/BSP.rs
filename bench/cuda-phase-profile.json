@@ -1,0 +1,64 @@
+{
+  "arch": "x86_64",
+  "build_profile": "release",
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "edges": 1260000,
+  "execution": {
+    "allocated_bytes": 58298732,
+    "backend": "cuda-f32",
+    "cuda_sweeps": 30,
+    "device": "NVIDIA GeForce GTX 1060 3GB (sm_61)",
+    "device_error": null,
+    "fallbacks": [],
+    "metal_sweeps": 0,
+    "observables_validations": 0,
+    "parallel_sweeps": 0,
+    "phases": {
+      "backend_setup": {
+        "calls": 1,
+        "seconds": 0.159568973
+      },
+      "cavities_simd": {
+        "calls": 30,
+        "seconds": 0.06089766550064088
+      },
+      "clauses3": {
+        "calls": 30,
+        "seconds": 0.01058646407723427
+      },
+      "gpu": {
+        "calls": 30,
+        "seconds": 0.07323584154114363
+      },
+      "gpu_submission_and_wait": {
+        "calls": 30,
+        "seconds": 0.07452961799999998
+      },
+      "residual_blocks": {
+        "calls": 30,
+        "seconds": 0.0015324799641966821
+      },
+      "residual_final": {
+        "calls": 30,
+        "seconds": 0.00018255999917164437
+      },
+      "snapshots": {
+        "calls": 2,
+        "seconds": 0.0076427909999999995
+      }
+    },
+    "precision": "f32",
+    "profile_error": null,
+    "requested_backend": "cuda-f32",
+    "threads": 1
+  },
+  "flips": 0,
+  "m": 420000,
+  "n": 100000,
+  "os": "linux",
+  "package_version": "0.1.0",
+  "rustflags": "",
+  "seed": 7,
+  "sp_sweeps": 30,
+  "wall_seconds": 0.238141329
+}

@@ -1,5 +1,6 @@
 target/
 .venv/
+.venv-cuda/
 dist/
 __pycache__/
 *.py[cod]

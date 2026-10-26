@@ -283,3 +283,116 @@ CPU tests cover exact trajectories and subnormal exclusion products on the
 parallel path. A complete indexed-solver trajectory also matches the preserved
 pre-acceleration binary. The Python source distribution was unpacked and its
 optional Metal feature built successfully without relying on repository files.
+
+## NVIDIA CUDA on ottino-lan (2026-10-26)
+
+The remote host has an AMD Ryzen 7 1700 (8 cores, 16 logical CPUs), 16 GB RAM,
+and a GeForce GTX 1060 with 3 GB VRAM, compute capability 6.1. The driver is
+580.178.04; NVCC is 12.0.140. Rust 1.99.1 builds the generic Release extension
+with ThinLTO, one code-generation unit, and no custom Rust flags. NVCC uses
+`-O3 --fmad=false --prec-div=true --prec-sqrt=true --ftz=false` and embeds
+`sm_61` code plus `compute_61` PTX. The CPU governor was `schedutil`.
+
+The protocol matches the Apple sweep measurements above: 30 sweeps, the same
+starting messages and damping, one warmup, five alternating trials, and final
+native host snapshots inside the timer. Construction, CUDA initialization,
+allocation, and NumPy exports remain outside this timer. The parallel CPU budget
+is eight workers. [Raw samples and hashes](bench/cuda-results.json) record the
+exact build. These results compare backends on the remote host; they do not
+isolate device arithmetic or establish a cross-host GPU ranking.
+
+| k | N | Kind | CPU f64 ms | Parallel f64 ms | CUDA f64 ms | CUDA f32 ms | CPU / CUDA f64 | CPU / CUDA f32 |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3 | 400 | dense | 1.764 | 1.779 | 2.369 | 0.559 | 0.74 | 3.15 |
+| 3 | 1,000 | dense | 4.711 | 4.649 | 2.548 | 0.702 | 1.85 | 6.71 |
+| 3 | 10,000 | dense | 49.462 | 34.127 | 11.801 | 3.793 | 4.19 | 13.04 |
+| 3 | 100,000 | dense | 1014.066 | 271.514 | 203.182 | 77.228 | 4.99 | 13.13 |
+| 3 | 1,000,000 | dense | 13147.255 | 3810.818 | 2385.908 | 1041.329 | 5.51 | 12.63 |
+| 4 | 10,000 | dense | 162.503 | 75.192 | 49.050 | 34.536 | 3.31 | 4.71 |
+| 6 | 2,000 | dense | 222.070 | 85.179 | 54.103 | 44.528 | 4.10 | 4.99 |
+| 12 | 1,000 | dense | 86.974 | 51.552 | 35.202 | 17.212 | 2.47 | 5.05 |
+| 3 | 1,000 | residual | 1.824 | 1.830 | 2.191 | 0.520 | 0.83 | 3.51 |
+| 3 | 10,000 | mixed | 50.644 | 35.202 | 14.991 | 6.248 | 3.38 | 8.11 |
+
+All CUDA `f64` final messages matched the scalar reference exactly in these
+workloads. The maximum CUDA `f32` difference was 7.178e-7. No fallback or device
+error occurred in these sweep trials. This is measured numerical agreement,
+not a guarantee that all GPU search trajectories match scalar execution.
+One million variables required 951,137,472 device bytes for `f64` and
+582,874,988 for `f32`. The process peak RSS was approximately 3.39 GiB, including
+the simultaneously resident CPU/GPU solver instances used by the driver.
+
+The [cavity-layout pilots](bench/cuda-cavity-layouts.json) compare a warp against
+one thread per variable for low degrees, with the other degree bins unchanged.
+At N=100,000 the warp takes 77.3 ms versus 179.2 ms for the scalar-thread `f32`
+layout. The retained single-precision path uses a warp through degree 32, a
+thread for degrees 33–127, and a cooperative block at degree 128 or above.
+Double precision retains scalar per-variable arithmetic order.
+
+A separate [SMT diagnostic](bench/cuda-cpu16.json) uses 16 CPU workers and three
+measured trials. SMT helps the medium-sized parallel workloads but shows little
+change at N=100,000. These samples are separate from the eight-worker paired
+comparison above. Both worker counts remain explicitly selectable.
+
+### CUDA complete-solve campaign
+
+Five seeds (0–4) use the same 100,000-flip limit and 10-second timeout as the
+Apple campaign. Jobs execute concurrently within eight worker lanes. Each batch
+is measured once, so these campaign times have no repeated-trial uncertainty
+estimate. Construction and result export are included, as is initial CUDA
+context creation in the first CUDA batch. Formula generation is excluded.
+[Every outcome and counter](bench/cuda-solves.json) is retained.
+
+| k | N | Backend | Campaign seconds | SAT | Nonconverged | Timeout |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| 3 | 400 | cpu | 0.942 | 2 | 3 | 0 |
+| 3 | 400 | cpu-parallel | 0.945 | 2 | 3 | 0 |
+| 3 | 400 | cuda | 2.853 | 2 | 3 | 0 |
+| 3 | 400 | cuda-f32 | 1.774 | 2 | 3 | 0 |
+| 4 | 400 | cpu | 2.338 | 1 | 4 | 0 |
+| 4 | 400 | cpu-parallel | 2.378 | 1 | 4 | 0 |
+| 4 | 400 | cuda | 4.522 | 1 | 4 | 0 |
+| 4 | 400 | cuda-f32 | 4.401 | 1 | 4 | 0 |
+| 3 | 10,000 | cpu | 10.022 | 0 | 0 | 5 |
+| 3 | 10,000 | cpu-parallel | 10.051 | 0 | 0 | 5 |
+| 3 | 10,000 | cuda | 10.025 | 0 | 0 | 5 |
+| 3 | 10,000 | cuda-f32 | 10.077 | 0 | 0 | 5 |
+
+CPU is faster on these small complete solves despite the GPU sweep speedups.
+All larger jobs time out, so this campaign establishes no complete-solver
+time-to-solution improvement. All returned SAT assignments pass independent
+CPU clause evaluation. No CUDA fallback or device error occurred. Five seeds
+are insufficient to establish equal solve probabilities across precisions.
+
+### CUDA profiling
+
+The separate [NVIDIA activity profile](bench/cuda-nvprof.txt) attributes 75.4%
+of GPU activity time to warp cavities and 15.0% to 3-SAT clauses at N=100,000.
+These percentages include transfer and memset activity in the denominator.
+[Native phase timing](bench/cuda-phase-profile.json) records 159.6 ms for cold
+backend setup, 73.2 ms of GPU event time, and 7.64 ms for the combined initial
+and final snapshots. These instrumented samples characterize costs and are
+excluded from the speedup table. [Hardware details](bench/cuda-hardware.txt)
+include CPU topology and host compiler information.
+
+### CUDA validation
+
+The CUDA hardware suite passes on the GTX 1060 in both precisions, including an
+independent CPU `f32` definition, mixed widths, cooperative high degrees, exact
+zeros, double-precision subnormals, graph edits and restoration, verified solves,
+concurrent jobs, cancellation, timeouts, and stopping at the first failed sweep.
+CUDA 12.9 Compute Sanitizer reports zero errors across the six hardware tests;
+the failure-stop regression also passes race checking, and the numerical-limit
+test passes synchronization checking. An earlier full-suite race check reports
+zero hazards. Profiling and sanitizer runs are separate from timing trials.
+
+A constructed single-zero cavity exposed an exclusion-product underflow hidden
+by the legitimate zero of the full product. The previous CUDA `f32` result
+differed from `f64` by 1.526e-5. The added guard restores the pre-convergence
+checkpoint and retries on the CPU; the regression now matches every reference
+message exactly. The equivalent guard and regression pass Metal API and shader
+validation on the M1 Pro.
+
+Portable Rust Release tests, optional backend builds, eight Python tests,
+Clippy, formatting, and unpacked Python source-distribution builds also pass.
+See [CUDA execution](CUDA.md) for build and reproduction commands.

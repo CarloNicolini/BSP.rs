@@ -1,0 +1,399 @@
+{
+  "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+  "cpu_count": 16,
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "configuration": {
+    "max_n": 100000,
+    "repeats": 3,
+    "sweeps": 30,
+    "threads": 16,
+    "full_seeds": 0,
+    "full_only": false,
+    "full_large": false,
+    "backends": [
+      "cpu-parallel"
+    ],
+    "output": "/tmp/bsp-cuda-cpu16.json"
+  },
+  "build": {
+    "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "build_profile": "release",
+    "rustflags": "",
+    "arch": "x86_64",
+    "os": "linux",
+    "package_version": "0.1.0"
+  },
+  "gpu_toolchain": null,
+  "binary_sha256": "9dc7699b7ec5d12fc5a2aeb6121cbba36a7093972975de855aa5df528f7b155b",
+  "max_rss": 181232,
+  "sha256": {
+    "Cargo.lock": "11f3f5f7d2bfdf9ee2266d6f3931208ffafce2e6bf0667a9d59b565ecb425fad",
+    "Cargo.toml": "d870106783d28e0f285481b7315e8f3bf01203ab2b1b5b1b48c3525cb3c3a04d",
+    "build.rs": "edaeb924cd4eda14a146b9d6b218f50e77a2bb17f86fe539d69ffa7c5b8b92a7",
+    "pyproject.toml": "b470350e53e96b20e5e5ed9097456bb6c5ac9df8408b264c8066b4206e66e2ce",
+    "/home/carlo/workspace/BSP.rs/bench/accelerators.py": "ccc37f17c60da9638cd1e9770c4d67852d852fd2a866ac4de17f3da9e21a6028",
+    "src/bitset.rs": "4198ca1826d585c1ee0b1a66dbcfa51af414b9cf9abfc5daed113fdec113e242",
+    "src/python.rs": "970a281e6cd62da90261c68fc8ec21474723f48c0fe7d998cc2b72bf4f61341e",
+    "src/main.rs": "62b2ee3c31a2ae1737a9beac5547cf88d22ad730135555d5c873ce8a18c9c892",
+    "src/formula.rs": "df7d302ad609c08ee8d7da9cf3f8e97e3f8d9589de0cf61932d2473e955d6624",
+    "src/execution.rs": "c4c3f12564e164c6112f79df324b0d11b3a202ceeee036a38a8fbac45874a4b3",
+    "src/lib.rs": "40435973b4a209059bbc674da4f43289edead9c0f297d9d84b7b34ff3118839f",
+    "src/decision_heap.rs": "e1f15caa89af5ae898cd331cdd619bdbb40a10c41871ae84a3419696e3954e7d",
+    "src/solver.rs": "7bbfadd346cd11377e3c583c16e4e119f4e9e3eae67b569e370f8dd63bfef06f",
+    "src/walksat.rs": "8fd6c6303ac0ce75193231969e93b14a812781abaab1aad7ce3afa149c92d1d1",
+    "crates/bsp-metal/Cargo.toml": "14342af5cd417f36b158ab1cf81897797329413363201b80cdd04e0b3d6791d5",
+    "crates/bsp-metal/build.rs": "9ab76edbe8be972ad9f01fdba84328ad489249f89dbef3a32e33af827e0c17c5",
+    "crates/bsp-metal/src/bridge.m": "597947c224e3304330bbd58395e01233ddef554ed7d87327df49f438a15122db",
+    "crates/bsp-metal/src/kernels.metal": "8c63d9ccee1fe2fb3712f47bb90c17395c1e6ad7715b052ffaeb99111007455b",
+    "crates/bsp-metal/src/lib.rs": "810c72dfa4be13dd7e9f2209b32d18d2ba4a406ec1f53deed71203e59ae3952e",
+    "crates/bsp-cuda/Cargo.toml": "ae21c2d46c7a3c391b36e760c55c26abb81230f415f7531c63e6509560c2af66",
+    "crates/bsp-cuda/build.rs": "778b6c68e2ea450ca3d26cb965935b7116b4169ffbdb33b0c5cb825848c6d5eb",
+    "crates/bsp-cuda/src/kernels.cu": "ebfcd549fb3cec1bf829d53d496f9bb6e203fae7fa4c6e070528dd9bb4979842",
+    "crates/bsp-cuda/src/lib.rs": "061285e7b68e4472c38e46d58e51c6acff39e79f1e9554a59d5ac7198007249a"
+  },
+  "rows": [
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 400,
+      "edges": 5040,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.003316465998068452,
+          0.003286492999905022,
+          0.003280691998952534
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.003286492999905022
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 1000,
+      "edges": 12600,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.00536741200266988,
+          0.005360401999496389,
+          0.005370502000005217
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.00536741200266988
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 10000,
+      "edges": 126000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.020113010999921244,
+          0.019848056999762775,
+          0.019799424000666477
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.019848056999762775
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 4609024,
+          "parallel_sweeps": 120,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 100000,
+      "edges": 1260000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.2706670490006218,
+          0.28115332200104604,
+          0.27042436900228495
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.2706670490006218
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 46081024,
+          "parallel_sweeps": 120,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 10000,
+      "edges": 380000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.05445842599874595,
+          0.055649108999205055,
+          0.0548424190019432
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.0548424190019432
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 13161024,
+          "parallel_sweeps": 120,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 6,
+      "alpha": 40,
+      "n": 2000,
+      "edges": 480000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.06704882900157827,
+          0.06648588099778863,
+          0.06710522499997751
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.06704882900157827
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 16049008,
+          "parallel_sweeps": 120,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 12,
+      "alpha": 20,
+      "n": 1000,
+      "edges": 240000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.03449053799704416,
+          0.03016223600207013,
+          0.031071614001120906
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.031071614001120906
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 7865008,
+          "parallel_sweeps": 120,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 1000,
+      "edges": 12600,
+      "kind": "residual",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.0017778719993657432,
+          0.0017805930001486558,
+          0.0017744520009728149
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.0017778719993657432
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 10000,
+      "edges": 126130,
+      "kind": "mixed",
+      "sweeps": 30,
+      "samples": {
+        "cpu-parallel": [
+          0.020482231997448253,
+          0.019765361001191195,
+          0.01985942799728946
+        ]
+      },
+      "seconds": {
+        "cpu-parallel": 0.01985942799728946
+      },
+      "max_message_error": {},
+      "errors": {},
+      "execution": {
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 16,
+          "device": null,
+          "allocated_bytes": 4613192,
+          "parallel_sweeps": 120,
+          "metal_sweeps": 0,
+          "cuda_sweeps": 0,
+          "device_error": null,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    }
+  ],
+  "full": []
+}

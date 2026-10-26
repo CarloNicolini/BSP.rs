@@ -330,9 +330,15 @@ impl Solver {
         self.solution = None;
         self.upload_messages();
         self.sync_messages();
+        if let Some(error) = &self.execution.report.device_error {
+            return Err(Error(error.clone()));
+        }
         Ok(())
     }
     pub(crate) fn check_stop(&self) -> std::result::Result<(), Status> {
+        if self.execution.report.device_error.is_some() {
+            return Err(Status::NumericalFailure);
+        }
         if self.cancel.is_cancelled() {
             return Err(Status::Cancelled);
         }
@@ -354,6 +360,9 @@ impl Solver {
         self.terminal = None;
         self.solution = None;
         self.sync_messages();
+        if let Some(error) = &self.execution.report.device_error {
+            return Err(Error(error.clone()));
+        }
         Ok(())
     }
     pub fn release(&mut self, variable: usize) -> Result<()> {
@@ -366,6 +375,9 @@ impl Solver {
         self.terminal = None;
         self.solution = None;
         self.sync_messages();
+        if let Some(error) = &self.execution.report.device_error {
+            return Err(Error(error.clone()));
+        }
         Ok(())
     }
     fn set_fixed(&mut self, v: usize, value: i8, forced: bool) {
@@ -399,6 +411,10 @@ impl Solver {
                 if let Some(gpu) = &mut self.execution.gpu {
                     gpu.freeze(e);
                 }
+                #[cfg(all(feature = "cuda", target_os = "linux"))]
+                if let Some(cuda) = &mut self.execution.cuda {
+                    cuda.freeze(e);
+                }
                 self.saved_eta[e] = self.eta[e];
                 self.eta[e] = 0.0;
             }
@@ -410,6 +426,10 @@ impl Solver {
                     if let Some(gpu) = &mut self.execution.gpu {
                         gpu.set_active(c, false);
                     }
+                    #[cfg(all(feature = "cuda", target_os = "linux"))]
+                    if let Some(cuda) = &mut self.execution.cuda {
+                        cuda.set_active(c, false);
+                    }
                     for w in f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize {
                         for other in (Ones {
                             word: self.masks[w],
@@ -419,6 +439,10 @@ impl Solver {
                             #[cfg(all(feature = "metal", target_os = "macos"))]
                             if let Some(gpu) = &mut self.execution.gpu {
                                 gpu.freeze(other);
+                            }
+                            #[cfg(all(feature = "cuda", target_os = "linux"))]
+                            if let Some(cuda) = &mut self.execution.cuda {
+                                cuda.freeze(other);
                             }
                             self.saved_eta[other] = self.eta[other];
                             self.eta[other] = 0.0;
@@ -462,12 +486,20 @@ impl Solver {
                     if let Some(gpu) = &mut self.execution.gpu {
                         gpu.restore(e);
                     }
+                    #[cfg(all(feature = "cuda", target_os = "linux"))]
+                    if let Some(cuda) = &mut self.execution.cuda {
+                        cuda.restore(e);
+                    }
                     self.eta[e] = self.saved_eta[e];
                 } else {
                     self.active.set(c, true);
                     #[cfg(all(feature = "metal", target_os = "macos"))]
                     if let Some(gpu) = &mut self.execution.gpu {
                         gpu.set_active(c, true);
+                    }
+                    #[cfg(all(feature = "cuda", target_os = "linux"))]
+                    if let Some(cuda) = &mut self.execution.cuda {
+                        cuda.set_active(c, true);
                     }
                     for w in f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize {
                         for other in (Ones {
@@ -478,6 +510,10 @@ impl Solver {
                             #[cfg(all(feature = "metal", target_os = "macos"))]
                             if let Some(gpu) = &mut self.execution.gpu {
                                 gpu.restore(other);
+                            }
+                            #[cfg(all(feature = "cuda", target_os = "linux"))]
+                            if let Some(cuda) = &mut self.execution.cuda {
+                                cuda.restore(other);
                             }
                             self.eta[other] = self.saved_eta[other];
                         }
@@ -492,6 +528,9 @@ impl Solver {
     pub fn propagate(&mut self) -> std::result::Result<usize, Status> {
         let result = self.timed("propagation", Self::propagate_inner);
         self.sync_messages();
+        if self.execution.report.device_error.is_some() {
+            return Err(Status::NumericalFailure);
+        }
         result
     }
     fn propagate_inner(&mut self) -> std::result::Result<usize, Status> {
@@ -566,6 +605,9 @@ impl Solver {
     pub fn sweep(&mut self) -> std::result::Result<f64, Status> {
         let result = self.sweep_inner();
         self.sync_messages();
+        if self.execution.report.device_error.is_some() {
+            return Err(Status::NumericalFailure);
+        }
         result
     }
     /// Run raw synchronous sweeps, synchronizing snapshots once at the end.
@@ -574,7 +616,7 @@ impl Solver {
         if count == 0 {
             return Ok(0.0);
         }
-        let result = if let Some(result) = self.metal_compute(true, count) {
+        let result = if let Some(result) = self.gpu_compute(true, count) {
             result.map(|r| r.residual)
         } else {
             (|| {
@@ -586,11 +628,14 @@ impl Solver {
             })()
         };
         self.sync_messages();
+        if self.execution.report.device_error.is_some() {
+            return Err(Status::NumericalFailure);
+        }
         result
     }
     fn sweep_inner(&mut self) -> std::result::Result<f64, Status> {
         self.check_stop()?;
-        if let Some(result) = self.metal_converge(true) {
+        if let Some(result) = self.gpu_converge(true) {
             return result.map(|r| r.residual);
         }
         if let Some(result) = self.parallel_sweep() {
@@ -700,11 +745,14 @@ impl Solver {
     pub fn converge(&mut self) -> std::result::Result<SpReport, Status> {
         let result = self.converge_inner();
         self.sync_messages();
+        if self.execution.report.device_error.is_some() {
+            return Err(Status::NumericalFailure);
+        }
         result
     }
     fn converge_inner(&mut self) -> std::result::Result<SpReport, Status> {
         self.timed("propagation", Self::propagate_inner)?;
-        if let Some(result) = self.metal_converge(false) {
+        if let Some(result) = self.gpu_converge(false) {
             return result;
         }
         for sweeps in 1..=self.options.max_sweeps {
@@ -791,6 +839,9 @@ impl Solver {
     pub fn advance(&mut self) -> std::result::Result<Step, Status> {
         let result = self.advance_internal();
         self.sync_messages();
+        if self.execution.report.device_error.is_some() {
+            return Err(Status::NumericalFailure);
+        }
         result
     }
     fn advance_internal(&mut self) -> std::result::Result<Step, Status> {

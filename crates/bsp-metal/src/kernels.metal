@@ -54,6 +54,7 @@ kernel void cavities_simd(const device uint *vo [[buffer(0)]], const device uint
     uint p=start+lane; bool valid=p<end;uint e=valid ? ve[p] : 0;
     float factor=valid ? 1-eta[e] : 1;
     float fp=valid && p<split ? factor : 1, fm=valid && p>=split ? factor : 1;
+    uint zero_plus=simd_sum(uint(fp==0)), zero_minus=simd_sum(uint(fm==0));
     float plus=simd_product(fp), minus=simd_product(fm);
     if ((plus==0 && simd_all(fp>0)) || (minus==0 && simd_all(fm>0))) atomic_fetch_or_explicit(&state.error,4u,memory_order_relaxed);
     float pp=simd_prefix_exclusive_product(fp), pm=simd_prefix_exclusive_product(fm);
@@ -63,6 +64,8 @@ kernel void cavities_simd(const device uint *vo [[buffer(0)]], const device uint
     if (!lane && cfg.observables) {degree[v]=d;products[v]=float2(plus,minus);}
     if (valid) {
         float same=p<split ? pp*sp : pm*sm, opposite=p<split ? minus : plus;
+        if (factor==0 && same==0 && (p<split ? zero_plus : zero_minus)==1)
+            atomic_fetch_or_explicit(&state.error,4u,memory_order_relaxed);
         float z=opposite+(1-opposite)*same;
         if (!(z>0) || !isfinite(z)) atomic_fetch_or_explicit(&state.error,1u,memory_order_relaxed);
         else {uint qi=e;q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f);if (cfg.observables) norms[qi]=z;}
