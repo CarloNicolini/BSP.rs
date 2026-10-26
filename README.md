@@ -337,6 +337,7 @@ CI runs on every push and pull request, and can also be started manually:
 | Build and test | Linux, macOS, Windows; no GPU features | Formatting, Clippy, debug/release/doc tests, CLI example, release binaries |
 | Python tests and wheels | Linux, macOS, Windows; Python 3.12/3.13 | Installed-wheel tests, examples, wheels and source archives |
 | CUDA and Metal builds | Linux x64 + CUDA 12.6 (sm61); macOS ARM64 + Metal | Clippy, debug/release/doc tests, CPU smoke test, GPU-enabled release binaries |
+| Release artifacts | `v*` tags; all build/test workflows | Checksummed archives attached to a draft GitHub release |
 | GPU hardware tests (manual) | Self-hosted NVIDIA/Linux or Apple silicon/macOS | Device tests, numerical comparisons, verified GPU solves |
 
 CUDA is supported on Linux; Metal is supported on macOS. The default builds
@@ -357,7 +358,11 @@ gh workflow run gpu.yml -f backend=cuda -f cuda_arch=61
 gh workflow run gpu.yml -f backend=metal
 ```
 
-No self-hosted runners are required for the automatic workflows.
+No self-hosted runners are required for the automatic workflows. Pushing a
+version tag such as `v0.1.0` runs all three build/test workflows and creates a
+draft GitHub release only after every job passes. The release contains platform
+archives and `SHA256SUMS`; review the draft in **Releases** before publishing.
+This workflow does not publish packages to PyPI or crates.io.
 
 CI also tests Rust and the CLI on Linux, macOS, and Windows. It builds and installs
 Python wheels in clean environments, runs the Python examples and tests, and

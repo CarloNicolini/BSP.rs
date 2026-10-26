@@ -1,0 +1,43 @@
+name: Release artifacts
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  cpu:
+    uses: ./.github/workflows/ci.yml
+  python:
+    uses: ./.github/workflows/python.yml
+  acceleration:
+    uses: ./.github/workflows/acceleration.yml
+  release:
+    name: Package draft release
+    needs: [cpu, python, acceleration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Download validated build artifacts
+        run: gh run download "$GITHUB_RUN_ID" --dir artifacts
+      - name: Package platform artifacts
+        run: |
+          mkdir release-assets
+          for artifact in artifacts/*; do
+            tar -czf "release-assets/$(basename "$artifact").tar.gz" -C "$artifact" .
+          done
+          (cd release-assets && sha256sum ./*.tar.gz > SHA256SUMS)
+      - name: Create draft GitHub release
+        run: |
+          gh release create "$RELEASE_TAG" release-assets/* \
+            --verify-tag --draft --generate-notes --title "$RELEASE_TAG"
