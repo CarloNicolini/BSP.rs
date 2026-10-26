@@ -1,0 +1,13 @@
+\usepackage{tikz}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,patterns,positioning}
+\tikzset{
+ clause/.style={rectangle,draw=black,fill=white,minimum size=7mm,line width=.9pt},
+ varnode/.style={circle,draw=black,minimum size=9mm,line width=.9pt},
+ truevar/.style={varnode,fill=white},
+ falsevar/.style={varnode,fill=gray!55},
+ freevar/.style={varnode,pattern=north east lines,pattern color=gray!65},
+ positive/.style={draw=black,line width=1pt},
+ negative/.style={positive,dash pattern=on 4pt off 3pt},
+ every node/.style={text=black,font=\sffamily},
+}

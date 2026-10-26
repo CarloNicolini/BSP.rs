@@ -25,6 +25,23 @@ fn options(text: Option<&str>) -> PyResult<Options> {
 
 #[pyclass(name = "Formula", module = "pybsp_rust.bsp_rust", frozen)]
 #[derive(Clone)]
+/// Immutable normalized CNF formula with one-based signed literals.
+///
+/// Parameters
+/// ----------
+/// clauses : sequence of sequences of int
+///     Each inner sequence is a disjunction. Positive i means x_i, negative
+///     -i means not x_i. Zero is invalid here (it is a DIMACS terminator only).
+/// n : int or None, default=None
+///     Declared variable count. None infers the largest absolute literal,
+///     or zero for an empty formula. Explicit n retains unused variables.
+///
+/// Notes
+/// -----
+/// Repeated literals collapse, literals sort by variable/sign, and tautological
+/// clauses disappear. Repeated whole clauses and empty clauses remain. Copies
+/// share immutable Rust topology. Input errors raise ValueError; integer
+/// conversion outside native ranges can raise OverflowError.
 struct PyFormula {
     inner: Formula,
 }
@@ -46,6 +63,10 @@ impl PyFormula {
         })
     }
     #[staticmethod]
+    /// Parse DIMACS text with one p cnf N M header and zero-terminated clauses.
+    ///
+    /// The header counts input clauses before normalization. Comments beginning
+    /// with c and blank lines are ignored. Invalid text raises ValueError.
     fn from_dimacs(text: &str) -> PyResult<Self> {
         Ok(Self {
             inner: Formula::from_dimacs(text).map_err(value_error)?,
@@ -53,45 +74,67 @@ impl PyFormula {
     }
     #[staticmethod]
     #[pyo3(signature = (k, alpha, n, seed=1))]
+    /// Generate random k-SAT with floor(alpha*n) independent clauses.
+    ///
+    /// Each clause has k distinct variables sampled uniformly, with independent
+    /// unbiased signs. Requires 1 <= k <= n, finite alpha >= 0, and capacity
+    /// within packed u32 incidence limits. The unsigned 64-bit seed controls
+    /// formula generation, independently of Options.seed. Releases the GIL.
     fn random(py: Python<'_>, k: usize, alpha: f64, n: usize, seed: u64) -> PyResult<Self> {
         py.allow_threads(|| Formula::random(k, alpha, n, seed))
             .map(|inner| Self { inner })
             .map_err(value_error)
     }
     #[getter]
+    /// Declared number of variables, including unused ones.
     fn n(&self) -> usize {
         self.inner.n()
     }
     #[getter]
+    /// Number of clauses after normalization.
     fn m(&self) -> usize {
         self.inner.m()
     }
     #[getter]
+    /// Number of literal incidences after normalization.
     fn edges(&self) -> usize {
         self.inner.edges()
     }
     #[getter]
+    /// Owned list of normalized clauses, each containing signed one-based literals.
     fn clauses(&self) -> Vec<Vec<i32>> {
         self.inner.clauses()
     }
+    /// Serialize normalized clauses as DIMACS, preserving the declared n.
     fn to_dimacs(&self) -> String {
         self.inner.to_dimacs()
     }
+    /// Return whether a complete 0/1 assignment satisfies every original clause.
+    ///
+    /// Requires exactly n values. A wrong length, -1 entries, or values other
+    /// than 0/1 return False. An empty clause is always unsatisfied.
     fn is_satisfied(&self, assignment: Vec<i8>) -> bool {
         self.inner.is_satisfied(&assignment)
     }
 }
 
 #[pyclass(name = "CancellationToken", module = "pybsp_rust.bsp_rust", frozen)]
+/// Thread-safe, one-way cancellation handle obtained from a Solver.
+///
+/// Call cancel() from another thread during a long native computation. The
+/// solver checks cooperatively at sweep/submission and local-search checkpoints.
+/// There is no reset method; create another solver for a fresh token.
 struct PyCancellationToken {
     inner: CancellationToken,
 }
 #[pymethods]
 impl PyCancellationToken {
+    /// Request cancellation. Repeated calls are harmless; the flag stays set.
     fn cancel(&self) {
         self.inner.cancel();
     }
     #[getter]
+    /// Whether cancellation has been requested, even if computation has not stopped.
     fn is_cancelled(&self) -> bool {
         self.inner.is_cancelled()
     }
