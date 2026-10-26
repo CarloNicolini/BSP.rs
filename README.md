@@ -59,6 +59,117 @@ Random generation uses distinct variables per clause and `floor(alpha*N)`
 clauses. General DIMACS formulas may have mixed clause widths. Construction
 removes duplicate literals and tautological clauses, while keeping empty clauses.
 
+## Quick start: Apple silicon GPU (Metal/MPS)
+
+Install Rust 1.88 or newer and Xcode Command Line Tools (`xcode-select --install`).
+The Apple GPU backend is named `metal`: it uses custom Metal compute kernels
+directly, with no PyTorch or MPS framework dependency. Full Xcode is unnecessary.
+
+From the repository root, compile:
+
+```sh
+cargo build --release --locked --features metal
+```
+
+Solve a DIMACS file or generate an instance:
+
+```sh
+target/release/bsp-rust --backend metal examples/3sat.cnf
+target/release/bsp-rust --backend metal --generate 3 2.5 128 --seed 3 --timeout 10
+```
+
+Compare scalar CPU and Apple GPU throughput on the same seeded formula:
+
+```sh
+target/release/bsp-rust --backend cpu --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+target/release/bsp-rust --backend metal --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+```
+
+Compare the JSON `seconds` values. Metal uses `f32`; scalar CPU uses `f64`.
+These commands measure sweeps, including the final host snapshot, and exclude
+construction and backend setup. Small complete solves can be faster on CPU.
+
+## Quick start: NVIDIA GPU (CUDA, Linux)
+
+Install Rust 1.88 or newer, an NVIDIA driver, and a CUDA toolkit containing
+`nvcc`, runtime headers, and `libcudart`. On the tested Ubuntu machine:
+
+```sh
+sudo apt install nvidia-cuda-toolkit
+nvidia-smi
+nvcc --version
+```
+
+Build from the repository root for your GPU's compute capability. This example
+targets the GTX 1060 (6.1); use `86` for a GPU with compute capability 8.6:
+
+```sh
+BSP_CUDA_ARCH=61 cargo build --release --locked --features cuda
+```
+
+The GTX 1060 requires CUDA 12.9 or earlier for compilation. The tested toolkit
+is CUDA 12.0. The CUDA version shown by `nvidia-smi` is the driver's capability;
+check `nvcc --version` for the installed compiler.
+
+Solve with double precision (`cuda`) or single precision (`cuda-f32`):
+
+```sh
+target/release/bsp-rust --backend cuda examples/3sat.cnf
+target/release/bsp-rust --backend cuda-f32 --generate 3 2.5 128 --seed 3 --timeout 10
+```
+
+Compare sweep throughput with the same input and damping:
+
+```sh
+target/release/bsp-rust --backend cpu --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+target/release/bsp-rust --backend cuda --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+target/release/bsp-rust --backend cuda-f32 --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+```
+
+Single precision can follow a different search trajectory. Every returned SAT
+assignment is verified on CPU. Execution metadata reports the actual backend,
+precision, device, and any numerical fallback. See [CUDA execution](CUDA.md) for
+toolkit configuration and [measured performance](PERFORMANCE.md) for results.
+
+### Python with an Apple or NVIDIA GPU
+
+Use Python 3.12 or newer, create a virtual environment, then build the extension
+with the feature for your platform:
+
+```sh
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install maturin numpy
+```
+
+On Apple silicon:
+
+```sh
+maturin develop --release --features extension-module,metal
+```
+
+On NVIDIA/Linux:
+
+```sh
+python -m pip install patchelf
+BSP_CUDA_ARCH=61 maturin develop --release --features extension-module,cuda
+```
+
+Select the compiled backend explicitly in Python:
+
+```python
+from pybsp_rust import ExecutionOptions, Formula, Options, Solver
+
+formula = Formula.random(3, 2.5, 128, seed=3)
+solver = Solver(
+    formula,
+    Options(seed=3, timeout_seconds=10),
+    execution=ExecutionOptions(backend="metal"),  # Linux: "cuda" or "cuda-f32"
+)
+result = solver.solve()
+print(result.status, result.execution)
+```
+
 ## Quick start: Rust library
 
 Inside this repository, run the complete example:
