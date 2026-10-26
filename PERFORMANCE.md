@@ -152,7 +152,134 @@ about 20% less time than a smaller variable-product layout on k=3 and k=4. Extra
 memory is an explicit speed trade. The retained prefix/suffix recurrence also
 passes the subnormal-product regression test.
 
-Further work needs measurements: x86-64/AVX and other ARM CPUs, hardware-counter
-profiles, degree/width-specific kernels, profile-guided optimization, and any
-parallel sweep implementation. Those changes need numerical comparisons and
-complete-solver validation before they replace this kernel.
+The original measurements above did not cover parallel execution. The optional
+CPU and Metal backends now include degree/width specializations; their separate
+measurements follow below. x86-64/AVX, other ARM CPUs, hardware-counter profiles,
+and profile-guided optimization still require measurements.
+
+## Search-index audit
+
+The [complexity audit](COMPLEXITY.md) identifies repeated scans, their replacements,
+and scans constrained by changing inputs or output size. The current changes
+retain an indexed heap for frozen backtracking scores, cached active degrees,
+and XOR lookup of a unit clause's sole free edge. A hierarchical bitset was
+tested and rejected for the production solver after complete-run measurements.
+
+[Paired full-solver samples](bench/indexing-results.json) compare the previous
+Rust binary with the indexed version on the same five workloads. Every result
+field except elapsed time must agree, including all assignments and step records.
+Both binaries use generic Release builds with the same compiler and LTO settings.
+These are separate from the older Rust/C++ kernel comparisons above. See
+[selection/bitset microbenchmarks](bench/index-primitives.json) and the
+[bitset diagnostic](bench/indexing-ablation.json) for component-level evidence.
+
+## Apple silicon acceleration: profiling basis
+
+Initial macOS `sample` profiles on 2026-10-26 identified the following distribution
+on an M1 Pro with six performance CPU cores, two efficiency CPU cores, 14 GPU
+cores, and 16 GB unified memory. The complete solves were 3-SAT, alpha 4.2,
+N=1,000, seed 1, and 4-SAT, alpha 9.5, N=400, seed 3. Their main-thread profiles
+contained 3,093 and 1,279 samples respectively, at a requested 1 ms interval.
+
+| Work | Share of sampled complete-solve time | Retained implementation |
+| --- | ---: | --- |
+| Variable cavities, including the observable refresh | 50–58% | CPU partitions with variable-order scratch; Metal SIMD-group, medium-degree, and cooperative high-degree kernels |
+| Clause message updates | 27–28% | Disjoint CPU clause partitions; specialized Metal widths 3, 4, 6, 12 and a general path |
+| Remaining observables and logarithms | 13–22% | Parallel element calculations and reductions; ordered CPU accumulation |
+| Ranking, graph edits, and other control | Under 1% combined | Keep CPU control and existing indexed mutations |
+
+A separate raw profile with N=100,000 and 1,260,000 edges attributed about 79%
+to cavities. A controlled WalkSAT-only diagnostic attributed almost all sampled
+execution to its sequential flip chain. Independent searches are the main
+parallel opportunity there. Parsing, normalization, initial state construction,
+and snapshots are measured separately rather than treated as iterative hot paths.
+
+Full Xcode was unavailable, so Instruments and hardware-counter claims are not
+part of this evidence. Runtime Metal compilation and GPU timestamps were tested.
+A synthetic dispatch-and-wait probe took about 190 microseconds for negligible
+work, establishing the need to amortize submissions. Optional phase profiling
+splits Metal work into separate submissions and must not be enabled for timings.
+
+The default remains scalar `f64`; `cpu-parallel` preserves the scalar arithmetic
+order and uses scalar work below its measured scheduling threshold. Metal is an
+explicit `f32` mode. [Execution documentation](ACCELERATION.md) describes numeric
+fallbacks, cancellation, API boundaries, and reproduction commands.
+
+## Measured optional backends (2026-10-26)
+
+Five measured trials follow one discarded warmup. Backend order alternates. All
+cases use 30 synchronous sweeps, damping 0.2, and shared normalized formulas and
+starting messages `0.05 + 0.25*((edge*37)%997)/997`. Times below are medians in
+milliseconds. They include the final native host-snapshot refresh, and exclude
+formula construction, backend setup, and NumPy snapshot export.
+
+The Python extension uses Rust 1.99.1, generic Release optimization level 3,
+ThinLTO, and one code-generation unit. The only recorded Rust flags are the
+standard Python extension dynamic-linker arguments. Metal disables fast math.
+The CPU-parallel worker budget is eight. These comparisons combine precision,
+memory-traffic, and parallelism differences; they do not isolate GPU arithmetic
+alone. Raw samples, compiler settings, source hashes, and the extension binary
+hash are in [accelerator-results.json](bench/accelerator-results.json).
+
+| k | N | Kind | CPU f64 ms | Parallel f64 ms | Metal f32 ms | CPU / Metal |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| 3 | 400 | dense | 1.177 | 1.208 | 2.590 | 0.45 |
+| 3 | 1,000 | dense | 3.287 | 3.242 | 3.123 | 1.05 |
+| 3 | 10,000 | dense | 37.126 | 17.386 | 11.352 | 3.27 |
+| 3 | 100,000 | dense | 611.799 | 158.261 | 43.134 | 14.18 |
+| 3 | 1,000,000 | dense | 9986.066 | 2486.768 | 1853.503 | 5.39 |
+| 4 | 10,000 | dense | 99.204 | 37.388 | 25.876 | 3.83 |
+| 6 | 2,000 | dense | 118.502 | 48.304 | 38.711 | 3.06 |
+| 12 | 1,000 | dense | 52.961 | 26.742 | 28.090 | 1.89 |
+| 3 | 1,000 | residual | 1.250 | 1.257 | 1.745 | 0.72 |
+| 3 | 10,000 | mixed | 36.419 | 20.005 | 15.393 | 2.37 |
+
+CPU-parallel messages match scalar messages exactly. The largest measured Metal
+message difference after 30 sweeps is 6.214e-7. No numerical fallback occurred in
+these sweep workloads. Small problems remain sensitive to submission and worker
+overheads; the scalar implementation remains the default.
+
+The earlier development diagnostic in
+[accelerator-before-layout.json](bench/accelerator-before-layout.json) preserves
+measurements before the sweep-only memory-traffic optimizations. It is historical
+evidence, with its own source hashes, rather than an additional final-build trial.
+
+### Complete-solve campaign
+
+Five seeds (0–4) were tested per workload, with a 100,000-flip budget and a
+10-second per-job timeout. Formula generation is outside the campaign timer;
+solver construction, execution, and result export are inside. Jobs execute
+concurrently within the eight-worker budget. Each returned SAT assignment passes
+independent CPU clause evaluation. Raw outcomes and counters are in
+[accelerator-solves.json](bench/accelerator-solves.json).
+
+| k | N | Backend | Campaign seconds | SAT | Nonconverged | Timeout |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| 3 | 400 | cpu | 0.607 | 2 | 3 | 0 |
+| 3 | 400 | cpu-parallel | 0.608 | 2 | 3 | 0 |
+| 3 | 400 | metal | 3.958 | 2 | 3 | 0 |
+| 4 | 400 | cpu | 1.577 | 1 | 4 | 0 |
+| 4 | 400 | cpu-parallel | 1.585 | 1 | 4 | 0 |
+| 4 | 400 | metal | 9.790 | 1 | 4 | 0 |
+| 3 | 10,000 | cpu | 10.020 | 0 | 0 | 5 |
+| 3 | 10,000 | cpu-parallel | 10.020 | 0 | 0 | 5 |
+| 3 | 10,000 | metal | 10.030 | 0 | 0 | 5 |
+
+CPU is substantially faster on these small complete solves. The larger workload
+does not establish a time-to-solution benefit because every job timed out. SP
+sweep counts across Metal and CPU runs are diagnostic: their message precision
+and subsequent graph trajectories differ. These limited samples do not establish
+equal solve probabilities or a general complete-solver speedup.
+
+### Validation
+
+Local checks passed for the portable Rust debug and Release suites, the optional
+Metal Release build, Python tests, Clippy, and formatting. Three explicitly
+selected GPU tests also passed with both Metal API and shader validation enabled.
+They cover independent f32 message definitions, direct f64 complexity evaluation,
+zero factors, arbitrary widths, high-degree scans, message restoration, real
+underflow checkpoint recovery, cancellation, timeouts, and first-sweep convergence.
+CPU tests cover exact trajectories and subnormal exclusion products on the
+parallel path. A complete indexed-solver trajectory also matches the preserved
+pre-acceleration binary. The Python source distribution was unpacked and its
+optional Metal feature built successfully without relying on repository files.

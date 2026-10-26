@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 mod bitset;
+mod decision_heap;
 mod formula;
 #[cfg(feature = "python")]
 mod python;
@@ -10,7 +11,10 @@ mod solver;
 mod walksat;
 
 pub use formula::Formula;
-pub use solver::{CancellationToken, Options, SolveResult, Solver, SpReport, Status, Step};
+pub use solver::{
+    solve_many, Backend, CancellationToken, ExecutionOptions, ExecutionReport, Options, SolveJob,
+    SolveResult, Solver, SpReport, Status, Step,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error(pub String);
@@ -21,3 +25,8 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
+
+// Benchmark-only experiment: keep its invariants tested without using it in solves.
+#[cfg(test)]
+#[path = "../bench/prototypes/sparse_bitset.rs"]
+mod sparse_bitset_prototype;

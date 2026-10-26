@@ -1,4 +1,4 @@
-use crate::{CancellationToken, Formula, Options, Solver};
+use crate::{CancellationToken, ExecutionOptions, Formula, Options, SolveJob, Solver};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
@@ -104,11 +104,17 @@ struct PySolver {
 #[pymethods]
 impl PySolver {
     #[new]
-    #[pyo3(signature = (formula, options_json=None))]
-    fn new(py: Python<'_>, formula: &PyFormula, options_json: Option<&str>) -> PyResult<Self> {
+    #[pyo3(signature = (formula, options_json=None, execution_json=None))]
+    fn new(
+        py: Python<'_>,
+        formula: &PyFormula,
+        options_json: Option<&str>,
+        execution_json: Option<&str>,
+    ) -> PyResult<Self> {
         let options = options(options_json)?;
+        let execution = execution(execution_json)?;
         let formula = formula.inner.clone();
-        py.allow_threads(|| Solver::new(formula, options))
+        py.allow_threads(|| Solver::with_execution(formula, options, execution))
             .map(|inner| Self { inner })
             .map_err(value_error)
     }
@@ -117,6 +123,10 @@ impl PySolver {
         PyCancellationToken {
             inner: self.inner.cancellation_token(),
         }
+    }
+    #[getter]
+    fn execution_report(&self) -> PyResult<String> {
+        json(self.inner.execution_report())
     }
     #[getter]
     fn assignment<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<i8>> {
@@ -163,6 +173,10 @@ impl PySolver {
         py.allow_threads(|| self.inner.sweep())
             .map_err(runtime_error)
     }
+    fn sweep_many(&mut self, py: Python<'_>, count: usize) -> PyResult<f64> {
+        py.allow_threads(|| self.inner.sweep_many(count))
+            .map_err(runtime_error)
+    }
     fn converge(&mut self, py: Python<'_>) -> PyResult<String> {
         json(
             &py.allow_threads(|| self.inner.converge())
@@ -199,6 +213,47 @@ fn default_options() -> PyResult<String> {
 fn validate_options(text: &str) -> PyResult<()> {
     options(Some(text)).map(|_| ())
 }
+fn execution(text: Option<&str>) -> PyResult<ExecutionOptions> {
+    let value: ExecutionOptions = match text {
+        Some(text) => serde_json::from_str(text).map_err(value_error)?,
+        None => ExecutionOptions::default(),
+    };
+    if value.threads > 1024 {
+        return Err(value_error("threads must be at most 1024"));
+    }
+    Ok(value)
+}
+#[pyfunction]
+fn validate_execution(text: &str) -> PyResult<()> {
+    execution(Some(text)).map(|_| ())
+}
+#[pyfunction]
+#[pyo3(signature = (formulas, options_json, execution_json=None))]
+fn solve_many(
+    py: Python<'_>,
+    formulas: Vec<Py<PyFormula>>,
+    options_json: Vec<String>,
+    execution_json: Option<&str>,
+) -> PyResult<String> {
+    if formulas.len() != options_json.len() {
+        return Err(value_error("one Options value is required per formula"));
+    }
+    let jobs = formulas
+        .iter()
+        .zip(&options_json)
+        .map(|(f, o)| {
+            Ok(SolveJob {
+                formula: f.borrow(py).inner.clone(),
+                options: options(Some(o))?,
+            })
+        })
+        .collect::<PyResult<Vec<_>>>()?;
+    let execution = execution(execution_json)?;
+    json(
+        &py.allow_threads(|| crate::solve_many(jobs, execution))
+            .map_err(value_error)?,
+    )
+}
 #[pymodule]
 fn bsp_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFormula>()?;
@@ -206,6 +261,8 @@ fn bsp_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCancellationToken>()?;
     m.add_function(wrap_pyfunction!(default_options, m)?)?;
     m.add_function(wrap_pyfunction!(validate_options, m)?)?;
+    m.add_function(wrap_pyfunction!(validate_execution, m)?)?;
+    m.add_function(wrap_pyfunction!(solve_many, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pybsp_rust import Formula, Options, Solver, solve
+from pybsp_rust import ExecutionOptions, solve_many
 from pybsp_rust import bsp_rust as core
 
 
@@ -90,3 +91,32 @@ def test_contradiction_is_reported_without_claiming_unsat():
     assert result.status == "contradiction"
     assert result.assignment is None
     assert solve(Formula([], n=0)).assignment.shape == (0,)
+
+
+def test_native_bsp_backtracking_returns_a_verified_assignment():
+    f = Formula.random(k=3, alpha=4.15, n=400, seed=3)
+    result = solve(f, Options(seed=3, max_flips=100_000))
+    assert result.status == "sat"
+    assert result.decimations > 0 and result.releases > 0
+    assert f.is_satisfied(result.assignment)
+
+
+def test_parallel_execution_batch_order_and_profile(tmp_path):
+    f = Formula.random(3, 3.8, 80, seed=5)
+    a = Solver(f)
+    b = Solver(f, execution=ExecutionOptions(backend="cpu-parallel",threads=2))
+    assert a.sweep_many(5) == b.sweep_many(5)
+    np.testing.assert_array_equal(a.messages,b.messages)
+    formulas = [Formula.random(3,2.5,80,seed=s) for s in range(4)]
+    results = solve_many(formulas,[Options(seed=s) for s in range(4)],execution=ExecutionOptions(backend="cpu-parallel",threads=2))
+    assert [r.seed for r in results] == list(range(4))
+    assert all(f.is_satisfied(r.assignment) for f,r in zip(formulas,results))
+    profile = tmp_path / "profile.json"
+    solve(formulas[0],execution=ExecutionOptions(profile=profile))
+    assert json.loads(profile.read_text())["execution"]["phases"]["cavities"]["calls"] > 0
+    with pytest.raises(ValueError):
+        ExecutionOptions(backend="cuda")
+    with pytest.raises(ValueError):
+        ExecutionOptions(threads=1025)
+    with pytest.raises(ValueError):
+        solve_many(formulas,[Options()])

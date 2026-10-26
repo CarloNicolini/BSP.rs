@@ -1,4 +1,5 @@
 use crate::bitset::{BitSet, Ones};
+use crate::decision_heap::DecisionHeap;
 use crate::{Error, Formula, Result};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -7,6 +8,10 @@ use std::sync::{
     Arc,
 };
 use std::time::Instant;
+#[path = "execution.rs"]
+mod execution;
+use execution::Execution;
+pub use execution::{solve_many, Backend, ExecutionOptions, ExecutionReport, SolveJob};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -131,6 +136,7 @@ pub struct Step {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct SolveResult {
+    pub execution: ExecutionReport,
     pub status: Status,
     pub assignment: Option<Vec<i8>>,
     pub partial_assignment: Vec<i8>,
@@ -146,6 +152,7 @@ pub struct SolveResult {
 
 /// All mutable state belongs to one solver. Formula topology is shared through Arc.
 pub struct Solver {
+    pub(crate) execution: Execution,
     pub(crate) formula: Formula,
     pub(crate) options: Options,
     pub(crate) rng: SmallRng,
@@ -156,6 +163,9 @@ pub struct Solver {
     masks: Vec<u64>,
     free_count: Vec<u32>,
     true_count: Vec<u32>,
+    free_xor: Vec<u32>,
+    degree: Vec<u32>,
+    decisions: DecisionHeap,
     eta: Vec<f64>,
     saved_eta: Vec<f64>,
     q: Vec<f64>,
@@ -202,7 +212,30 @@ impl Solver {
             .map(|(c, _)| c as u32)
             .collect();
         let width = free_count.iter().copied().max().unwrap_or(0) as usize;
+        // XOR of [start,end), computed without scanning clause literals.
+        let xor_below = |end: u32| {
+            if end == 0 {
+                0
+            } else {
+                let last = end - 1;
+                match last % 4 {
+                    0 => last,
+                    1 => 1,
+                    2 => last + 1,
+                    _ => 0,
+                }
+            }
+        };
+        let free_xor = f
+            .offsets
+            .windows(2)
+            .map(|w| xor_below(w[0]) ^ xor_below(w[1]))
+            .collect();
+        let degree = (0..n)
+            .map(|v| f.var_offsets[2 * v + 2] - f.var_offsets[2 * v])
+            .collect();
         Ok(Self {
+            execution: Execution::new(ExecutionOptions::default())?,
             masks: f.masks.clone(),
             saved_eta: eta.clone(),
             formula,
@@ -214,6 +247,9 @@ impl Solver {
             forced: vec![false; n],
             free_count,
             true_count: vec![0; m],
+            free_xor,
+            degree,
+            decisions: DecisionHeap::new(n),
             eta,
             q: vec![0.0; edges],
             cavity_norm: vec![1.0; edges],
@@ -292,6 +328,8 @@ impl Solver {
         }
         self.terminal = None;
         self.solution = None;
+        self.upload_messages();
+        self.sync_messages();
         Ok(())
     }
     pub(crate) fn check_stop(&self) -> std::result::Result<(), Status> {
@@ -315,6 +353,7 @@ impl Solver {
         self.set_fixed(variable, i8::from(value), false);
         self.terminal = None;
         self.solution = None;
+        self.sync_messages();
         Ok(())
     }
     pub fn release(&mut self, variable: usize) -> Result<()> {
@@ -326,10 +365,19 @@ impl Solver {
         self.unfix(variable);
         self.terminal = None;
         self.solution = None;
+        self.sync_messages();
         Ok(())
     }
     fn set_fixed(&mut self, v: usize, value: i8, forced: bool) {
+        self.timed("graph_mutations", |s| s.set_fixed_inner(v, value, forced));
+    }
+    fn set_fixed_inner(&mut self, v: usize, value: i8, forced: bool) {
+        if !forced {
+            self.decisions.insert(v as u32, &self.cert);
+        }
+        self.degree[v] = 0;
         self.assignment[v] = value;
+        self.gpu_assignment(v, value);
         self.free.set(v, false);
         self.forced[v] = forced;
         self.surveys[v] = if value == 1 {
@@ -345,7 +393,12 @@ impl Solver {
             let local = e - start;
             self.masks[f.mask_offsets[c] as usize + local / 64] &= !(1u64 << (local % 64));
             self.free_count[c] -= 1;
+            self.free_xor[c] ^= e as u32;
             if self.active.contains(c) {
+                #[cfg(all(feature = "metal", target_os = "macos"))]
+                if let Some(gpu) = &mut self.execution.gpu {
+                    gpu.freeze(e);
+                }
                 self.saved_eta[e] = self.eta[e];
                 self.eta[e] = 0.0;
             }
@@ -353,11 +406,20 @@ impl Solver {
                 self.true_count[c] += 1;
                 if self.true_count[c] == 1 {
                     self.active.set(c, false);
+                    #[cfg(all(feature = "metal", target_os = "macos"))]
+                    if let Some(gpu) = &mut self.execution.gpu {
+                        gpu.set_active(c, false);
+                    }
                     for w in f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize {
                         for other in (Ones {
                             word: self.masks[w],
                             base: start + 64 * (w - f.mask_offsets[c] as usize),
                         }) {
+                            self.degree[(f.literals[other] >> 1) as usize] -= 1;
+                            #[cfg(all(feature = "metal", target_os = "macos"))]
+                            if let Some(gpu) = &mut self.execution.gpu {
+                                gpu.freeze(other);
+                            }
                             self.saved_eta[other] = self.eta[other];
                             self.eta[other] = 0.0;
                         }
@@ -373,8 +435,13 @@ impl Solver {
         }
     }
     fn unfix(&mut self, v: usize) {
+        self.timed("graph_mutations", |s| s.unfix_inner(v));
+    }
+    fn unfix_inner(&mut self, v: usize) {
+        self.decisions.remove(v as u32, &self.cert);
         let value = self.assignment[v];
         self.assignment[v] = -1;
+        self.gpu_assignment(v, -1);
         self.free.set(v, true);
         let f = &self.formula.0;
         for p in f.var_offsets[2 * v] as usize..f.var_offsets[2 * v + 2] as usize {
@@ -384,19 +451,34 @@ impl Solver {
             let local = e - start;
             self.masks[f.mask_offsets[c] as usize + local / 64] |= 1u64 << (local % 64);
             self.free_count[c] += 1;
+            self.free_xor[c] ^= e as u32;
             if value == (1 - (f.literals[e] & 1)) as i8 {
                 self.true_count[c] -= 1;
             }
             if self.true_count[c] == 0 {
                 if self.active.contains(c) {
+                    self.degree[v] += 1;
+                    #[cfg(all(feature = "metal", target_os = "macos"))]
+                    if let Some(gpu) = &mut self.execution.gpu {
+                        gpu.restore(e);
+                    }
                     self.eta[e] = self.saved_eta[e];
                 } else {
                     self.active.set(c, true);
+                    #[cfg(all(feature = "metal", target_os = "macos"))]
+                    if let Some(gpu) = &mut self.execution.gpu {
+                        gpu.set_active(c, true);
+                    }
                     for w in f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize {
                         for other in (Ones {
                             word: self.masks[w],
                             base: start + 64 * (w - f.mask_offsets[c] as usize),
                         }) {
+                            self.degree[(f.literals[other] >> 1) as usize] += 1;
+                            #[cfg(all(feature = "metal", target_os = "macos"))]
+                            if let Some(gpu) = &mut self.execution.gpu {
+                                gpu.restore(other);
+                            }
                             self.eta[other] = self.saved_eta[other];
                         }
                     }
@@ -408,6 +490,11 @@ impl Solver {
         }
     }
     pub fn propagate(&mut self) -> std::result::Result<usize, Status> {
+        let result = self.timed("propagation", Self::propagate_inner);
+        self.sync_messages();
+        result
+    }
+    fn propagate_inner(&mut self) -> std::result::Result<usize, Status> {
         let before = self.free.len();
         while let Some(c) = self.unit_queue.pop() {
             self.check_stop()?;
@@ -423,12 +510,7 @@ impl Solver {
                 continue;
             }
             let f = &self.formula.0;
-            let w = (f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize)
-                .find(|&w| self.masks[w] != 0)
-                .unwrap();
-            let e = f.offsets[c] as usize
-                + 64 * (w - f.mask_offsets[c] as usize)
-                + self.masks[w].trailing_zeros() as usize;
+            let e = self.free_xor[c] as usize;
             let lit = f.literals[e];
             self.cert[(lit >> 1) as usize] = 1.0;
             self.set_fixed((lit >> 1) as usize, (1 - (lit & 1)) as i8, true);
@@ -437,7 +519,10 @@ impl Solver {
     }
     /// Prefix/suffix products exclude an edge without division by (1-eta).
     /// This covers exact zero factors and makes every cavity O(1) after O(E) work.
-    fn cavities(&mut self) -> std::result::Result<(), Status> {
+    fn cavities(&mut self, store_norms: bool) -> std::result::Result<(), Status> {
+        self.timed("cavities", |s| s.scalar_cavities(store_norms))
+    }
+    fn scalar_cavities(&mut self, store_norms: bool) -> std::result::Result<(), Status> {
         let f = &self.formula.0;
         for v in self.free.ones() {
             let mut products = [1.0; 2];
@@ -468,7 +553,9 @@ impl Solver {
                         return Err(Status::NumericalFailure);
                     }
                     self.q[e] = ((1.0 - opposite) * same / norm).clamp(0.0, 1.0);
-                    self.cavity_norm[e] = norm;
+                    if store_norms {
+                        self.cavity_norm[e] = norm;
+                    }
                 }
             }
         }
@@ -477,8 +564,46 @@ impl Solver {
     /// One synchronous SP sweep, returning the largest undamped message change.
     /// Clause exclusion uses prefix/suffix products, including multiple zero q's.
     pub fn sweep(&mut self) -> std::result::Result<f64, Status> {
+        let result = self.sweep_inner();
+        self.sync_messages();
+        result
+    }
+    /// Run raw synchronous sweeps, synchronizing snapshots once at the end.
+    pub fn sweep_many(&mut self, count: usize) -> std::result::Result<f64, Status> {
         self.check_stop()?;
-        self.cavities()?;
+        if count == 0 {
+            return Ok(0.0);
+        }
+        let result = if let Some(result) = self.metal_compute(true, count) {
+            result.map(|r| r.residual)
+        } else {
+            (|| {
+                let mut residual = 0.0;
+                for _ in 0..count {
+                    residual = self.sweep_inner()?;
+                }
+                Ok(residual)
+            })()
+        };
+        self.sync_messages();
+        result
+    }
+    fn sweep_inner(&mut self) -> std::result::Result<f64, Status> {
+        self.check_stop()?;
+        if let Some(result) = self.metal_converge(true) {
+            return result.map(|r| r.residual);
+        }
+        if let Some(result) = self.parallel_sweep() {
+            return result;
+        }
+        self.cavities(false)?;
+        let result = self.timed("clauses", Self::scalar_clauses);
+        if result.is_ok() {
+            self.sp_sweeps += 1;
+        }
+        result
+    }
+    fn scalar_clauses(&mut self) -> std::result::Result<f64, Status> {
         let f = &self.formula.0;
         let damping = self.options.damping;
         let mut residual: f64 = 0.0;
@@ -510,11 +635,19 @@ impl Solver {
                 self.eta[e] = raw + (self.eta[e] - raw) * damping;
             }
         }
-        self.sp_sweeps += 1;
         Ok(residual)
     }
     fn observables(&mut self) -> std::result::Result<(f64, bool), Status> {
-        self.cavities()?;
+        self.timed("observables", |s| {
+            if let Some(result) = s.parallel_observables() {
+                result
+            } else {
+                s.scalar_observables()
+            }
+        })
+    }
+    fn scalar_observables(&mut self) -> std::result::Result<(f64, bool), Status> {
+        self.cavities(true)?;
         let f = &self.formula.0;
         let mut variable_term = 0.0;
         let mut paramagnetic = true;
@@ -529,11 +662,7 @@ impl Solver {
             let sf = (1.0 - minus) * plus / norm;
             self.surveys[v] = [st, sf, (plus * minus / norm).clamp(0.0, 1.0)];
             self.cert[v] = 1.0 - st.min(sf);
-            let degree = f.var_edges
-                [f.var_offsets[2 * v] as usize..f.var_offsets[2 * v + 2] as usize]
-                .iter()
-                .filter(|&&e| self.active.contains(f.edge_clause[e as usize] as usize))
-                .count();
+            let degree = self.degree[v];
             variable_term += (degree as f64 - 1.0) * norm.ln();
             if degree >= 2 && norm != 1.0 {
                 paramagnetic = false;
@@ -569,9 +698,17 @@ impl Solver {
         Ok((complexity, paramagnetic))
     }
     pub fn converge(&mut self) -> std::result::Result<SpReport, Status> {
-        self.propagate()?;
+        let result = self.converge_inner();
+        self.sync_messages();
+        result
+    }
+    fn converge_inner(&mut self) -> std::result::Result<SpReport, Status> {
+        self.timed("propagation", Self::propagate_inner)?;
+        if let Some(result) = self.metal_converge(false) {
+            return result;
+        }
         for sweeps in 1..=self.options.max_sweeps {
-            let residual = self.sweep()?;
+            let residual = self.sweep_inner()?;
             if residual <= self.options.epsilon {
                 let (complexity, paramagnetic) = self.observables()?;
                 return Ok(SpReport {
@@ -586,6 +723,17 @@ impl Solver {
     }
     /// Select only the top batch, using deterministic variable-ID tie breaking.
     pub fn decimate(&mut self) -> usize {
+        let result = self.timed("decimation", Self::decimate_inner);
+        self.sync_messages();
+        result
+    }
+    fn decimate_inner(&mut self) -> usize {
+        let ranking_started = self
+            .execution
+            .options
+            .profile
+            .as_ref()
+            .map(|_| Instant::now());
         self.terminal = None;
         self.solution = None;
         self.candidates.clear();
@@ -606,6 +754,10 @@ impl Solver {
             self.candidates.select_nth_unstable_by(k, order);
         }
         self.candidates[..k].sort_unstable_by(order);
+        if let Some(started) = ranking_started {
+            self.execution
+                .record("ranking", started.elapsed().as_secs_f64());
+        }
         for i in 0..k {
             let v = self.candidates[i] as usize;
             self.set_fixed(v, i8::from(self.surveys[v][0] > self.surveys[v][1]), false);
@@ -616,37 +768,32 @@ impl Solver {
         k
     }
     pub fn backtrack(&mut self) -> usize {
+        let result = self.timed("backtracking", Self::backtrack_inner);
+        self.sync_messages();
+        result
+    }
+    fn backtrack_inner(&mut self) -> usize {
         self.terminal = None;
         self.solution = None;
-        self.candidates.clear();
-        self.candidates.extend(
-            (0..self.formula.n())
-                .filter(|&v| self.assignment[v] >= 0 && !self.forced[v])
-                .map(|v| v as u32),
-        );
-        let k = (self.last_batch + self.pending_units).min(self.candidates.len());
+        let k = (self.last_batch + self.pending_units).min(self.decisions.len());
         self.pending_units = 0;
-        if k == 0 {
-            return 0;
-        }
-        let cert = &self.cert;
-        let order = |&a: &u32, &b: &u32| {
-            cert[a as usize]
-                .total_cmp(&cert[b as usize])
-                .then_with(|| a.cmp(&b))
-        };
-        if k < self.candidates.len() {
-            self.candidates.select_nth_unstable_by(k, order);
-        }
-        self.candidates[..k].sort_unstable_by(order);
-        for i in 0..k {
-            self.unfix(self.candidates[i] as usize);
+        for _ in 0..k {
+            let v = self
+                .decisions
+                .peek()
+                .expect("release batch fits fixed decision count");
+            self.unfix(v as usize);
         }
         self.releases += k as u64;
         k
     }
     /// Advance through one fixed point and one BSP action. Terminal states are sticky.
     pub fn advance(&mut self) -> std::result::Result<Step, Status> {
+        let result = self.advance_internal();
+        self.sync_messages();
+        result
+    }
+    fn advance_internal(&mut self) -> std::result::Result<Step, Status> {
         if let Some(status) = self.terminal {
             return Err(status);
         }
@@ -661,7 +808,7 @@ impl Solver {
         if self.steps.len() >= self.options.max_steps {
             return Err(Status::StepLimit);
         }
-        let report = self.converge()?;
+        let report = self.converge_inner()?;
         let mut step = Step {
             index: self.steps.len(),
             action: String::new(),
@@ -675,7 +822,7 @@ impl Solver {
         if report.paramagnetic || self.active.len() == 0 {
             step.action = "walksat".into();
             self.steps.push(step.clone());
-            let assignment = self.walksat()?;
+            let assignment = self.timed("walksat", Self::walksat)?;
             self.solution = Some(assignment);
             self.terminal = Some(Status::Sat);
             return Ok(step);
@@ -683,23 +830,28 @@ impl Solver {
         if self.back_moves as f64 / (self.dec_moves as f64) < self.options.backtrack_ratio {
             self.back_moves += 1;
             step.action = "backtrack".into();
-            step.changed = self.backtrack();
+            step.changed = self.timed("backtracking", Self::backtrack_inner);
         } else {
             self.dec_moves += 1;
             if report.complexity < -2.0 {
                 return Err(Status::NegativeComplexity);
             }
             step.action = "decimate".into();
-            step.changed = self.decimate();
+            step.changed = self.timed("decimation", Self::decimate_inner);
         }
         self.steps.push(step.clone());
         Ok(step)
     }
     pub fn solve(&mut self) -> SolveResult {
         while self.terminal.is_none() {
-            let _ = self.advance();
+            let _ = self.advance_internal();
+        }
+        self.sync_messages();
+        if let Err(error) = self.write_profile() {
+            self.execution.report.profile_error = Some(error.to_string());
         }
         SolveResult {
+            execution: self.execution.report.clone(),
             status: self.terminal.unwrap(),
             assignment: self.solution.clone(),
             partial_assignment: self.assignment.clone(),
@@ -740,5 +892,99 @@ impl Solver {
     }
     pub(crate) fn record_flip(&mut self) {
         self.flips += 1;
+    }
+}
+
+#[cfg(test)]
+mod index_tests {
+    use super::*;
+    fn check_indexes(s: &Solver) {
+        let f = &s.formula.0;
+        let mut degree = vec![0u32; f.n];
+        for c in 0..s.formula.m() {
+            let mut free = 0;
+            let mut true_count = 0;
+            let mut free_xor = 0;
+            for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
+                let lit = f.literals[e];
+                let v = (lit >> 1) as usize;
+                let is_free = s.assignment[v] < 0;
+                let local = e - f.offsets[c] as usize;
+                let mask_free =
+                    s.masks[f.mask_offsets[c] as usize + local / 64] & (1u64 << (local % 64)) != 0;
+                assert_eq!(is_free, mask_free);
+                if is_free {
+                    free += 1;
+                    free_xor ^= e as u32;
+                } else if s.assignment[v] == (1 - (lit & 1)) as i8 {
+                    true_count += 1;
+                }
+            }
+            assert_eq!(s.free_count[c], free);
+            assert_eq!(s.free_xor[c], free_xor);
+            assert_eq!(s.true_count[c], true_count);
+            assert_eq!(s.active.contains(c), true_count == 0);
+            if true_count == 0 {
+                for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
+                    let v = (f.literals[e] >> 1) as usize;
+                    if s.assignment[v] < 0 {
+                        degree[v] += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(s.degree, degree);
+        let eligible: Vec<_> = (0..f.n)
+            .filter(|&v| s.assignment[v] >= 0 && !s.forced[v])
+            .collect();
+        let best = eligible
+            .iter()
+            .copied()
+            .min_by(|&a, &b| s.cert[a].total_cmp(&s.cert[b]).then(a.cmp(&b)));
+        assert_eq!(s.decisions.len(), eligible.len());
+        assert_eq!(s.decisions.peek().map(|v| v as usize), best);
+    }
+    #[test]
+    fn cached_indexes_match_full_recounts_through_mixed_mutations() {
+        let mut rng = SmallRng::seed_from_u64(91);
+        for seed in 0..5 {
+            let formula = Formula::random(5, 3.0, 130, seed).unwrap();
+            let mut s = Solver::new(formula, Options::default()).unwrap();
+            check_indexes(&s);
+            for step in 0usize..1200 {
+                let v = rng.random_range(0..130);
+                if s.assignment[v] < 0 {
+                    s.fix(v, rng.random()).unwrap();
+                } else if !s.forced[v] {
+                    s.release(v).unwrap();
+                }
+                if step.is_multiple_of(41) {
+                    let _ = s.propagate();
+                }
+                check_indexes(&s);
+            }
+        }
+    }
+    #[test]
+    fn heap_backtracking_matches_sorted_frozen_scores_for_batches() {
+        let mut s =
+            Solver::new(Formula::random(4, 1.0, 130, 7).unwrap(), Options::default()).unwrap();
+        for v in 0..100 {
+            s.cert[v] = (v % 7) as f64 / 7.0;
+            s.fix(v, v.is_multiple_of(2)).unwrap();
+        }
+        for v in [0, 12, 63, 64, 91] {
+            s.release(v).unwrap();
+            s.fix(v, false).unwrap();
+        }
+        s.last_batch = 9;
+        s.pending_units = 3;
+        let mut expected: Vec<_> = (0..100).collect();
+        expected.sort_unstable_by(|&a, &b| s.cert[a].total_cmp(&s.cert[b]).then(a.cmp(&b)));
+        assert_eq!(s.backtrack(), 12);
+        for v in 0..100 {
+            assert_eq!(s.assignment[v] < 0, expected[..12].contains(&v));
+        }
+        check_indexes(&s);
     }
 }

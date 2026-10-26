@@ -8,6 +8,11 @@ random k-SAT generation, DIMACS files, a Rust library, a JSON command-line tool,
 and Python bindings with NumPy state access. It requires no C++ solver or
 external SAT executable.
 
+Large graphs can use a multicore `f64` backend or an optional Apple Metal `f32`
+backend. Both the CLI and Python API expose hardware selection, worker limits,
+batch solving, and phase profiling. See [CPU and GPU execution](ACCELERATION.md)
+for builds, numerical behavior, and benchmark commands.
+
 BSP is a heuristic. Every returned SAT assignment is checked against the formula.
 A failed run or a contradictory residual does not prove the input UNSAT.
 
@@ -179,8 +184,11 @@ repository. The original C++ solver remains at [pybsp](https://github.com/CarloN
 
 Storage uses packed 32-bit literals/indices, contiguous CSR adjacency, and 64-bit
 masks. Prefix/suffix products make clause updates linear in clause width and
-handle zero messages without dividing by `1-eta`. Partial selection replaces
-full variable sorting. Probabilities use `f64`; release builds use optimization
+handle zero messages without dividing by `1-eta`. Partial selection ranks free
+variables; an indexed min-heap ranks fixed decisions in logarithmic time. Active
+degrees and the sole free literal of a unit clause have constant-time cached
+lookups. The [complexity audit](COMPLEXITY.md) covers remaining scans and measured
+tradeoffs. Probabilities use `f64`; release builds use optimization
 level 3, ThinLTO, and one code-generation unit. The core forbids unsafe Rust.
 
 Use `RUSTFLAGS='-C target-cpu=native' cargo build --release --locked` for a local

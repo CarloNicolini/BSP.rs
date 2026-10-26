@@ -1,0 +1,911 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "cpu_count": 8,
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+  "configuration": {
+    "max_n": 1000000,
+    "repeats": 5,
+    "sweeps": 30,
+    "threads": 0,
+    "full_seeds": 0,
+    "full_only": false,
+    "full_large": false,
+    "backends": [
+      "cpu",
+      "cpu-parallel",
+      "metal"
+    ],
+    "output": "bench/accelerator-results.json"
+  },
+  "build": {
+    "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+    "build_profile": "release",
+    "rustflags": "-C link-arg=-undefined -C link-arg=dynamic_lookup",
+    "arch": "aarch64",
+    "os": "macos",
+    "package_version": "0.1.0"
+  },
+  "binary_sha256": "6ae70ec853e0318d536898009b9e0f4d81414f17481355655de4742f994437d1",
+  "max_rss": 2179842048,
+  "sha256": {
+    "Cargo.lock": "4caed1a2992fdc05f1ce31b6ee0ede903083c2d557060d783a648d860e6132fc",
+    "Cargo.toml": "2ae1b8d1ce6b24d93a2c9e427bd8191fc7f440e03524a7c87e0a770fcbcc8288",
+    "build.rs": "edaeb924cd4eda14a146b9d6b218f50e77a2bb17f86fe539d69ffa7c5b8b92a7",
+    "/Users/carlo/workspace/BSP.rs/bench/accelerators.py": "5b9d415ca80e60b3e7a3988a452f7cc52231482c972c143c330fe8ffbe86c7cd",
+    "src/solver.rs": "8d530e599c78fce33f4264730f353ce0b5445f393dd57b772f113ab7733269fa",
+    "src/execution.rs": "72208b9e2444806aca2a1a65cf067e4b6b95b72e4c48eb4b16a4e1758508b399",
+    "src/walksat.rs": "8fd6c6303ac0ce75193231969e93b14a812781abaab1aad7ce3afa149c92d1d1",
+    "src/lib.rs": "40435973b4a209059bbc674da4f43289edead9c0f297d9d84b7b34ff3118839f",
+    "src/formula.rs": "df7d302ad609c08ee8d7da9cf3f8e97e3f8d9589de0cf61932d2473e955d6624",
+    "src/main.rs": "b7fc150264f633069f993f314969b371e0594925b85a779ad9ba1cf2cb3329dd",
+    "src/python.rs": "970a281e6cd62da90261c68fc8ec21474723f48c0fe7d998cc2b72bf4f61341e",
+    "src/decision_heap.rs": "e1f15caa89af5ae898cd331cdd619bdbb40a10c41871ae84a3419696e3954e7d",
+    "src/bitset.rs": "4198ca1826d585c1ee0b1a66dbcfa51af414b9cf9abfc5daed113fdec113e242",
+    "crates/bsp-metal/src/lib.rs": "810c72dfa4be13dd7e9f2209b32d18d2ba4a406ec1f53deed71203e59ae3952e",
+    "crates/bsp-metal/src/bridge.m": "597947c224e3304330bbd58395e01233ddef554ed7d87327df49f438a15122db",
+    "crates/bsp-metal/src/kernels.metal": "6e26022bfaa9588104172c0315893060596c76bf0f1a4f29e91279e2b02bdc17"
+  },
+  "rows": [
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 400,
+      "edges": 5040,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.0012665409994951915,
+          0.0011751250021916348,
+          0.0011767910000344273,
+          0.0011827079979411792,
+          0.0011673329972836655
+        ],
+        "cpu-parallel": [
+          0.001207958997838432,
+          0.0011718749992724042,
+          0.0012875829997938126,
+          0.0012556660003610887,
+          0.0011658750008791685
+        ],
+        "metal": [
+          0.002610374998766929,
+          0.0024146670002664905,
+          0.0025197089998982847,
+          0.002590166001027683,
+          0.0026738750020740554
+        ]
+      },
+      "seconds": {
+        "cpu": 0.0011767910000344273,
+        "cpu-parallel": 0.001207958997838432,
+        "metal": 0.002590166001027683
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 2.3109086183525918e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 233240,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 1000,
+      "edges": 12600,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.003286874998593703,
+          0.0032151670020539314,
+          0.003290874999947846,
+          0.0032771669975772966,
+          0.00334833300075843
+        ],
+        "cpu-parallel": [
+          0.0033315410000795964,
+          0.0032424170021840837,
+          0.0032309999987774063,
+          0.0032097080002131406,
+          0.003299541996966582
+        ],
+        "metal": [
+          0.003580541000701487,
+          0.0031230840031639673,
+          0.002984082999319071,
+          0.0025540000024193432,
+          0.0034277080012543593
+        ]
+      },
+      "seconds": {
+        "cpu": 0.003286874998593703,
+        "cpu-parallel": 0.0032424170021840837,
+        "metal": 0.0031230840031639673
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 3.4860771808142843e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 582960,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 10000,
+      "edges": 126000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.03677987499759183,
+          0.037572417000774294,
+          0.03727091700056917,
+          0.036860875003185356,
+          0.037125541999557754
+        ],
+        "cpu-parallel": [
+          0.018844083999283612,
+          0.01937704200099688,
+          0.017385916999046458,
+          0.015145166002184851,
+          0.01652000000103726
+        ],
+        "metal": [
+          0.011548916998435743,
+          0.011342207999405218,
+          0.012404249999235617,
+          0.006453582998801721,
+          0.011352375000569737
+        ]
+      },
+      "seconds": {
+        "cpu": 0.037125541999557754,
+        "cpu-parallel": 0.017385916999046458,
+        "metal": 0.011352375000569737
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 3.4995638870105594e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 4608512,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 5828728,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 100000,
+      "edges": 1260000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.6125883749991772,
+          0.61179862499921,
+          0.6001253340000403,
+          0.6044489169980807,
+          0.6356234580016462
+        ],
+        "cpu-parallel": [
+          0.15764541599855875,
+          0.1796272499996121,
+          0.14774250000118627,
+          0.15826141599973198,
+          0.18056920799790532
+        ],
+        "metal": [
+          0.06470245799937402,
+          0.043134416999237146,
+          0.04121274999852176,
+          0.03395858400108409,
+          0.05357854200337897
+        ]
+      },
+      "seconds": {
+        "cpu": 0.61179862499921,
+        "cpu-parallel": 0.15826141599973198,
+        "metal": 0.043134416999237146
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 6.213906646457268e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 46080512,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 58286344,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 1000000,
+      "edges": 12600000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          9.875107417003164,
+          10.032525375001569,
+          9.628333833999932,
+          9.986065958000836,
+          9.997079541997664
+        ],
+        "cpu-parallel": [
+          2.8245926660019904,
+          2.4271709169988753,
+          2.8249764169995615,
+          2.404454999999871,
+          2.486768332997599
+        ],
+        "metal": [
+          1.8535031669998716,
+          1.726091541997448,
+          1.862105625001277,
+          1.7550215420014865,
+          1.8537387910000689
+        ]
+      },
+      "seconds": {
+        "cpu": 9.986065958000836,
+        "cpu-parallel": 2.486768332997599,
+        "metal": 1.8535031669998716
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 5.787086806430253e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 460800512,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 582862608,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 10000,
+      "edges": 380000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.09892258300169487,
+          0.09920383300050162,
+          0.10259829200003878,
+          0.09921445900181425,
+          0.09820974999820464
+        ],
+        "cpu-parallel": [
+          0.035498875000484986,
+          0.037933999999950174,
+          0.037387624997791136,
+          0.04138625000268803,
+          0.03576462500132038
+        ],
+        "metal": [
+          0.025876249997963896,
+          0.01762225000129547,
+          0.03532762499889941,
+          0.018190667000453686,
+          0.031958583000232466
+        ]
+      },
+      "seconds": {
+        "cpu": 0.09920383300050162,
+        "cpu-parallel": 0.037387624997791136,
+        "metal": 0.025876249997963896
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 2.3642487095854037e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 13160512,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 16068760,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 6,
+      "alpha": 40,
+      "n": 2000,
+      "edges": 480000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.11908083300295402,
+          0.11950258399883751,
+          0.11811991699869395,
+          0.11850245800087578,
+          0.11552420900261495
+        ],
+        "cpu-parallel": [
+          0.04868658299892559,
+          0.057410999997955514,
+          0.04830391699942993,
+          0.04718837499967776,
+          0.04180470800201874
+        ],
+        "metal": [
+          0.03871116699883714,
+          0.026410750000650296,
+          0.03938904099777574,
+          0.026153541999519803,
+          0.044210333999217255
+        ]
+      },
+      "seconds": {
+        "cpu": 0.11850245800087578,
+        "cpu-parallel": 0.04830391699942993,
+        "metal": 0.03871116699883714
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 1.3564102796514987e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 16048512,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 18983096,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 12,
+      "alpha": 20,
+      "n": 1000,
+      "edges": 240000,
+      "kind": "dense",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.052782167000259506,
+          0.053211749996989965,
+          0.053469209000468254,
+          0.05296095800076728,
+          0.05269183299969882
+        ],
+        "cpu-parallel": [
+          0.027723167000658577,
+          0.026741790999949444,
+          0.02715008300219779,
+          0.025787541999306995,
+          0.02560333400106174
+        ],
+        "metal": [
+          0.02808966600059648,
+          0.016787959000794217,
+          0.03474366700174869,
+          0.01689720899958047,
+          0.03095591700184741
+        ]
+      },
+      "seconds": {
+        "cpu": 0.05296095800076728,
+        "cpu-parallel": 0.026741790999949444,
+        "metal": 0.02808966600059648
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 2.0907041066788344e-27
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 7864512,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 9090352,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 1000,
+      "edges": 12600,
+      "kind": "residual",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.0012597079985425808,
+          0.0012472910020733252,
+          0.0012482079982873984,
+          0.0012501670025812928,
+          0.0013149170008546207
+        ],
+        "cpu-parallel": [
+          0.0013200409994169604,
+          0.0012567500016302802,
+          0.0012446250002540182,
+          0.0012503340003604535,
+          0.0012761250000039581
+        ],
+        "metal": [
+          0.0019044169966946356,
+          0.0014620410001953132,
+          0.001744708999467548,
+          0.0013689160005014855,
+          0.0017817080006352626
+        ]
+      },
+      "seconds": {
+        "cpu": 0.0012501670025812928,
+        "cpu-parallel": 0.0012567500016302802,
+        "metal": 0.001744708999467548
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 3.361379033179581e-11
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 582960,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 10000,
+      "edges": 126130,
+      "kind": "mixed",
+      "sweeps": 30,
+      "samples": {
+        "cpu": [
+          0.036513374998321524,
+          0.036100917001022026,
+          0.03617879199737217,
+          0.0364187920022232,
+          0.0366286670032423
+        ],
+        "cpu-parallel": [
+          0.01892625000255066,
+          0.021612125001411187,
+          0.019546457999240374,
+          0.02000466699973913,
+          0.020342499999969732
+        ],
+        "metal": [
+          0.018838124997273553,
+          0.008396500001254026,
+          0.01539250000132597,
+          0.008497708000504645,
+          0.01835637499971199
+        ]
+      },
+      "seconds": {
+        "cpu": 0.0364187920022232,
+        "cpu-parallel": 0.02000466699973913,
+        "metal": 0.01539250000132597
+      },
+      "max_message_error": {
+        "cpu": 0.0,
+        "cpu-parallel": 0.0,
+        "metal": 4.2742331574086023e-07
+      },
+      "errors": {},
+      "execution": {
+        "cpu": {
+          "requested_backend": "cpu",
+          "backend": "cpu",
+          "precision": "f64",
+          "threads": 1,
+          "device": null,
+          "allocated_bytes": 0,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "cpu-parallel": {
+          "requested_backend": "cpu-parallel",
+          "backend": "cpu-parallel",
+          "precision": "f64",
+          "threads": 8,
+          "device": null,
+          "allocated_bytes": 4612680,
+          "parallel_sweeps": 180,
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        },
+        "metal": {
+          "requested_backend": "metal",
+          "backend": "metal",
+          "precision": "f32",
+          "threads": 1,
+          "device": "Apple M1 Pro",
+          "allocated_bytes": 5833428,
+          "parallel_sweeps": 0,
+          "metal_sweeps": 180,
+          "observables_validations": 0,
+          "fallbacks": [],
+          "phases": {},
+          "profile_error": null
+        }
+      }
+    }
+  ],
+  "full": []
+}

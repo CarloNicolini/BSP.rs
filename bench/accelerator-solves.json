@@ -1,0 +1,1077 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "cpu_count": 8,
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+  "configuration": {
+    "max_n": 1000000,
+    "repeats": 5,
+    "sweeps": 30,
+    "threads": 0,
+    "full_seeds": 5,
+    "full_only": true,
+    "full_large": true,
+    "backends": [
+      "cpu",
+      "cpu-parallel",
+      "metal"
+    ],
+    "output": "bench/accelerator-solves.json"
+  },
+  "build": {
+    "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+    "build_profile": "release",
+    "rustflags": "-C link-arg=-undefined -C link-arg=dynamic_lookup",
+    "arch": "aarch64",
+    "os": "macos",
+    "package_version": "0.1.0"
+  },
+  "binary_sha256": "6ae70ec853e0318d536898009b9e0f4d81414f17481355655de4742f994437d1",
+  "max_rss": 160858112,
+  "sha256": {
+    "Cargo.lock": "4caed1a2992fdc05f1ce31b6ee0ede903083c2d557060d783a648d860e6132fc",
+    "Cargo.toml": "2ae1b8d1ce6b24d93a2c9e427bd8191fc7f440e03524a7c87e0a770fcbcc8288",
+    "build.rs": "edaeb924cd4eda14a146b9d6b218f50e77a2bb17f86fe539d69ffa7c5b8b92a7",
+    "/Users/carlo/workspace/BSP.rs/bench/accelerators.py": "5b9d415ca80e60b3e7a3988a452f7cc52231482c972c143c330fe8ffbe86c7cd",
+    "src/solver.rs": "8d530e599c78fce33f4264730f353ce0b5445f393dd57b772f113ab7733269fa",
+    "src/execution.rs": "72208b9e2444806aca2a1a65cf067e4b6b95b72e4c48eb4b16a4e1758508b399",
+    "src/walksat.rs": "8fd6c6303ac0ce75193231969e93b14a812781abaab1aad7ce3afa149c92d1d1",
+    "src/lib.rs": "40435973b4a209059bbc674da4f43289edead9c0f297d9d84b7b34ff3118839f",
+    "src/formula.rs": "df7d302ad609c08ee8d7da9cf3f8e97e3f8d9589de0cf61932d2473e955d6624",
+    "src/main.rs": "b7fc150264f633069f993f314969b371e0594925b85a779ad9ba1cf2cb3329dd",
+    "src/python.rs": "970a281e6cd62da90261c68fc8ec21474723f48c0fe7d998cc2b72bf4f61341e",
+    "src/decision_heap.rs": "e1f15caa89af5ae898cd331cdd619bdbb40a10c41871ae84a3419696e3954e7d",
+    "src/bitset.rs": "4198ca1826d585c1ee0b1a66dbcfa51af414b9cf9abfc5daed113fdec113e242",
+    "crates/bsp-metal/src/lib.rs": "810c72dfa4be13dd7e9f2209b32d18d2ba4a406ec1f53deed71203e59ae3952e",
+    "crates/bsp-metal/src/bridge.m": "597947c224e3304330bbd58395e01233ddef554ed7d87327df49f438a15122db",
+    "crates/bsp-metal/src/kernels.metal": "6e26022bfaa9588104172c0315893060596c76bf0f1a4f29e91279e2b02bdc17"
+  },
+  "rows": [],
+  "full": [
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "backend": "cpu",
+      "seconds": 0.6074620420004067,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "sat",
+          "seconds": 0.591348208,
+          "sp_sweeps": 17589,
+          "flips": 546,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "non_converged",
+          "seconds": 0.53711,
+          "sp_sweeps": 13788,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "non_converged",
+          "seconds": 0.041948042,
+          "sp_sweeps": 1024,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "sat",
+          "seconds": 0.324746083,
+          "sp_sweeps": 6247,
+          "flips": 2501,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "non_converged",
+          "seconds": 0.160399958,
+          "sp_sweeps": 2914,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "backend": "cpu-parallel",
+      "seconds": 0.607766958000866,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "sat",
+          "seconds": 0.590668584,
+          "sp_sweeps": 17589,
+          "flips": 546,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "non_converged",
+          "seconds": 0.546022209,
+          "sp_sweeps": 13788,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "non_converged",
+          "seconds": 0.041162,
+          "sp_sweeps": 1024,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "sat",
+          "seconds": 0.329887667,
+          "sp_sweeps": 6247,
+          "flips": 2501,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "non_converged",
+          "seconds": 0.152163,
+          "sp_sweeps": 2914,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "backend": "metal",
+      "seconds": 3.957946541999263,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "sat",
+          "seconds": 3.87104975,
+          "sp_sweeps": 17589,
+          "flips": 416,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 230680,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 17589,
+            "observables_validations": 3,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "non_converged",
+          "seconds": 2.881868583,
+          "sp_sweeps": 13788,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 230680,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 13788,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "non_converged",
+          "seconds": 0.063181667,
+          "sp_sweeps": 1024,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 230680,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 1024,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "sat",
+          "seconds": 1.769257833,
+          "sp_sweeps": 6243,
+          "flips": 5303,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 230680,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 6243,
+            "observables_validations": 2,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "non_converged",
+          "seconds": 0.730656792,
+          "sp_sweeps": 2914,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 230680,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 2914,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 400,
+      "backend": "cpu",
+      "seconds": 1.5773740830009046,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "non_converged",
+          "seconds": 1.2857745409999999,
+          "sp_sweeps": 11294,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "non_converged",
+          "seconds": 1.551647541,
+          "sp_sweeps": 15326,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "non_converged",
+          "seconds": 1.5428163750000001,
+          "sp_sweeps": 15555,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "sat",
+          "seconds": 1.474157,
+          "sp_sweeps": 14593,
+          "flips": 3977,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "non_converged",
+          "seconds": 0.787250875,
+          "sp_sweeps": 5435,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 400,
+      "backend": "cpu-parallel",
+      "seconds": 1.585176708002109,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "non_converged",
+          "seconds": 1.217818792,
+          "sp_sweeps": 11294,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "non_converged",
+          "seconds": 1.5593139169999999,
+          "sp_sweeps": 15326,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "non_converged",
+          "seconds": 1.558871208,
+          "sp_sweeps": 15555,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "sat",
+          "seconds": 1.5111585,
+          "sp_sweeps": 14593,
+          "flips": 3977,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "non_converged",
+          "seconds": 0.734624708,
+          "sp_sweeps": 5435,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 400,
+      "backend": "metal",
+      "seconds": 9.790452499997627,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "non_converged",
+          "seconds": 8.669456958,
+          "sp_sweeps": 11294,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 642864,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 11294,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "non_converged",
+          "seconds": 7.975655208,
+          "sp_sweeps": 15326,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 642804,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 15326,
+            "observables_validations": 127,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "non_converged",
+          "seconds": 8.308107584,
+          "sp_sweeps": 15259,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 642812,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 15259,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "sat",
+          "seconds": 9.766739125,
+          "sp_sweeps": 14593,
+          "flips": 3977,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 642840,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 14593,
+            "observables_validations": 2,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "non_converged",
+          "seconds": 3.425573708,
+          "sp_sweeps": 5903,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 642812,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 5903,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 10000,
+      "backend": "cpu",
+      "seconds": 10.020201457999065,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "timeout",
+          "seconds": 10.000087292,
+          "sp_sweeps": 5679,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "timeout",
+          "seconds": 10.000744,
+          "sp_sweeps": 5865,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "timeout",
+          "seconds": 10.001938541,
+          "sp_sweeps": 5863,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "timeout",
+          "seconds": 10.000540625,
+          "sp_sweeps": 5991,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "timeout",
+          "seconds": 10.000921667,
+          "sp_sweeps": 5824,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu",
+            "backend": "cpu",
+            "precision": "f64",
+            "threads": 1,
+            "device": null,
+            "allocated_bytes": 0,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 10000,
+      "backend": "cpu-parallel",
+      "seconds": 10.020094833002076,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "timeout",
+          "seconds": 10.001095291,
+          "sp_sweeps": 5879,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4556512,
+            "parallel_sweeps": 1,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "timeout",
+          "seconds": 10.000507208,
+          "sp_sweeps": 5937,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4556512,
+            "parallel_sweeps": 1,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "timeout",
+          "seconds": 10.000632208,
+          "sp_sweeps": 5872,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4556512,
+            "parallel_sweeps": 1,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "timeout",
+          "seconds": 10.002491541,
+          "sp_sweeps": 6008,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4556512,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "timeout",
+          "seconds": 10.001961,
+          "sp_sweeps": 5903,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "cpu-parallel",
+            "backend": "cpu-parallel",
+            "precision": "f64",
+            "threads": 8,
+            "device": null,
+            "allocated_bytes": 4556512,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 0,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 10000,
+      "backend": "metal",
+      "seconds": 10.029958833998535,
+      "jobs": [
+        {
+          "seed": 0,
+          "status": "timeout",
+          "seconds": 10.001352458,
+          "sp_sweeps": 13289,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 5764696,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 13289,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 1,
+          "status": "timeout",
+          "seconds": 10.000343791,
+          "sp_sweeps": 12604,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 5764696,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 12604,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 2,
+          "status": "timeout",
+          "seconds": 10.001313083,
+          "sp_sweeps": 12778,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 5764696,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 12778,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 3,
+          "status": "timeout",
+          "seconds": 10.000184416,
+          "sp_sweeps": 13061,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 5764696,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 13061,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        },
+        {
+          "seed": 4,
+          "status": "timeout",
+          "seconds": 10.000989667,
+          "sp_sweeps": 13021,
+          "flips": 0,
+          "execution": {
+            "requested_backend": "metal",
+            "backend": "metal",
+            "precision": "f32",
+            "threads": 1,
+            "device": "Apple M1 Pro",
+            "allocated_bytes": 5764696,
+            "parallel_sweeps": 0,
+            "metal_sweeps": 13021,
+            "observables_validations": 0,
+            "fallbacks": [],
+            "phases": {},
+            "profile_error": null
+          }
+        }
+      ]
+    }
+  ]
+}

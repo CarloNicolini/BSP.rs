@@ -1,0 +1,24 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "method": "Six alternating rounds, first discarded; five measured rounds. Same complete result required across variants. Timings are medians; individual samples were not saved for this diagnostic experiment.",
+  "seconds": [
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "seed": 3,
+      "baseline": 0.377936667,
+      "indexes_flat_bitset": 0.373657834,
+      "indexes_hierarchical_bitset": 0.38499275
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 400,
+      "seed": 3,
+      "baseline": 1.827095375,
+      "indexes_flat_bitset": 1.774704167,
+      "indexes_hierarchical_bitset": 1.876771417
+    }
+  ]
+}

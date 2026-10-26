@@ -15,6 +15,11 @@ dependencies = ["numpy>=2.0"]
 features = ["extension-module"]
 module-name = "pybsp_rust.bsp_rust"
 python-source = "python"
+include = [
+    { path = "crates/bsp-metal/Cargo.toml", format = "sdist" },
+    { path = "crates/bsp-metal/build.rs", format = "sdist" },
+    { path = "crates/bsp-metal/src/*", format = "sdist" },
+]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "maturin>=1.8,<2"]

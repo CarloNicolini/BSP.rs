@@ -53,6 +53,12 @@ impl Solver {
             .div_ceil(self.options.walksat_restarts as u64);
         let mut total_flips = 0u64;
         for _ in 0..self.options.walksat_restarts {
+            let initialization_started = self
+                .execution
+                .options
+                .profile
+                .as_ref()
+                .map(|_| std::time::Instant::now());
             self.check_stop()?;
             for (v, value) in values.iter_mut().enumerate() {
                 if self.assignment[v] < 0 {
@@ -79,9 +85,13 @@ impl Solver {
                     breaks[true_xor[c] as usize] += 1;
                 }
             }
+            if let Some(started) = initialization_started {
+                self.execution
+                    .record("walksat_initialization", started.elapsed().as_secs_f64());
+            }
             for local_flips in 0..=per_restart {
                 if unsat.clauses.is_empty() {
-                    if !formula.is_satisfied(&values) {
+                    if !self.timed("verification", |_| formula.is_satisfied(&values)) {
                         return Err(Status::NumericalFailure);
                     }
                     return Ok(values);

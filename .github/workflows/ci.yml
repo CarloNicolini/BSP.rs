@@ -29,6 +29,9 @@ jobs:
       - run: cargo test --locked
       - run: cargo test --release --locked
       - run: cargo test --doc --locked
+      - name: Test optional Metal build and CPU-side validation
+        if: runner.os == 'macOS'
+        run: cargo test --features metal --test acceleration --locked
       - run: cargo run --release --example solve_ksat -- examples/3sat.cnf
       - run: cargo build --release --locked --bin bsp-rust
       - uses: actions/upload-artifact@v7

@@ -1,0 +1,175 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "rustc": "rustc 1.88.0 (6b00bc388 2025-06-23) (Homebrew)",
+  "build": "Release opt-level=3, ThinLTO, one codegen unit; generic target for both binaries",
+  "sha256": {
+    "/private/tmp/bsp-rs-before-indexing": "b6adfffd3077215ba4c9fa8bea40eeac98c5f708f8d29ae047c1bbde36cd1769",
+    "target/release/bsp-rust": "e20c911d5e61d43ebcf6f32980d5f70972519238b7585f7571b896ac8e2d7810",
+    "src/solver.rs": "d1e228820ac8e768b1185a61a30dabd84cc6bb2ce0941e635b4b447cd97084f2",
+    "src/bitset.rs": "4198ca1826d585c1ee0b1a66dbcfa51af414b9cf9abfc5daed113fdec113e242",
+    "src/decision_heap.rs": "e1f15caa89af5ae898cd331cdd619bdbb40a10c41871ae84a3419696e3954e7d",
+    "Cargo.lock": "d232629ffeb1eb1a55dc35d75fb6e5a90a0b0495fd0fae3752533327d2385373"
+  },
+  "rows": [
+    {
+      "k": 3,
+      "alpha": 2.5,
+      "n": 400,
+      "seed": 3,
+      "status": "sat",
+      "sp_sweeps": 9,
+      "decimations": 0,
+      "releases": 0,
+      "seconds": {
+        "before": 0.000419375,
+        "after": 0.000420792
+      },
+      "samples": {
+        "before": [
+          0.00041375,
+          0.000426916,
+          0.000419375,
+          0.000436542,
+          0.000412208
+        ],
+        "after": [
+          0.000430917,
+          0.000418708,
+          0.00043075,
+          0.000415333,
+          0.000420792
+        ]
+      },
+      "speedup": 0.9966325405425958,
+      "identical_trajectory": true
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "seed": 3,
+      "status": "sat",
+      "sp_sweeps": 6247,
+      "decimations": 912,
+      "releases": 822,
+      "seconds": {
+        "before": 0.377795584,
+        "after": 0.373464917
+      },
+      "samples": {
+        "before": [
+          0.379593292,
+          0.377709291,
+          0.377377583,
+          0.378424709,
+          0.377795584
+        ],
+        "after": [
+          0.372968792,
+          0.374499375,
+          0.372694917,
+          0.373645791,
+          0.373464917
+        ]
+      },
+      "speedup": 1.0115959138405497,
+      "identical_trajectory": true
+    },
+    {
+      "k": 3,
+      "alpha": 4.15,
+      "n": 400,
+      "seed": 1,
+      "status": "non_converged",
+      "sp_sweeps": 13788,
+      "decimations": 1532,
+      "releases": 1379,
+      "seconds": {
+        "before": 0.656773583,
+        "after": 0.647623209
+      },
+      "samples": {
+        "before": [
+          0.656773583,
+          0.6596045,
+          0.656413667,
+          0.655900708,
+          0.662665791
+        ],
+        "after": [
+          0.647981584,
+          0.646480375,
+          0.647154458,
+          0.647664625,
+          0.647623209
+        ]
+      },
+      "speedup": 1.0141291631813645,
+      "identical_trajectory": true
+    },
+    {
+      "k": 4,
+      "alpha": 9.5,
+      "n": 400,
+      "seed": 3,
+      "status": "sat",
+      "sp_sweeps": 14593,
+      "decimations": 2121,
+      "releases": 1909,
+      "seconds": {
+        "before": 1.8214277079999999,
+        "after": 1.7686005420000002
+      },
+      "samples": {
+        "before": [
+          1.824446584,
+          1.815846125,
+          1.820767416,
+          1.8214277079999999,
+          1.824571583
+        ],
+        "after": [
+          1.7686005420000002,
+          1.768277125,
+          1.7691830830000002,
+          1.768000625,
+          1.777807042
+        ]
+      },
+      "speedup": 1.0298694729225066,
+      "identical_trajectory": true
+    },
+    {
+      "k": 3,
+      "alpha": 4.2,
+      "n": 1000,
+      "seed": 1,
+      "status": "sat",
+      "sp_sweeps": 35168,
+      "decimations": 4740,
+      "releases": 4284,
+      "seconds": {
+        "before": 4.43349975,
+        "after": 4.367394042
+      },
+      "samples": {
+        "before": [
+          4.43349975,
+          4.432418833,
+          4.441223375,
+          4.440930792,
+          4.415894
+        ],
+        "after": [
+          4.3636842080000005,
+          4.366842916,
+          4.37202,
+          4.368391167,
+          4.367394042
+        ]
+      },
+      "speedup": 1.015136190452311,
+      "identical_trajectory": true
+    }
+  ]
+}

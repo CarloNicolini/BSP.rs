@@ -1,4 +1,4 @@
-use bsp_rust::{Formula, Options, Solver, Status};
+use bsp_rust::{Backend, ExecutionOptions, Formula, Options, Solver, Status};
 use serde_json::json;
 use std::{env, fs, process::ExitCode, time::Instant};
 
@@ -15,6 +15,9 @@ bsp-rust [OPTIONS] --generate K ALPHA N
   --max-flips N        Total WalkSAT flip budget across restarts
   --restarts N         WalkSAT restarts
   --timeout SECONDS    Cooperative time limit, including solver construction
+  --backend NAME       cpu (default), cpu-parallel, or metal (f32, optional build)
+  --threads N          CPU worker limit; 0 uses available CPUs
+  --profile PATH       Write phase timings and execution metadata as JSON
   --options PATH       Read Options JSON before subsequent overrides
   --sweeps N           Benchmark exactly N sweeps, excluding graph construction
   --messages PATH      Load a flat JSON array of starting messages
@@ -28,6 +31,7 @@ Assignments are 0/1, and partial assignments use -1 for free variables.
 fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut options = Options::default();
+    let mut execution = ExecutionOptions::default();
     let mut source = None;
     let mut generate = None;
     let mut sweeps = None;
@@ -57,6 +61,16 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
             .get(i + 1)
             .ok_or_else(|| format!("missing value for {flag}"))?;
         match flag.as_str() {
+            "--backend" => {
+                execution.backend = match value.as_str() {
+                    "cpu" => Backend::Cpu,
+                    "cpu-parallel" => Backend::CpuParallel,
+                    "metal" => Backend::Metal,
+                    _ => return Err("backend must be cpu, cpu-parallel, or metal".into()),
+                }
+            }
+            "--threads" => execution.threads = value.parse()?,
+            "--profile" => execution.profile = Some(value.into()),
             "--seed" => options.seed = value.parse()?,
             "--r" => options.backtrack_ratio = value.parse()?,
             "--frac" => options.batch_fraction = value.parse()?,
@@ -97,7 +111,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         fs::write(path, formula.to_dimacs())?;
         return Ok(ExitCode::SUCCESS);
     }
-    let mut solver = Solver::new(formula.clone(), options)?;
+    let mut solver = Solver::with_execution(formula.clone(), options, execution)?;
     if let Some(path) = messages {
         solver.set_messages(&serde_json::from_str::<Vec<f64>>(&fs::read_to_string(
             path,
@@ -108,14 +122,12 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
             return Err("--sweeps must be positive".into());
         }
         let started = Instant::now();
-        let mut residual = 0.0;
-        for _ in 0..sweeps {
-            residual = solver.sweep().map_err(|s| s.to_string())?;
-        }
+        let residual = solver.sweep_many(sweeps).map_err(|s| s.to_string())?;
         let seconds = started.elapsed().as_secs_f64();
+        solver.write_profile()?;
         let mut report = json!({"n":formula.n(),"m":formula.m(),"edges":formula.edges(),"sweeps":sweeps,
             "seconds":seconds,"ns_per_edge_sweep":seconds*1e9/(sweeps as f64*formula.edges().max(1) as f64),
-            "residual":residual,"checksum":solver.messages().iter().sum::<f64>()});
+            "residual":residual,"checksum":solver.messages().iter().sum::<f64>(),"execution":solver.execution_report()});
         if dump_messages {
             report["messages"] = json!(solver.messages());
         }
@@ -123,6 +135,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         return Ok(ExitCode::SUCCESS);
     }
     let result = solver.solve();
+    solver.write_profile()?;
     println!("{}", serde_json::to_string(&result)?);
     Ok(if result.status == Status::Sat {
         ExitCode::SUCCESS
