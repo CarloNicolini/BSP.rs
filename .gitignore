@@ -1,6 +1,8 @@
 target/
 .venv/
 .venv-cuda/
+.venv-docs/
+docs/_build/
 dist/
 __pycache__/
 *.py[cod]

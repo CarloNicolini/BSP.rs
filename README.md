@@ -16,6 +16,24 @@ for builds, numerical behavior, and benchmark commands.
 BSP is a heuristic. Every returned SAT assignment is checked against the formula.
 A failed run or a contradictory residual does not prove the input UNSAT.
 
+## Python documentation
+
+The Sphinx documentation includes a full Python API reference, parameter and
+hardware guides, and research-level chapters developing belief propagation,
+survey propagation, and BSP, with arXiv references and TikZ/SVG factor graphs.
+Build the PyData-themed site locally:
+
+```sh
+python -m pip install -e '.[docs]'
+python -m sphinx -W --keep-going -b html docs docs/_build/html
+python -m http.server 8000 --directory docs/_build/html
+```
+
+Open `http://localhost:8000`. MathJax is bundled locally, and prebuilt SVG diagrams
+are included; HTML builds require neither a TeX installation nor an external CDN.
+See [documentation development](docs/building.rst) for executable examples and
+TikZ regeneration. CI also provides a `bsp-python-documentation` HTML artifact.
+
 ## Quick start: command line
 
 Install Rust 1.88 or newer with [rustup](https://rustup.rs), then clone and build:

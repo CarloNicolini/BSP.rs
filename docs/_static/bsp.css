@@ -1,0 +1,14 @@
+/* Neutral diagram canvas preserves the requested white/grey truth convention. */
+img.tikz-figure, .tikz-figure img {
+  display: block;
+  background: white;
+  padding: 1rem;
+  border: 1px solid #b7bec8;
+  border-radius: .4rem;
+  box-sizing: border-box;
+  filter: none !important; /* Truth-state fills must not be dimmed in dark mode. */
+  opacity: 1;
+}
+.bd-main .bd-content .bd-article-container { max-width: 58rem; }
+.math { overflow-x: auto; }
+table.docutils td { vertical-align: top; }
