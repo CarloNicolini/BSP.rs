@@ -1,0 +1,44 @@
+name: GPU hardware tests
+# Explicit dispatch avoids running pull-request code on persistent GPU hosts.
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: GPU backend (requires a registered self-hosted runner)
+        type: choice
+        options: [cuda, metal]
+        required: true
+      cuda_arch:
+        description: NVIDIA compute capability (CUDA only)
+        default: '61'
+        type: string
+permissions:
+  contents: read
+jobs:
+  cuda:
+    if: inputs.backend == 'cuda'
+    runs-on: [self-hosted, linux, x64, cuda]
+    timeout-minutes: 30
+    env:
+      BSP_CUDA_ARCH: ${{ inputs.cuda_arch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - run: nvidia-smi
+      - run: nvcc --version
+      - run: cargo test --release --features cuda --test cuda --locked -- --include-ignored
+      - run: cargo run --release --features cuda --locked -- --backend cuda examples/3sat.cnf
+      - run: cargo run --release --features cuda --locked -- --backend cuda-f32 examples/3sat.cnf
+  metal:
+    if: inputs.backend == 'metal'
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --release --features metal --test acceleration --locked -- --include-ignored
+      - run: cargo run --release --features metal --locked -- --backend metal examples/3sat.cnf
