@@ -1,14 +1,20 @@
 name: Build and test
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   rust:
     name: Rust / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -26,13 +32,11 @@ jobs:
           components: rustfmt, clippy
       - run: cargo fmt --check
       - run: cargo fmt --manifest-path crates/bsp-cuda/Cargo.toml --check
+      - run: cargo fmt --manifest-path crates/bsp-metal/Cargo.toml --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --locked
       - run: cargo test --release --locked
       - run: cargo test --doc --locked
-      - name: Test optional Metal build and CPU-side validation
-        if: runner.os == 'macOS'
-        run: cargo test --features metal --test acceleration --locked
       - run: cargo run --release --example solve_ksat -- examples/3sat.cnf
       - run: cargo build --release --locked --bin bsp-rust
       - uses: actions/upload-artifact@v7
@@ -43,35 +47,4 @@ jobs:
             LICENSE
             NOTICE
             README.md
-          if-no-files-found: error
-  python:
-    name: Python ${{ matrix.python }} / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ["3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: astral-sh/setup-uv@v10.3.2
-        with:
-          python-version: ${{ matrix.python }}
-      - run: uv sync --extra test --python ${{ matrix.python }}
-      - run: uv run maturin build --release --locked --out dist
-      - run: uv run maturin sdist --out dist
-      - name: Install and test the built wheel
-        run: |
-          uv pip install --reinstall --no-deps dist/*.whl
-          uv run --no-sync pytest -q tests/python
-          uv run --no-sync python examples/solve.py examples/3sat.cnf
-          uv run --no-sync python examples/solve.py
-      - uses: actions/upload-artifact@v7
-        with:
-          name: pybsp-rust-${{ runner.os }}-${{ runner.arch }}-py${{ matrix.python }}
-          path: dist/*
           if-no-files-found: error

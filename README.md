@@ -1,6 +1,10 @@
 # BSP.rs
 
 [![Build and test](https://github.com/CarloNicolini/BSP.rs/actions/workflows/ci.yml/badge.svg)](https://github.com/CarloNicolini/BSP.rs/actions/workflows/ci.yml)
+[![Python tests and wheels](https://github.com/CarloNicolini/BSP.rs/actions/workflows/python.yml/badge.svg)](https://github.com/CarloNicolini/BSP.rs/actions/workflows/python.yml)
+[![CUDA and Metal builds](https://github.com/CarloNicolini/BSP.rs/actions/workflows/acceleration.yml/badge.svg)](https://github.com/CarloNicolini/BSP.rs/actions/workflows/acceleration.yml)
+[![License: GPL v2 or later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
+[![Rust 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange.svg)](Cargo.toml)
 
 BSP.rs solves CNF SAT problems with a native Rust implementation of Backtracking
 Survey Propagation (BSP), followed by native WalkSAT completion. It supports
@@ -344,7 +348,41 @@ uv sync --extra test
 uv run pytest -q tests/python
 ```
 
-CI tests Rust and the CLI on Linux, macOS, and Windows. It builds and installs
+CI runs on every push and pull request, and can also be started manually:
+
+| Workflow | Platforms / features | Validation and delivery |
+| --- | --- | --- |
+| Build and test | Linux, macOS, Windows; no GPU features | Formatting, Clippy, debug/release/doc tests, CLI example, release binaries |
+| Python tests and wheels | Linux, macOS, Windows; Python 3.12/3.13 | Installed-wheel tests, examples, wheels and source archives |
+| CUDA and Metal builds | Linux x64 + CUDA 12.6 (sm61); macOS ARM64 + Metal | Clippy, debug/release/doc tests, CPU smoke test, GPU-enabled release binaries |
+| Release artifacts | `v*` tags; all build/test workflows | Checksummed archives attached to a draft GitHub release |
+| GPU hardware tests (manual) | Self-hosted NVIDIA/Linux or Apple silicon/macOS | Device tests, numerical comparisons, verified GPU solves |
+
+CUDA is supported on Linux; Metal is supported on macOS. The default builds
+on both platforms require neither toolkit. Standard hosted CI compiles and links
+the GPU backends and runs tests that do not require a GPU. Device tests are
+explicitly ignored there; a green build badge does not certify GPU execution.
+CUDA binaries require a compatible CUDA 12 runtime on the destination machine.
+Download binaries and Python packages from the corresponding run's **Artifacts**.
+
+To run device tests, register a self-hosted runner with labels
+`self-hosted,linux,x64,cuda` (driver, CUDA toolkit, and Rust installed) or
+`self-hosted,macOS,ARM64,metal` (Apple GPU, Xcode Command Line Tools, and Rust).
+Set `CUDA_HOME` and the toolkit library path on the CUDA runner if needed.
+Then use **Actions → GPU hardware tests → Run workflow**, or:
+
+```sh
+gh workflow run gpu.yml -f backend=cuda -f cuda_arch=61
+gh workflow run gpu.yml -f backend=metal
+```
+
+No self-hosted runners are required for the automatic workflows. Pushing a
+version tag such as `v0.1.0` runs all three build/test workflows and creates a
+draft GitHub release only after every job passes. The release contains platform
+archives and `SHA256SUMS`; review the draft in **Releases** before publishing.
+This workflow does not publish packages to PyPI or crates.io.
+
+CI also tests Rust and the CLI on Linux, macOS, and Windows. It builds and installs
 Python wheels in clean environments, runs the Python examples and tests, and
 uploads binaries, wheels, and source archives. See [CONTRIBUTING.md](CONTRIBUTING.md)
 for validation rules. The tests include scalar SP comparisons, subnormal

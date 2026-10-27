@@ -1,0 +1,75 @@
+name: CUDA and Metal builds
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: acceleration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  metal:
+    name: Metal / macOS ARM64
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --all-targets --features metal --locked -- -D warnings
+      - run: cargo test --features metal --locked
+      - run: cargo test --release --features metal --locked
+      - run: cargo test --doc --features metal --locked
+      - run: cargo build --release --features metal --locked --bin bsp-rust
+      - name: CPU smoke test of Metal-enabled binary
+        run: target/release/bsp-rust --backend cpu examples/3sat.cnf
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bsp-rust-macOS-ARM64-metal
+          path: |
+            target/release/bsp-rust
+            LICENSE
+            NOTICE
+            README.md
+          if-no-files-found: error
+  cuda:
+    name: CUDA 12.6 / Linux x64
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    # CUDA 12 retains compilation support for Pascal (compute capability 6.1).
+    container: nvidia/cuda:12.6.3-devel-ubuntu22.04
+    env:
+      CUDA_HOME: /usr/local/cuda
+      NVCC: /usr/local/cuda/bin/nvcc
+      BSP_CUDA_ARCH: '61'
+      LD_LIBRARY_PATH: /usr/local/cuda/lib64
+    steps:
+      - name: Install build prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends curl ca-certificates git build-essential pkg-config libssl-dev
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: /usr/local/cuda/bin/nvcc --version
+      - run: cargo clippy --all-targets --features cuda --locked -- -D warnings
+      - run: cargo test --features cuda --locked
+      - run: cargo test --release --features cuda --locked
+      - run: cargo test --doc --features cuda --locked
+      - run: cargo build --release --features cuda --locked --bin bsp-rust
+      - name: CPU smoke test of CUDA-enabled binary
+        run: target/release/bsp-rust --backend cpu examples/3sat.cnf
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bsp-rust-Linux-X64-cuda12-sm61
+          path: |
+            target/release/bsp-rust
+            LICENSE
+            NOTICE
+            README.md
+          if-no-files-found: error
