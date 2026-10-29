@@ -1,0 +1,26 @@
+{
+  "source_sha256": {
+    "/Users/carlo/workspace/BSP.rs/Cargo.toml": "d870106783d28e0f285481b7315e8f3bf01203ab2b1b5b1b48c3525cb3c3a04d",
+    "/Users/carlo/workspace/BSP.rs/Cargo.lock": "11f3f5f7d2bfdf9ee2266d6f3931208ffafce2e6bf0667a9d59b565ecb425fad",
+    "/Users/carlo/workspace/BSP.rs/pyproject.toml": "7aa9ae272acee34de96d3c1dbbebd026ef078faa0702e30cbbe871303366a2ce",
+    "/Users/carlo/workspace/BSP.rs/src/solver.rs": "7bbfadd346cd11377e3c583c16e4e119f4e9e3eae67b569e370f8dd63bfef06f",
+    "/Users/carlo/workspace/BSP.rs/src/python.rs": "0da4729c89cb6e862372591cbad68dae6b0c83ed650609835f50751897221b8c",
+    "/Users/carlo/workspace/BSP.rs/src/execution.rs": "c4c3f12564e164c6112f79df324b0d11b3a202ceeee036a38a8fbac45874a4b3",
+    "/Users/carlo/workspace/BSP.rs/src/walksat.rs": "8fd6c6303ac0ce75193231969e93b14a812781abaab1aad7ce3afa149c92d1d1",
+    "/Users/carlo/workspace/BSP.rs/python/pybsp_rust/__init__.py": "3b723a78d9aed04f8556ce9825015aed29578f8c34c9637b0e4d3b224be645c2",
+    "/Users/carlo/workspace/BSP.rs/crates/bsp-metal/src/lib.rs": "810c72dfa4be13dd7e9f2209b32d18d2ba4a406ec1f53deed71203e59ae3952e",
+    "/Users/carlo/workspace/BSP.rs/crates/bsp-metal/src/kernels.metal": "8c63d9ccee1fe2fb3712f47bb90c17395c1e6ad7715b052ffaeb99111007455b",
+    "/Users/carlo/workspace/BSP.rs/crates/bsp-metal/src/bridge.m": "597947c224e3304330bbd58395e01233ddef554ed7d87327df49f438a15122db",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/CMakeLists.txt": "65056e3e813ac488376341440d61776b76b7219272330f3b08c57b1193934558",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/CMakeLists.txt": "c3fdb52510e5ded4e4fcf3036fc099eb1c2afeced36d2d107a5c7759bac9eb41",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/pyproject.toml": "ebf515b257da07b9a4b2bf837967d456529e9a193c72b143361124488abdae70",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/Graph.cpp": "e6aae5b1eff95bf72362d81f70aea6faf9754a617c8ea36e2167a5c4ed1d0bfa",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/Vertex.cpp": "f81ad3f02b4a523bf5e3a8b43bb600edb6e9edecd02d1735f88e7c3c1d1839a8",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/walksat.cpp": "954d10b2f1cbcf6ac45b56c527547160c119d23ac8a8e9c0c614905ea1fce1f9",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/run.cpp": "c665396e47756fb109555824390fa01ff1d1b690d4efadd234fa70cd4af876dd",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/run_algorithm.cpp": "0328a74546812af6930fa7646267f24f2947ea23723cbb64527d14559f3730d7",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/python/bindings/native.cpp": "f2c697f51ba9c616b031297b15936f62cfe3beae3508376b0500352c29d87020",
+    "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/python/pybsp/native.py": "792e80949fcde00126f29e27bcbad28c12bbcd3cba1f5c9d24f7ce96fd3cfb4d"
+  },
+  "note": "Observed checkout source hashes; the installed C++ binary is identified independently by its SHA256 in measured/metadata.json."
+}

@@ -1,0 +1,97 @@
+--- a/src/run_algorithm.cpp
++++ b/src/run_algorithm.cpp
+@@ -1,4 +1,5 @@
+ #include <bsp/Graph.hpp>
++#include <chrono>
+ #include <bsp/run.hpp>
+ #include <bsp/thermo_sp.hpp>
+ #include <bsp/thermo_policy.hpp>
+@@ -8,6 +9,7 @@
+ 
+ // Shared orchestration: preserve the executable's update and RNG order.
+ bool bsp::run_algorithm(Graph &G, std::vector<Vertex> &V) {
++    const auto bench_bsp_start=std::chrono::steady_clock::now();
+     V.resize(G.N());
+     for(unsigned i=0;i<G.N();++i) {
+         V[i]._vertex=i+1;
+@@ -50,6 +52,7 @@
+         } else G.backtrack();
+     }
+     if(!run_context()) G.print_on_file_residual_formula();
++    bsp::console_fprintf(stderr,"BSP_BENCH bsp_seconds %.17g\n",std::chrono::duration<double>(std::chrono::steady_clock::now()-bench_bsp_start).count());
+     bool solved=G.WalkSAT();
+     if(solved && !run_context()) G.print();
+     return solved;
+--- a/src/walksat.cpp
++++ b/src/walksat.cpp
+@@ -1,3 +1,5 @@
++#include <chrono>
++#include <cstdlib>
+ /*
+  Copyright 2018 Raffaele Marino
+ 
+@@ -490,6 +492,8 @@
+ }
+ int WalkSat(std::vector <std::vector<bool> > & sol,int argc, char * argv[])
+ {
++    const auto bench_walk_start=std::chrono::steady_clock::now();
++    double bench_walk_first=-1.;
+     walksat_free_blocks(); /* free blocks from a previous WalkSat call, if any */
+     reset_walksat();
+     struct Cleanup { ~Cleanup() { walksat_cleanup(); } } cleanup;
+@@ -520,7 +524,9 @@
+             update_statistics_end_flip();
+         }
+         update_and_print_statistics_end_try(sol);
+-    }
++        if(numsuccesstry==1 && bench_walk_first<0.) bench_walk_first=std::chrono::duration<double>(std::chrono::steady_clock::now()-bench_walk_start).count();
++    }
++    bsp::console_fprintf(stderr,"BSP_BENCH walksat_first_seconds %.17g\nBSP_BENCH walksat_all_seconds %.17g\n",bench_walk_first,std::chrono::duration<double>(std::chrono::steady_clock::now()-bench_walk_start).count());
+     expertime = elapsed_seconds();
+     print_statistics_final();
+     walksat_cleanup();
+@@ -1691,7 +1697,10 @@
+     if (clauses.empty()) { sol.push_back(std::vector<bool>(n,false)); return 0; }
+     memory_clauses=&clauses; memory_n=n;
+     struct Reset { ~Reset() { memory_clauses=nullptr; } } reset;
+-    std::vector<std::string> args={"walksat","-solcnf","-cutoff","100000000","-best","-seed","1234567","-numsol","10"};
++    const char *bench_target_env=std::getenv("BSP_BENCH_NUMSOL");
++    std::string bench_target=bench_target_env ? bench_target_env : "10";
++    if(bench_target!="1" && bench_target!="10") throw std::runtime_error("BSP_BENCH_NUMSOL must be 1 or 10");
++    std::vector<std::string> args={"walksat","-solcnf","-cutoff","100000000","-best","-seed","1234567","-numsol",bench_target};
+     std::vector<char*> argv; for (auto &arg:args) argv.push_back(&arg[0]);
+     return WalkSat(sol,argv.size(),argv.data());
+ }
+--- a/src/Graph.cpp
++++ b/src/Graph.cpp
+@@ -1,3 +1,4 @@
++#include <cstdlib>
+ //
+ //  Graph.cpp
+ //  TheBacktrackingSurveyPropagation
+@@ -1329,6 +1330,8 @@
+         const auto residual=residual_formula();
+         WalkSatMemory(sol, residual.n, residual.clauses);
+     } else WalkSat(sol,argc,argv);/*call WalkSAT*/
++    const auto bench_post_start=std::chrono::steady_clock::now();
++    double bench_whitening_seconds=0.;
+     vector<long int> mysol;
+     BSP_INFO<<"Check and white a solution"<<endl;
+     BSP_INFO<<"time of whitening    freezing probability"<<endl;
+@@ -1406,8 +1409,14 @@
+         for (int i=1; i<mysol.size(); ++i) {
+             outfile5<<mysol[i]<<endl;
+         }
+-        Whitening_Solution();/*whitening procedure on a complete solution*/
+-    }
++        const char *bench_whiten=std::getenv("BSP_BENCH_WHITEN");
++        if(!bench_whiten || std::string(bench_whiten)!="0") {
++            const auto bench_white_start=std::chrono::steady_clock::now();
++            Whitening_Solution();/*whitening procedure on a complete solution*/
++            bench_whitening_seconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-bench_white_start).count();
++        }
++    }
++    bsp::console_fprintf(stderr,"BSP_BENCH postprocess_seconds %.17g\nBSP_BENCH whitening_seconds %.17g\n",std::chrono::duration<double>(std::chrono::steady_clock::now()-bench_post_start).count(),bench_whitening_seconds);
+     return flag;
+ }
+ 

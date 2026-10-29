@@ -1,0 +1,5 @@
+{
+  "note": "Rust CPU/Metal timings reused from original campaign; C++ measured in separate isolated Release rebuild, with one output and whitening disabled. All share exact CNFs and solver seeds.",
+  "rust_metadata": "../measured/metadata.json",
+  "cpp_metadata": "../first_solution/metadata.json"
+}

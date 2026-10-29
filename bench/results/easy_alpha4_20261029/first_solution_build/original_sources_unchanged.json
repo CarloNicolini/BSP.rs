@@ -1,0 +1,23 @@
+{
+  "/Users/carlo/workspace/BSP.rs/Cargo.toml": true,
+  "/Users/carlo/workspace/BSP.rs/Cargo.lock": true,
+  "/Users/carlo/workspace/BSP.rs/pyproject.toml": true,
+  "/Users/carlo/workspace/BSP.rs/src/solver.rs": true,
+  "/Users/carlo/workspace/BSP.rs/src/python.rs": true,
+  "/Users/carlo/workspace/BSP.rs/src/execution.rs": true,
+  "/Users/carlo/workspace/BSP.rs/src/walksat.rs": true,
+  "/Users/carlo/workspace/BSP.rs/python/pybsp_rust/__init__.py": true,
+  "/Users/carlo/workspace/BSP.rs/crates/bsp-metal/src/lib.rs": true,
+  "/Users/carlo/workspace/BSP.rs/crates/bsp-metal/src/kernels.metal": true,
+  "/Users/carlo/workspace/BSP.rs/crates/bsp-metal/src/bridge.m": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/CMakeLists.txt": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/CMakeLists.txt": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/pyproject.toml": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/Graph.cpp": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/Vertex.cpp": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/walksat.cpp": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/run.cpp": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/src/run_algorithm.cpp": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/python/bindings/native.cpp": true,
+  "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/python/pybsp/native.py": true
+}

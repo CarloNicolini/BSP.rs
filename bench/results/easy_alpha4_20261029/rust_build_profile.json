@@ -1,0 +1,64 @@
+{
+  "arch": "aarch64",
+  "build_profile": "release",
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+  "edges": 0,
+  "execution": {
+    "allocated_bytes": 0,
+    "backend": "cpu",
+    "cuda_sweeps": 0,
+    "device": null,
+    "device_error": null,
+    "fallbacks": [],
+    "metal_sweeps": 0,
+    "observables_validations": 0,
+    "parallel_sweeps": 0,
+    "phases": {
+      "backend_setup": {
+        "calls": 1,
+        "seconds": 0.000821583
+      },
+      "cavities": {
+        "calls": 2,
+        "seconds": 2.92e-7
+      },
+      "clauses": {
+        "calls": 1,
+        "seconds": 3.33e-7
+      },
+      "observables": {
+        "calls": 1,
+        "seconds": 1.083e-6
+      },
+      "propagation": {
+        "calls": 1,
+        "seconds": 0.0
+      },
+      "verification": {
+        "calls": 1,
+        "seconds": 4.2e-8
+      },
+      "walksat": {
+        "calls": 1,
+        "seconds": 1.333e-6
+      },
+      "walksat_initialization": {
+        "calls": 1,
+        "seconds": 8.3e-8
+      }
+    },
+    "precision": "f64",
+    "profile_error": null,
+    "requested_backend": "cpu",
+    "threads": 1
+  },
+  "flips": 0,
+  "m": 0,
+  "n": 0,
+  "os": "macos",
+  "package_version": "0.1.0",
+  "rustflags": "-C link-arg=-undefined -C link-arg=dynamic_lookup",
+  "seed": 1,
+  "sp_sweeps": 1,
+  "wall_seconds": 0.005291
+}

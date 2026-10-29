@@ -1,0 +1,38 @@
+[
+  {
+    "n": 500,
+    "cpp_seconds": 0.4029899515,
+    "formulas": 3,
+    "verified_calls": 18
+  },
+  {
+    "n": 1000,
+    "cpp_seconds": 1.3870660973333333,
+    "formulas": 3,
+    "verified_calls": 15
+  },
+  {
+    "n": 2000,
+    "cpp_seconds": 4.103388236,
+    "formulas": 3,
+    "verified_calls": 15
+  },
+  {
+    "n": 5000,
+    "cpp_seconds": 25.0545335,
+    "formulas": 3,
+    "verified_calls": 3
+  },
+  {
+    "n": 10000,
+    "cpp_seconds": 73.47421523633334,
+    "formulas": 3,
+    "verified_calls": 3
+  },
+  {
+    "n": 20000,
+    "cpp_seconds": 181.73485583366667,
+    "formulas": 3,
+    "verified_calls": 3
+  }
+]

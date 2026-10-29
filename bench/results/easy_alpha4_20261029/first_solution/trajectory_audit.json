@@ -1,0 +1,401 @@
+[
+  {
+    "n": 500,
+    "formula_seed": 1,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 1,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 1,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 1,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 1,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 1,
+    "repeat": 5,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 2,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 2,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 2,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 2,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 2,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 2,
+    "repeat": 5,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 3,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 3,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 3,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 3,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 3,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 500,
+    "formula_seed": 3,
+    "repeat": 5,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 1,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 1,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 1,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 1,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 1,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 2,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 2,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 2,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 2,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 2,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 3,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 3,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 3,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 3,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 1000,
+    "formula_seed": 3,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 1,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 1,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 1,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 1,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 1,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 2,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 2,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 2,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 2,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 2,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 3,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 3,
+    "repeat": 1,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 3,
+    "repeat": 2,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 3,
+    "repeat": 3,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 2000,
+    "formula_seed": 3,
+    "repeat": 4,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 5000,
+    "formula_seed": 1,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 5000,
+    "formula_seed": 2,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 5000,
+    "formula_seed": 3,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 10000,
+    "formula_seed": 1,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 10000,
+    "formula_seed": 2,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 10000,
+    "formula_seed": 3,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 20000,
+    "formula_seed": 1,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 20000,
+    "formula_seed": 2,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  },
+  {
+    "n": 20000,
+    "formula_seed": 3,
+    "repeat": 0,
+    "first_assignment_equal": true,
+    "sp_sweeps_equal": true
+  }
+]

@@ -1,0 +1,200 @@
+[
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_internals.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_internals.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_internals.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_internals.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_func.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_func.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_func.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_func.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_type.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_type.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_type.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_type.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_enum.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_enum.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_enum.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_enum.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_ndarray.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_ndarray.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_ndarray.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_ndarray.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_static_property.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_static_property.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_static_property.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_static_property.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_datetime.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_datetime.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_datetime.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/nb_datetime.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/common.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/common.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/common.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/common.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/error.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/error.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/error.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/error.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/trampoline.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/trampoline.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/trampoline.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/trampoline.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -DNB_BUILD -DNB_COMPACT_ASSERTIONS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -isystem /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/ext/robin_map/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-strict-aliasing -fno-stack-protector -o CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/implicit.cpp.o -c /Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/implicit.cpp",
+  "file": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/implicit.cpp",
+  "output": "CMakeFiles/nanobind-static.dir/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/src/implicit.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -D_native_EXPORTS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-stack-protector -Os -o CMakeFiles/_native.dir/python/bindings/native.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/python/bindings/native.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/python/bindings/native.cpp",
+  "output": "CMakeFiles/_native.dir/python/bindings/native.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -D_native_EXPORTS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-stack-protector -Os -o CMakeFiles/_native.dir/python/bindings/population.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/python/bindings/population.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/python/bindings/population.cpp",
+  "output": "CMakeFiles/_native.dir/python/bindings/population.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build",
+  "command": "/usr/bin/c++ -D_native_EXPORTS -I/Users/carlo/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/include/python3.12 -I/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/lib/python3.12/site-packages/nanobind/include -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -std=gnu++17 -fPIC -fvisibility=hidden -fno-stack-protector -Os -o CMakeFiles/_native.dir/python/bindings/instance_width.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/python/bindings/instance_width.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/python/bindings/instance_width.cpp",
+  "output": "CMakeFiles/_native.dir/python/bindings/instance_width.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/Graph.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/Graph.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/Graph.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/Graph.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -fno-fast-math -o CMakeFiles/bsp_core.dir/run.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/run.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/run.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/run.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/run_algorithm.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/run_algorithm.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/run_algorithm.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/run_algorithm.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/random_state.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/random_state.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/random_state.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/random_state.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/release_score.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/release_score.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/release_score.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/release_score.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/rsb2.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/rsb2.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/rsb2.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/rsb2.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/rsb2_draw.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/rsb2_draw.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/rsb2_draw.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/rsb2_draw.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -fno-fast-math -o CMakeFiles/bsp_core.dir/rsb2_graph.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/rsb2_graph.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/rsb2_graph.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/rsb2_graph.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/rsb2_obs.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/rsb2_obs.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/rsb2_obs.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/rsb2_obs.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/rsb2_pop.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/rsb2_pop.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/rsb2_pop.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/rsb2_pop.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/rsb2_thermo.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/rsb2_thermo.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/rsb2_thermo.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/rsb2_thermo.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/sp2.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/sp2.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/sp2.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/sp2.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -fno-fast-math -o CMakeFiles/bsp_core.dir/population.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/population.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/population.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/population.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -fno-fast-math -o CMakeFiles/bsp_core.dir/instance_width.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/instance_width.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/instance_width.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/instance_width.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/Vertex.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/Vertex.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/Vertex.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/Vertex.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/thermo_sp.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/thermo_sp.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/thermo_sp.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/thermo_sp.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/thermo_policy.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/thermo_policy.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/thermo_policy.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/thermo_policy.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/tsallis.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/tsallis.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/tsallis.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/tsallis.cpp.o"
+},
+{
+  "directory": "/private/tmp/bsp-alpha4-first-solution/build/src",
+  "command": "/usr/bin/c++  -I/private/tmp/bsp-alpha4-first-solution/source/include -O3 -DNDEBUG -flto=thin -fPIC -O3 -ffast-math -fno-math-errno -funroll-loops -fomit-frame-pointer -o CMakeFiles/bsp_core.dir/walksat.cpp.o -c /private/tmp/bsp-alpha4-first-solution/source/src/walksat.cpp",
+  "file": "/private/tmp/bsp-alpha4-first-solution/source/src/walksat.cpp",
+  "output": "src/CMakeFiles/bsp_core.dir/walksat.cpp.o"
+}
+]

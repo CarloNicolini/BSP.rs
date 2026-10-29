@@ -1,0 +1,549 @@
+{
+  "verified_calls": 171,
+  "calls": 171,
+  "validated_assignments": 171,
+  "invalid_assignments": 0,
+  "cpu_fallbacks": 0,
+  "rows": [
+    {
+      "n": 500,
+      "m": 2000,
+      "formulas": 3,
+      "common_verified_formulas": 3,
+      "common_seeds": [
+        1,
+        2,
+        3
+      ],
+      "paired_seconds": {
+        "cpu": 0.29796775,
+        "metal": 1.4699164998333334,
+        "cpp": 0.4029899515
+      },
+      "backends": {
+        "cpu": {
+          "calls": 18,
+          "verified_calls": 18,
+          "statuses": {
+            "sat": 18
+          },
+          "validated_assignments": 18,
+          "seconds_median": 0.2701571875,
+          "seconds_iqr": [
+            0.12810153075,
+            0.49206839575
+          ],
+          "per_formula_medians": {
+            "1": 0.496567875,
+            "2": 0.12717818749999998,
+            "3": 0.2701571875
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.009930331276464449,
+            "2": 0.00564955763345804,
+            "3": 0.00621073796158027
+          }
+        },
+        "metal": {
+          "calls": 18,
+          "verified_calls": 18,
+          "statuses": {
+            "sat": 18
+          },
+          "validated_assignments": 18,
+          "seconds_median": 1.3597907500000002,
+          "seconds_iqr": [
+            0.602538552,
+            2.4700101775
+          ],
+          "per_formula_medians": {
+            "1": 2.4975836455,
+            "2": 0.552375104,
+            "3": 1.3597907500000002
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.012440423989795784,
+            "2": 0.015657952245436486,
+            "3": 0.02724878515315677
+          }
+        },
+        "cpp": {
+          "calls": 18,
+          "verified_calls": 18,
+          "statuses": {
+            "solved": 18
+          },
+          "validated_assignments": 18,
+          "seconds_median": 0.3669893125,
+          "seconds_iqr": [
+            0.1693435415,
+            0.67377772875
+          ],
+          "per_formula_medians": {
+            "1": 0.677366875,
+            "2": 0.16461366700000002,
+            "3": 0.3669893125
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.005739811974124082,
+            "2": 0.010303418488332529,
+            "3": 0.029278894872449442
+          }
+        }
+      },
+      "metal_speedup_cpu": 0.2027106642001672,
+      "rust_cpu_speedup_cpp": 1.3524616388854165,
+      "metal_speedup_cpp": 0.27415839712370943
+    },
+    {
+      "n": 1000,
+      "m": 4000,
+      "formulas": 3,
+      "common_verified_formulas": 3,
+      "common_seeds": [
+        1,
+        2,
+        3
+      ],
+      "paired_seconds": {
+        "cpu": 1.1222396666666667,
+        "metal": 2.876165041666667,
+        "cpp": 1.3870660973333333
+      },
+      "backends": {
+        "cpu": {
+          "calls": 15,
+          "verified_calls": 15,
+          "statuses": {
+            "sat": 15
+          },
+          "validated_assignments": 15,
+          "seconds_median": 1.538952375,
+          "seconds_iqr": [
+            0.1306639375,
+            1.7203197915000001
+          ],
+          "per_formula_medians": {
+            "1": 1.742266208,
+            "2": 1.538952375,
+            "3": 0.085500417
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.01728912083680848,
+            "2": 0.01738810078512013,
+            "3": 0.0014727062676195988
+          }
+        },
+        "metal": {
+          "calls": 15,
+          "verified_calls": 15,
+          "statuses": {
+            "sat": 15
+          },
+          "validated_assignments": 15,
+          "seconds_median": 3.921090625,
+          "seconds_iqr": [
+            0.366029458,
+            4.4207401245
+          ],
+          "per_formula_medians": {
+            "1": 4.53566675,
+            "2": 3.921090625,
+            "3": 0.17173775
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.044514100380059894,
+            "2": 0.037064135185602906,
+            "3": 0.1625390049654197
+          }
+        },
+        "cpp": {
+          "calls": 15,
+          "verified_calls": 15,
+          "statuses": {
+            "solved": 15
+          },
+          "validated_assignments": 15,
+          "seconds_median": 1.8563855,
+          "seconds_iqr": [
+            0.2772173335,
+            2.192244583
+          ],
+          "per_formula_medians": {
+            "1": 2.199389958,
+            "2": 1.8563855,
+            "3": 0.105422834
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.004316159108333879,
+            "2": 0.003431825447893194,
+            "3": 0.0009971843481271898
+          }
+        }
+      },
+      "metal_speedup_cpu": 0.39018611602912623,
+      "rust_cpu_speedup_cpp": 1.2359802799105002,
+      "metal_speedup_cpp": 0.48226234490687037
+    },
+    {
+      "n": 2000,
+      "m": 8000,
+      "formulas": 3,
+      "common_verified_formulas": 3,
+      "common_seeds": [
+        1,
+        2,
+        3
+      ],
+      "paired_seconds": {
+        "cpu": 3.0952223053333334,
+        "metal": 3.752693875,
+        "cpp": 4.103388236
+      },
+      "backends": {
+        "cpu": {
+          "calls": 15,
+          "verified_calls": 15,
+          "statuses": {
+            "sat": 15
+          },
+          "validated_assignments": 15,
+          "seconds_median": 4.145705958,
+          "seconds_iqr": [
+            0.6909300629999999,
+            4.5106090205000005
+          ],
+          "per_formula_medians": {
+            "1": 0.613668833,
+            "2": 4.145705958,
+            "3": 4.526292125
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.06645705599977894,
+            "2": 0.032014270028940625,
+            "3": 0.031023507790054663
+          }
+        },
+        "metal": {
+          "calls": 15,
+          "verified_calls": 15,
+          "statuses": {
+            "sat": 15
+          },
+          "validated_assignments": 15,
+          "seconds_median": 4.76552575,
+          "seconds_iqr": [
+            0.7427659790000001,
+            5.7097826045
+          ],
+          "per_formula_medians": {
+            "1": 0.654366208,
+            "2": 4.76552575,
+            "3": 5.838189667
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.03878733909193555,
+            "2": 0.016888211757118327,
+            "3": 0.02126784415755426
+          }
+        },
+        "cpp": {
+          "calls": 15,
+          "verified_calls": 15,
+          "statuses": {
+            "solved": 15
+          },
+          "validated_assignments": 15,
+          "seconds_median": 5.049015833,
+          "seconds_iqr": [
+            0.7278192914999999,
+            6.1804914795000006
+          ],
+          "per_formula_medians": {
+            "1": 0.715846083,
+            "2": 5.049015833,
+            "3": 6.545302792
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": 0.01780078888830074,
+            "2": 0.019969733178691777,
+            "3": 0.04774715439933161
+          }
+        }
+      },
+      "metal_speedup_cpu": 0.8248001058528478,
+      "rust_cpu_speedup_cpp": 1.3257168084274626,
+      "metal_speedup_cpp": 1.0934513639218706
+    },
+    {
+      "n": 5000,
+      "m": 20000,
+      "formulas": 3,
+      "common_verified_formulas": 3,
+      "common_seeds": [
+        1,
+        2,
+        3
+      ],
+      "paired_seconds": {
+        "cpu": 10.347849014,
+        "metal": 6.390943958333334,
+        "cpp": 25.0545335
+      },
+      "backends": {
+        "cpu": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "sat": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 9.222809167,
+          "seconds_iqr": [
+            8.4587958125,
+            11.674382292
+          ],
+          "per_formula_medians": {
+            "1": 7.694782458,
+            "2": 9.222809167,
+            "3": 14.125955417
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        },
+        "metal": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "sat": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 6.625527792,
+          "seconds_iqr": [
+            5.6792765835,
+            7.21990325
+          ],
+          "per_formula_medians": {
+            "1": 4.733025375,
+            "2": 6.625527792,
+            "3": 7.814278708
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        },
+        "cpp": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "solved": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 22.393914458,
+          "seconds_iqr": [
+            20.657667979000003,
+            28.121089500000004
+          ],
+          "per_formula_medians": {
+            "1": 18.9214215,
+            "2": 22.393914458,
+            "3": 33.848264542
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        }
+      },
+      "metal_speedup_cpu": 1.6191425056242505,
+      "rust_cpu_speedup_cpp": 2.4212310660991254,
+      "metal_speedup_cpp": 3.9203181350590133
+    },
+    {
+      "n": 10000,
+      "m": 40000,
+      "formulas": 3,
+      "common_verified_formulas": 3,
+      "common_seeds": [
+        1,
+        2,
+        3
+      ],
+      "paired_seconds": {
+        "cpu": 21.087461041666664,
+        "metal": 8.733012722,
+        "cpp": 73.47421523633334
+      },
+      "backends": {
+        "cpu": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "sat": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 20.285647833,
+          "seconds_iqr": [
+            18.57782725,
+            23.196188229
+          ],
+          "per_formula_medians": {
+            "1": 26.106728625,
+            "2": 20.285647833,
+            "3": 16.870006667
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        },
+        "metal": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "sat": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 8.351306667,
+          "seconds_iqr": [
+            7.307952604,
+            9.9672198125
+          ],
+          "per_formula_medians": {
+            "1": 11.583132958,
+            "2": 8.351306667,
+            "3": 6.264598541
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        },
+        "cpp": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "solved": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 70.679181334,
+          "seconds_iqr": [
+            61.219851271,
+            84.3310622505
+          ],
+          "per_formula_medians": {
+            "1": 97.982943167,
+            "2": 70.679181334,
+            "3": 51.760521208
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        }
+      },
+      "metal_speedup_cpu": 2.4146834217410023,
+      "rust_cpu_speedup_cpp": 3.484260864366545,
+      "metal_speedup_cpp": 8.413386946206872
+    },
+    {
+      "n": 20000,
+      "m": 80000,
+      "formulas": 3,
+      "common_verified_formulas": 3,
+      "common_seeds": [
+        1,
+        2,
+        3
+      ],
+      "paired_seconds": {
+        "cpu": 42.49910549966667,
+        "metal": 14.331004958666666,
+        "cpp": 181.73485583366667
+      },
+      "backends": {
+        "cpu": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "sat": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 42.349880208,
+          "seconds_iqr": [
+            39.927848354000005,
+            44.9957499995
+          ],
+          "per_formula_medians": {
+            "1": 42.349880208,
+            "2": 37.5058165,
+            "3": 47.641619791
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        },
+        "metal": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "sat": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 14.192147834,
+          "seconds_iqr": [
+            13.2801614795,
+            15.3124198755
+          ],
+          "per_formula_medians": {
+            "1": 14.192147834,
+            "2": 12.368175125,
+            "3": 16.432691917
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        },
+        "cpp": {
+          "calls": 3,
+          "verified_calls": 3,
+          "statuses": {
+            "solved": 3
+          },
+          "validated_assignments": 3,
+          "seconds_median": 189.977713875,
+          "seconds_iqr": [
+            177.32999758350002,
+            190.2611431045
+          ],
+          "per_formula_medians": {
+            "1": 190.544572334,
+            "2": 164.682281292,
+            "3": 189.977713875
+          },
+          "per_formula_repeat_relative_mad": {
+            "1": null,
+            "2": null,
+            "3": null
+          }
+        }
+      },
+      "metal_speedup_cpu": 2.9655356077429422,
+      "rust_cpu_speedup_cpp": 4.27620425646587,
+      "metal_speedup_cpp": 12.68123598853147
+    }
+  ]
+}

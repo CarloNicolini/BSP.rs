@@ -1,0 +1,21 @@
+{
+  "source": "/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code",
+  "configure": [
+    "cmake",
+    "-S",
+    "/private/tmp/bsp-alpha4-first-solution/source",
+    "-B",
+    "/private/tmp/bsp-alpha4-first-solution/build",
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DBSP_BUILD_PYTHON=ON",
+    "-DBSP_BUILD_CLI=OFF",
+    "-DBSP_BUILD_TESTS=OFF",
+    "-DBSP_NATIVE_ARCH=OFF",
+    "-DBSP_ENABLE_OPENMP=OFF",
+    "-DBSP_IDE_LINK=OFF",
+    "-DPython_EXECUTABLE=/Users/carlo/workspace/The-Backtracking-Survey-Propagation-Algorithm-code/.venv/bin/python"
+  ],
+  "binary": "/private/tmp/bsp-alpha4-first-solution/build/_native.cpython-312-darwin.so",
+  "binary_sha256": "9a54827fe0a957d7b8b4348d2202e51b093c9bfd84bf56eac07c4f5aa62447a4",
+  "patch": "benchmark.patch"
+}
