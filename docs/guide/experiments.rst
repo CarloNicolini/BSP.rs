@@ -21,8 +21,7 @@ Bounded batches
    >>> formula = Formula([[1], [-2]], n=2)
    >>> jobs = [formula] * 3
    >>> configs = [Options(seed=seed) for seed in range(3)]
-   >>> results = solve_many(jobs, configs,
-   ...                      execution=ExecutionOptions(backend="cpu", threads=2))
+   >>> results = solve_many(formulas=jobs, options=configs, backend="cpu", threads=2)
    >>> [r.seed for r in results]
    [0, 1, 2]
    >>> [r.status for r in results]
@@ -47,9 +46,10 @@ collection, submit bounded batches yourself instead of an unbounded iterator.
 .. code-block:: python
 
    results = solve_many(
-       [Formula.random(3, 4.15, 400, seed=s) for s in range(5)],
-       [Options(seed=s, timeout_seconds=10) for s in range(5)],
-       execution=ExecutionOptions(backend="cuda-f32", threads=4),
+       formulas=[Formula.random(3, 4.15, 400, seed=s) for s in range(5)],
+       options=[Options(seed=s, timeout_seconds=10) for s in range(5)],
+       backend="cuda-f32",
+       threads=4,
    )
    for result in results:
        print(result.seed, result.status, result.wall_seconds, result.execution)

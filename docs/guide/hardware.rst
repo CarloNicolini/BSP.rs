@@ -76,11 +76,10 @@ Measure throughput and latency separately
 .. code-block:: python
 
    from time import perf_counter
-   from pybsp_rust import Formula, Options, ExecutionOptions, Solver
+   from pybsp_rust import Formula, Solver
 
    formula = Formula.random(3, 4.2, 100000, seed=7)
-   solver = Solver(formula, Options(damping=0.2),
-                   execution=ExecutionOptions(backend="cpu-parallel", threads=8))
+   solver = Solver(formula=formula, damping=0.2, backend="cpu-parallel", threads=8)
    start = perf_counter()
    solver.sweep_many(30)
    print("sweep seconds:", perf_counter() - start)
@@ -95,8 +94,8 @@ time to a verified solution, particularly on small formulas.
 
 .. code-block:: python
 
-   solver = Solver(formula, Options(timeout_seconds=10),
-                   execution=ExecutionOptions(backend="cpu", profile="profile.json"))
+   solver = Solver(formula=formula, timeout_seconds=10,
+                   backend="cpu", profile="profile.json")
    result = solver.solve()
    print(result.execution["phases"])
 

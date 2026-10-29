@@ -11,9 +11,9 @@ For example, ``[[1, -2], [2, 3]]`` means
 
 .. doctest::
 
-   >>> from pybsp_rust import Formula, Options, solve
+   >>> from pybsp_rust import Formula, solve
    >>> formula = Formula([[1], [-2]], n=2)
-   >>> result = solve(formula, Options(seed=3, timeout_seconds=10))
+   >>> result = solve(formula=formula, seed=3, timeout_seconds=10)
    >>> result.status
    'sat'
    >>> result.assignment.tolist()
@@ -47,7 +47,7 @@ Generate a controlled instance
    >>> formula = Formula.random(k=3, alpha=2.5, n=128, seed=7)
    >>> formula.n, formula.m, formula.edges
    (128, 320, 960)
-   >>> result = solve(formula, Options(seed=3, timeout_seconds=10))
+   >>> result = solve(formula=formula, seed=3, timeout_seconds=10)
    >>> result.status == 'sat' and formula.is_satisfied(result.assignment)
    True
 
@@ -60,12 +60,14 @@ Select hardware explicitly
 
 .. code-block:: python
 
-   from pybsp_rust import ExecutionOptions, Solver
+   from pybsp_rust import Solver
 
    solver = Solver(
-       formula,
-       Options(seed=3, timeout_seconds=10),
-       execution=ExecutionOptions(backend="cpu-parallel", threads=8),
+       formula=formula,
+       seed=3,
+       timeout_seconds=10,
+       backend="cpu-parallel",
+       threads=8,
    )
    result = solver.solve()
    print(result.status, result.execution)

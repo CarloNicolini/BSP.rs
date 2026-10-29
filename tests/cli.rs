@@ -1,6 +1,22 @@
 use std::process::Command;
 
 #[test]
+fn version_matches_package_without_a_formula() {
+    for flag in ["--version", "-V"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
+            .arg(flag)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            format!("bsp-rust {}\n", env!("CARGO_PKG_VERSION"))
+        );
+        assert!(output.stderr.is_empty());
+    }
+}
+
+#[test]
 fn cli_solves_the_shipped_dimacs_example() {
     let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
         .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"))

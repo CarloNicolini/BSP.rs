@@ -1,9 +1,20 @@
 Parameters and stopping rules
 =============================
 
-Algorithm settings live in :class:`pybsp_rust.Options`; hardware settings live
-in :class:`pybsp_rust.ExecutionOptions`. Both are immutable dataclasses validated
-by the Rust implementation. Their constructor defaults are part of the API.
+Pass any parameter below directly to ``solve``, ``Solver``, or ``solve_many``:
+``solve(formula=formula, seed=7, damping=0.2, backend="cpu-parallel", threads=2)``.
+All settings after the formula are keywords in this preferred calling style.
+Batch algorithm keywords apply to every job, including the seed; use a sequence
+of Options for distinct per-job settings.
+
+For reusable configurations, algorithm settings also live in
+:class:`pybsp_rust.Options` and hardware settings in
+:class:`pybsp_rust.ExecutionOptions`. Both are immutable dataclasses validated
+by Rust, with the same defaults as direct keywords. Existing object-based calls
+remain supported. Do not combine ``options`` with direct algorithm keywords,
+or ``execution`` with direct hardware keywords: these ambiguous calls raise
+TypeError, even when the values agree. One algorithm object plus direct hardware
+keywords (or the reverse) is supported. Unknown keywords also raise TypeError.
 
 .. doctest::
 

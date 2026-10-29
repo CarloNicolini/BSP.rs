@@ -139,6 +139,28 @@ class Options:
         return json.dumps(asdict(self), allow_nan=False)
 
 
+def _configuration(options, execution, parameters):
+    """Resolve direct keywords without silently overriding configuration objects."""
+    algorithm = {}
+    hardware = {}
+    for name, value in parameters.items():
+        if name in Options.__dataclass_fields__:
+            algorithm[name] = value
+        elif name in ExecutionOptions.__dataclass_fields__:
+            hardware[name] = value
+        else:
+            raise TypeError(f"unexpected solver keyword argument: {name!r}")
+    if options is not None and algorithm:
+        raise TypeError("use either options or direct algorithm keywords, not both")
+    if execution is not None and hardware:
+        raise TypeError("use either execution or direct hardware keywords, not both")
+    options = Options(**algorithm) if options is None else options
+    execution = ExecutionOptions(**hardware) if execution is None else execution
+    if not isinstance(execution, ExecutionOptions):
+        raise TypeError("execution must be pybsp_rust.ExecutionOptions")
+    return options, execution
+
+
 class SolveResult:
     """Owned result record returned by :func:`solve` or :meth:`Solver.solve`.
 
@@ -196,6 +218,17 @@ class Solver:
         Algorithm settings. None creates default options.
     execution : ExecutionOptions or None, default=None
         Hardware settings. None selects scalar CPU double precision.
+    **parameters
+        Direct keyword arguments for every field of :class:`Options` and
+        :class:`ExecutionOptions`, using their documented defaults. Algorithm
+        keywords are ``seed``, ``backtrack_ratio``, ``batch_fraction``,
+        ``epsilon``, ``damping``, ``max_sweeps``, ``max_steps``, ``max_flips``,
+        ``walksat_restarts``, ``walksat_noise``, and ``timeout_seconds``.
+        Hardware keywords are ``backend``, ``threads``, and ``profile``.
+        Unknown names raise TypeError. Do not mix algorithm keywords with
+        ``options``, or hardware keywords with ``execution``; each group must
+        have one source. For example, ``Solver(formula=formula, seed=3,
+        backend="metal")`` needs no configuration objects.
 
     Attributes
     ----------
@@ -222,17 +255,14 @@ class Solver:
     literals sort by variable then sign. Read free-variable surveys only after
     a successful ``converge()`` and before another update or graph mutation.
     """
-    def __init__(self, formula, options=None, *, execution=None):
+    def __init__(self, formula, options=None, *, execution=None, **parameters):
+        self.options, self.execution = _configuration(options, execution, parameters)
+        if not isinstance(self.options, Options):
+            raise TypeError("options must be pybsp_rust.Options")
         if not isinstance(formula, Formula):
             # Accept the existing pybsp.Formula without loading its C++ solver.
             formula = Formula(formula.clauses, n=formula.n)
         self.formula = formula
-        self.options = Options() if options is None else options
-        if not isinstance(self.options, Options):
-            raise TypeError("options must be pybsp_rust.Options")
-        self.execution = ExecutionOptions() if execution is None else execution
-        if not isinstance(self.execution, ExecutionOptions):
-            raise TypeError("execution must be pybsp_rust.ExecutionOptions")
         self._native = _core.Solver(formula, self.options._json(), self.execution._json())
         self.cancellation_token = self._native.cancellation_token
 
@@ -413,24 +443,26 @@ class Solver:
         return SolveResult(json.loads(self._native.solve()))
 
 
-def solve(formula, options=None, *, execution=None):
+def solve(formula, options=None, *, execution=None, **parameters):
     """Construct a fresh :class:`Solver` and return its terminal result.
 
-    Parameters are the same as ``Solver``. Input/configuration errors raise
+    Parameters and direct keywords are the same as ``Solver``. For example,
+    ``solve(formula=formula, seed=3, backend="cpu", timeout_seconds=10)``.
+    Input/configuration errors raise
     ValueError or TypeError; heuristic failures are represented by status.
 
     Examples
     --------
-    >>> result = solve(Formula([[1], [-2]], n=2))
+    >>> result = solve(formula=Formula([[1], [-2]], n=2), seed=3)
     >>> result.status
     'sat'
     >>> result.assignment.tolist()
     [1, 0]
     """
-    return Solver(formula, options, execution=execution).solve()
+    return Solver(formula, options, execution=execution, **parameters).solve()
 
 
-def solve_many(formulas, options=None, *, execution=None):
+def solve_many(formulas, options=None, *, execution=None, **parameters):
     """Solve independent jobs with bounded workers, preserving input order.
 
     Parameters
@@ -444,6 +476,12 @@ def solve_many(formulas, options=None, *, execution=None):
     execution : ExecutionOptions or None, default=None
         Shared worker/backend settings. GPU concurrency is additionally bounded
         by estimated device memory. Profiling must be None for batch calls.
+    **parameters
+        The same direct algorithm and hardware keywords as ``Solver``.
+        Algorithm keywords are broadcast to all jobs, including the seed.
+        For distinct seeds, pass a sequence of Options through ``options``;
+        direct hardware keywords can still be used alongside that sequence.
+        Mixing both sources within the same group raises TypeError.
 
     Returns
     -------
@@ -456,19 +494,15 @@ def solve_many(formulas, options=None, *, execution=None):
         If lengths/configurations disagree, profiling is requested, or backend
         setup fails.
     """
+    options, execution = _configuration(options, execution, parameters)
     formulas = list(formulas)
     formulas = [f if isinstance(f, Formula) else Formula(f.clauses, n=f.n) for f in formulas]
-    if options is None:
-        options = [Options()] * len(formulas)
-    elif isinstance(options, Options):
+    if isinstance(options, Options):
         options = [options] * len(formulas)
     else:
         options = list(options)
     if len(options) != len(formulas) or any(not isinstance(o, Options) for o in options):
         raise ValueError("one Options value is required per formula")
-    execution = ExecutionOptions() if execution is None else execution
-    if not isinstance(execution, ExecutionOptions):
-        raise TypeError("execution must be pybsp_rust.ExecutionOptions")
     return [SolveResult(data) for data in json.loads(_core.solve_many(formulas, [o._json() for o in options], execution._json()))]
 
 

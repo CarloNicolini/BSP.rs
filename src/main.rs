@@ -5,6 +5,7 @@ use std::{env, fs, process::ExitCode, time::Instant};
 const HELP: &str = "bsp-rust [OPTIONS] formula.cnf
 bsp-rust [OPTIONS] --generate K ALPHA N
 
+  --version, -V        Print the package version
   --seed N             RNG seed (default 1)
   --r R                Backtracking ratio in [0,1)
   --frac F             Decimation batch fraction in (0,1]
@@ -43,6 +44,10 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         let flag = &args[i];
         if flag == "--help" || flag == "-h" {
             print!("{HELP}");
+            return Ok(ExitCode::SUCCESS);
+        }
+        if flag == "--version" || flag == "-V" {
+            println!("bsp-rust {}", env!("CARGO_PKG_VERSION"));
             return Ok(ExitCode::SUCCESS);
         }
         if flag == "--dump-messages" {
