@@ -3,6 +3,17 @@ use bsp_rust::{Backend, ExecutionOptions, Formula, Options, Solver, Status};
 use serde_json::json;
 use std::{fs, io::Write, path::Path, time::Instant};
 
+fn message_hash(solver: &Solver) -> String {
+    let hash = solver
+        .messages()
+        .iter()
+        .flat_map(|v| v.to_bits().to_le_bytes())
+        .fold(0xcbf29ce484222325u64, |h, byte| {
+            (h ^ byte as u64).wrapping_mul(0x100000001b3)
+        });
+    format!("{hash:016x}")
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().collect();
     if args.len() != 8 {
@@ -67,6 +78,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "decimations":result.decimations, "releases":result.releases,
             "unit_assignments":result.unit_assignments, "steps":result.steps.len(),
             "execution":result.execution})
+    } else if args[3] == "actions" {
+        let count: usize = args[4].parse()?;
+        let compute = Instant::now();
+        let mut steps = Vec::new();
+        let mut terminal = None;
+        for _ in 0..count {
+            match solver.advance() {
+                Ok(step) => steps.push(step),
+                Err(status) => {
+                    terminal = Some(status);
+                    break;
+                }
+            }
+        }
+        let seconds = compute.elapsed().as_secs_f64();
+        fs::write(
+            output.with_extension("steps.json"),
+            serde_json::to_vec(&steps)?,
+        )?;
+        json!({"mode":"actions", "status":terminal.map(|s| s.to_string()).unwrap_or("ok".into()),
+            "actions":steps.len(), "compute_seconds":seconds,
+            "message_hash":message_hash(&solver),
+            "sp_sweeps":steps.last().map(|s| s.sp_sweeps), "execution":solver.execution_report()})
     } else if args[3] == "sweeps" {
         let count: usize = args[4].parse()?;
         let compute = Instant::now();
@@ -75,6 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         json!({"mode":"sweeps", "status":residual.as_ref().map(|_| "ok").unwrap_or("failed"),
             "error":residual.as_ref().err().map(ToString::to_string), "residual":residual.ok(),
             "sweeps":count, "compute_seconds":seconds,
+            "message_hash":message_hash(&solver),
             "checksum":solver.messages().iter().sum::<f64>(), "execution":solver.execution_report()})
     } else {
         return Err("mode must be solve or sweeps".into());
