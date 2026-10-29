@@ -64,9 +64,11 @@ jobs:
           mkdir release-assets
           for artifact in artifacts/*; do
             # Actions artifacts normalize permissions; restore native CLI executability.
-            if [ -f "$artifact/bsp-rust" ]; then
-              chmod +x "$artifact/bsp-rust"
-            fi
+            for binary in "$artifact/bsp-rust" "$artifact/target/release/bsp-rust"; do
+              if [ -f "$binary" ]; then
+                chmod +x "$binary"
+              fi
+            done
             tar -czf "release-assets/$(basename "$artifact").tar.gz" -C "$artifact" .
           done
           (cd release-assets && sha256sum ./*.tar.gz > SHA256SUMS)

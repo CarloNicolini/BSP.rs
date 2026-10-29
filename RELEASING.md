@@ -20,7 +20,9 @@ fields, exit codes, and documented numerical behavior. Deprecate before removal
 where feasible. Record breaking changes even during 0.x development. Fixes may
 change results when correcting a defect; explain scientific/numerical effects.
 The keyword API is included in the initial 0.1.0 release, before any published
-baseline. Existing Options/ExecutionOptions calls remain supported.
+baseline. Existing Options/ExecutionOptions calls remain supported. Version
+0.2.0 adds explicit keyword signatures, per-job batch seeds, complete NumPy-style
+adapter documentation, and retained CPU/Metal memory reductions.
 
 ## Prepare a release PR
 
