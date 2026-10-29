@@ -67,7 +67,9 @@ def run(job):
     lib.proc_pid_rusage.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
     before = vm_state()
     peak_rss = peak_footprint = lifetime_footprint = samples = 0
+    memory_samples = []
     started = time.monotonic()
+    last_progress = started
     print(f"start {prefix.name} {job['backend']} {job['mode']}", flush=True)
     with prefix.with_suffix(".stdout").open("w+") as stdout, prefix.with_suffix(".stderr").open("w+") as stderr:
         process = subprocess.Popen(command, stdout=stdout, stderr=stderr)
@@ -79,9 +81,13 @@ def run(job):
                 peak_footprint = max(peak_footprint, info.values[7])
                 lifetime_footprint = max(lifetime_footprint, info.values[28])
                 samples += 1
+                memory_samples.append([time.monotonic() - started, info.values[6], info.values[7]])
             child, status, usage = os.wait4(process.pid, os.WNOHANG)
             if child:
                 break
+            if time.monotonic() - last_progress >= 30:
+                print(f"working {prefix.name} elapsed={time.monotonic()-started:.0f}s peak={lifetime_footprint/1e6:.1f}MB", flush=True)
+                last_progress = time.monotonic()
             if not killed and time.monotonic() - started > job["timeout"] + 60:
                 os.kill(process.pid, signal.SIGKILL)
                 killed = True
@@ -108,6 +114,7 @@ def run(job):
         sampled_peak_phys_footprint_bytes=peak_footprint,
         observed_lifetime_peak_phys_footprint_bytes=lifetime_footprint,
         footprint_samples=samples, vm_stat_before=before, vm_stat_after=vm_state(),
+        memory_samples=memory_samples,
         independent_verified=independent_verified, independent_verify_seconds=verify_seconds,
         binary_sha256=hashlib.sha256(Path(job["binary"]).read_bytes()).hexdigest())
     destination.write_text(json.dumps(result, indent=2) + "\n")
