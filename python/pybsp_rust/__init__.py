@@ -10,6 +10,7 @@ or limits, and do not certify that the input is unsatisfiable.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from functools import cached_property
 import json
 from pathlib import Path
 
@@ -23,7 +24,7 @@ __all__ = ["Formula", "Options", "ExecutionOptions", "Solver", "SolveResult", "C
 
 @dataclass(frozen=True)
 class ExecutionOptions:
-    """Hardware and profiling settings, separate from algorithm parameters.
+    """Optional compatibility record for hardware and profiling settings.
 
     Parameters
     ----------
@@ -50,12 +51,13 @@ class ExecutionOptions:
 
     Notes
     -----
+    Prefer direct backend, threads, and profile keywords in new code.
     The object is immutable. The requested backend can differ from the actual
     backend after numerical recovery; inspect ``Solver.execution_report``.
     """
     backend: str = "cpu"
     threads: int = 0
-    profile: str | None = None
+    profile: str | Path | None = None
 
     def __post_init__(self):
         _core.validate_execution(self._json())
@@ -69,7 +71,7 @@ class ExecutionOptions:
 
 @dataclass(frozen=True)
 class Options:
-    """Immutable BSP, convergence, and WalkSAT parameters.
+    """Optional immutable compatibility record for algorithm parameters.
 
     Parameters
     ----------
@@ -116,6 +118,7 @@ class Options:
 
     Notes
     -----
+    Prefer direct algorithm keywords in new code.
     Values are validated by the same Rust code used by the CLI. Use
     ``dataclasses.replace(options, seed=...)`` to derive a modified configuration.
     Integer bounds also depend on the native platform's index width.
@@ -139,26 +142,53 @@ class Options:
         return json.dumps(asdict(self), allow_nan=False)
 
 
+class _Default:
+    """Mark an omitted keyword so explicit defaults still detect conflicts."""
+
+    def __repr__(self):
+        return "DEFAULT"
+
+
+_DEFAULT = _Default()
+_ALGORITHM_DEFAULTS = json.loads(_core.default_options())
+_HARDWARE_DEFAULTS = {"backend": "cpu", "threads": 0, "profile": None}
+
+
+def _direct_settings(values):
+    """Collect explicitly supplied solver keywords from a public call."""
+    return {name: value for name, value in values.items()
+            if (name in _ALGORITHM_DEFAULTS or name in _HARDWARE_DEFAULTS)
+            and value is not _DEFAULT}
+
+
 def _configuration(options, execution, parameters):
-    """Resolve direct keywords without silently overriding configuration objects."""
-    algorithm = {}
-    hardware = {}
-    for name, value in parameters.items():
-        if name in Options.__dataclass_fields__:
-            algorithm[name] = value
-        elif name in ExecutionOptions.__dataclass_fields__:
-            hardware[name] = value
-        else:
-            raise TypeError(f"unexpected solver keyword argument: {name!r}")
-    if options is not None and algorithm:
-        raise TypeError("use either options or direct algorithm keywords, not both")
-    if execution is not None and hardware:
-        raise TypeError("use either execution or direct hardware keywords, not both")
-    options = Options(**algorithm) if options is None else options
-    execution = ExecutionOptions(**hardware) if execution is None else execution
-    if not isinstance(execution, ExecutionOptions):
-        raise TypeError("execution must be pybsp_rust.ExecutionOptions")
-    return options, execution
+    """Resolve compatibility objects to the dictionaries sent to Rust."""
+    algorithm = {k: v for k, v in parameters.items() if k in _ALGORITHM_DEFAULTS}
+    hardware = {k: v for k, v in parameters.items() if k in _HARDWARE_DEFAULTS}
+    if options is not None:
+        if algorithm:
+            raise TypeError("use either options or direct algorithm keywords, not both")
+        if not isinstance(options, Options):
+            raise TypeError("options must be pybsp_rust.Options")
+        algorithm = asdict(options)
+    else:
+        algorithm = _ALGORITHM_DEFAULTS | algorithm
+    if execution is not None:
+        if hardware:
+            raise TypeError("use either execution or direct hardware keywords, not both")
+        if not isinstance(execution, ExecutionOptions):
+            raise TypeError("execution must be pybsp_rust.ExecutionOptions")
+        hardware = asdict(execution)
+    else:
+        hardware = _HARDWARE_DEFAULTS | hardware
+    return algorithm, hardware
+
+
+def _json(settings):
+    """Serialize native settings without accepting non-finite JSON numbers."""
+    if settings.get("profile") is not None:
+        settings = settings | {"profile": str(settings["profile"])}
+    return json.dumps(settings, allow_nan=False)
 
 
 class SolveResult:
@@ -198,11 +228,20 @@ class SolveResult:
     of the solver.
     """
     def __init__(self, data):
+        """Convert a native result record into owned Python arrays.
+
+        Parameters
+        ----------
+        data : dict
+            Decoded native result containing status, assignments, counters,
+            action history, and execution metadata.
+        """
         self.__dict__.update(data)
         self.assignment = None if data["assignment"] is None else np.asarray(data["assignment"], dtype=np.int8)
         self.partial_assignment = np.asarray(data["partial_assignment"], dtype=np.int8)
 
     def __repr__(self):
+        """Return a concise status and work-counter representation."""
         return f"SolveResult(status={self.status!r}, sp_sweeps={self.sp_sweeps}, flips={self.flips})"
 
 
@@ -212,122 +251,257 @@ class Solver:
     Parameters
     ----------
     formula : Formula
-        Immutable normalized formula. A compatible object exposing ``clauses``
-        and ``n`` is copied into a native Formula on construction.
+        Immutable normalized formula. Compatible objects exposing clauses and n
+        are copied into a native Formula on construction.
     options : Options or None, default=None
-        Algorithm settings. None creates default options.
+        Optional compatibility configuration. Prefer the named algorithm keywords.
+        Combining this object with any algorithm keyword raises TypeError.
     execution : ExecutionOptions or None, default=None
-        Hardware settings. None selects scalar CPU double precision.
-    **parameters
-        Direct keyword arguments for every field of :class:`Options` and
-        :class:`ExecutionOptions`, using their documented defaults. Algorithm
-        keywords are ``seed``, ``backtrack_ratio``, ``batch_fraction``,
-        ``epsilon``, ``damping``, ``max_sweeps``, ``max_steps``, ``max_flips``,
-        ``walksat_restarts``, ``walksat_noise``, and ``timeout_seconds``.
-        Hardware keywords are ``backend``, ``threads``, and ``profile``.
-        Unknown names raise TypeError. Do not mix algorithm keywords with
-        ``options``, or hardware keywords with ``execution``; each group must
-        have one source. For example, ``Solver(formula=formula, seed=3,
-        backend="metal")`` needs no configuration objects.
+        Optional compatibility configuration. Prefer backend, threads, and profile.
+        Combining this object with any hardware keyword raises TypeError.
+    seed : int, default=1
+        Unsigned 64-bit solver RNG seed. Controls initial messages and local
+        search. It does not change a formula already generated with another seed.
+    backtrack_ratio : float, default=0.9
+        Target ratio of backtracking actions to decimation actions, in ``[0,1)``.
+        This is a deterministic scheduling ratio, not a per-step probability.
+        Zero disables scheduled backtracking. Large values increase revisiting.
+    batch_fraction : float, default=0.00125
+        Fraction in ``(0,1]`` of currently free variables selected per decimation.
+        The batch is ``max(1, floor(batch_fraction * free_variables))``, capped by
+        the number free. Smaller batches require more SP fixed points.
+    epsilon : float, default=0.01
+        Absolute tolerance in ``(0,1)`` on the largest *undamped* message update.
+        Convergence does not establish the accuracy of the survey approximation.
+    damping : float, default=0.0
+        Old-message weight in ``[0,1)``: new = raw + damping * (old - raw).
+        Zero is undamped. Increasing it can stabilize oscillations but slows
+        relaxation. The convergence test still compares raw against old.
+    max_sweeps : int, default=1024
+        Positive sweep limit for each SP fixed-point attempt.
+    max_steps : int, default=100000
+        Positive limit on recorded BSP actions. A step can contain many sweeps.
+    max_flips : int, default=10000000
+        Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
+        Zero permits checking an initial completion but permits no flips.
+    walksat_restarts : int, default=4
+        Positive maximum number of randomized completions. Each restart has a
+        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+    walksat_noise : float, default=0.5
+        Probability in ``[0,1]`` of a uniformly random free variable in a sampled
+        unsatisfied clause when every candidate has positive break count.
+        Otherwise choose among minimum-break candidates, breaking ties randomly.
+    timeout_seconds : float or None, default=None
+        Positive finite cooperative wall-time limit since solver construction,
+        including backend setup and time between calls. None disables it.
+    backend : {'cpu', 'cpu-parallel', 'metal', 'cuda', 'cuda-f32'}, default='cpu'
+        Scalar CPU double precision, multicore CPU double precision, Apple GPU
+        single precision, NVIDIA GPU double precision, or NVIDIA GPU single
+        precision. Metal requires a macOS ``metal`` build; CUDA requires a Linux
+        ``cuda`` build and a supported device. Availability is checked when a
+        solver is constructed. Single precision may change the search path.
+    threads : int, default=0
+        Worker limit in ``0..1024``. Zero selects available logical CPUs.
+        A single scalar CPU or GPU solver uses one host execution thread;
+        ``solve_many`` uses this budget for independent jobs. The parallel CPU
+        backend also uses it for sweeps within a job when appropriate.
+    profile : str or pathlib.Path or None, default=None
+        JSON profile destination written by ``Solver.solve()``. Enables phase
+        timers and GPU timestamps; GPU instrumentation changes submission costs.
+        Batch solving rejects profiling: profile individual solvers instead.
 
     Attributes
     ----------
     formula : Formula
-        Normalized input formula with shared immutable native topology.
-    options : Options
-        Algorithm configuration supplied at construction.
-    execution : ExecutionOptions
-        Requested hardware configuration; actual execution is in the report.
+        Normalized input with shared immutable native topology.
     cancellation_token : CancellationToken
-        One-way handle safe to call from another thread during computation.
+        Thread-safe one-way handle for cooperative interruption.
+
+    Raises
+    ------
+    ValueError
+        If a setting, formula, or backend is invalid or unavailable.
+    TypeError
+        If a keyword is unknown or configuration sources conflict.
 
     Notes
     -----
-    Formula topology can be shared, but each solver has its own RNG, messages,
-    assignments, counters, and cancellation token. Long native compute calls
-    release Python's GIL. Use independent solvers for concurrent computation;
-    do not mutate one solver concurrently from multiple threads.
-    Reassigning stored Python configuration attributes does not reconfigure
-    native state; construct another solver to apply new options.
+    The DEFAULT marker in the signature means omitted; effective defaults are
+    listed for each parameter above. Direct calls send dictionaries to Rust without
+    constructing configuration dataclasses. Existing Options calls remain supported.
+    Each solver owns its RNG, assignments, messages, counters, and cancellation
+    state. Native calls release the GIL; do not mutate a solver concurrently.
+    Reassigning a Python configuration attribute does not reconfigure native state.
 
-    All array properties are owned snapshots. Edges follow normalized clause
-    order: repeated literals collapse, tautological clauses disappear, and
-    literals sort by variable then sign. Read free-variable surveys only after
-    a successful ``converge()`` and before another update or graph mutation.
+    Array properties are owned snapshots in normalized clause incidence order.
+    Only read free-variable surveys after successful converge() and before another
+    update or graph mutation. These are cluster-forcing surveys, not ordinary SAT
+    marginals. The solver is a heuristic and cannot prove UNSAT.
+
+    Examples
+    --------
+    >>> formula = Formula([[1], [-2]], n=2)
+    >>> Solver(formula=formula, seed=3).solve().status
+    'sat'
     """
-    def __init__(self, formula, options=None, *, execution=None, **parameters):
-        self.options, self.execution = _configuration(options, execution, parameters)
-        if not isinstance(self.options, Options):
-            raise TypeError("options must be pybsp_rust.Options")
+    def __init__(
+        self, formula, options=None,
+        *,
+        execution=None,
+        seed=_DEFAULT,
+        backtrack_ratio=_DEFAULT,
+        batch_fraction=_DEFAULT,
+        epsilon=_DEFAULT,
+        damping=_DEFAULT,
+        max_sweeps=_DEFAULT,
+        max_steps=_DEFAULT,
+        max_flips=_DEFAULT,
+        walksat_restarts=_DEFAULT,
+        walksat_noise=_DEFAULT,
+        timeout_seconds=_DEFAULT,
+        backend=_DEFAULT,
+        threads=_DEFAULT,
+        profile=_DEFAULT,
+    ):
+        """Initialize native solver state using the class parameter contract."""
+        algorithm, hardware = _configuration(options, execution, _direct_settings(locals()))
         if not isinstance(formula, Formula):
-            # Accept the existing pybsp.Formula without loading its C++ solver.
             formula = Formula(formula.clauses, n=formula.n)
         self.formula = formula
-        self._native = _core.Solver(formula, self.options._json(), self.execution._json())
+        self._algorithm = algorithm
+        self._hardware = hardware
+        if options is not None:
+            self.options = options
+        if execution is not None:
+            self.execution = execution
+        self._native = _core.Solver(formula, _json(algorithm), _json(hardware))
         self.cancellation_token = self._native.cancellation_token
+
+    @cached_property
+    def options(self):
+        """Return a lazily materialized algorithm compatibility snapshot.
+
+        Returns
+        -------
+        Options
+            Immutable settings snapshot; reading it does not reconfigure Rust.
+        """
+        return Options(**self._algorithm)
+
+    @cached_property
+    def execution(self):
+        """Return a lazily materialized hardware compatibility snapshot.
+
+        Returns
+        -------
+        ExecutionOptions
+            Requested hardware settings. Inspect execution_report for actual use.
+        """
+        return ExecutionOptions(**self._hardware)
 
     @property
     def assignment(self):
-        """Owned partial assignment array with shape ``(n,)``, dtype ``int8``, -1/0/1."""
+        """Return an owned snapshot of the current partial assignment.
+
+        Returns
+        -------
+        numpy.ndarray
+            Shape (n,), dtype int8, with -1 for free, 0 for false, and 1 for true.
+            Mutating this snapshot does not change native state.
+        """
         return np.asarray(self._native.assignment, dtype=np.int8)
 
     @property
     def execution_report(self):
-        """Fresh dict of backend, precision, memory, counters, errors, and timers."""
+        """Return current backend, resource, fallback, and profiling metadata.
+
+        Returns
+        -------
+        dict
+            Fresh report with requested/actual backend, precision, device, memory,
+            counters, fallbacks, errors, and enabled phase timings.
+        """
         return json.loads(self._native.execution_report)
 
     @property
     def messages(self):
-        """Owned ``float64`` array of clause-to-variable warnings, shape ``(edges,)``.
+        """Return an owned snapshot of clause-to-variable warnings.
 
-        Values lie in [0,1] and follow ``formula.clauses`` flattened in order.
-        Inactive/fixed incidences are zero. GPU f32 values are widened on export;
-        the array dtype does not imply f64 internal arithmetic.
+        Returns
+        -------
+        numpy.ndarray
+            Shape (formula.edges,), dtype float64, probabilities in [0, 1], in
+            normalized clause incidence order. Fixed/inactive incidences are zero.
+
+        Notes
+        -----
+        GPU f32 values are widened on export; float64 snapshots do not imply f64
+        internal arithmetic. Pass edited values to set_messages() to update state.
         """
         return np.asarray(self._native.messages, dtype=np.float64)
 
     @property
     def surveys(self):
-        """Owned ``float64`` array, shape ``(n,3)``, columns True/False/free.
+        """Return an owned snapshot of variable cluster-forcing surveys.
 
-        These are normalized cluster-forcing surveys, not ordinary probabilities
-        under a uniform distribution on satisfying assignments. Free-variable
-        rows are meaningful after successful convergence; sweeps and mutations
-        can leave them stale. Fixed rows are one-hot True or False.
+        Returns
+        -------
+        numpy.ndarray
+            Shape (n, 3), dtype float64, columns true, false, and unfrozen. Fixed rows
+            are one-hot true/false. Free rows are meaningful only after converge().
+
+        Notes
+        -----
+        These are not ordinary marginals of a uniform satisfying-assignment measure.
+        Sweeps and graph mutations can leave free-variable surveys stale.
         """
         return np.asarray(self._native.surveys, dtype=np.float64).reshape(-1, 3)
 
     @property
     def free_variables(self):
-        """Number of variables currently unfixed in the BSP partial assignment."""
+        """Return the number of currently unfixed variables.
+
+        Returns
+        -------
+        int
+            Count of free variables in the BSP partial assignment.
+        """
         return self._native.free_variables
 
     @property
     def active_clauses(self):
-        """Number of clauses not yet satisfied by the partial assignment."""
+        """Return the number of clauses not yet satisfied by fixed variables.
+
+        Returns
+        -------
+        int
+            Count of active clauses in the residual graph.
+        """
         return self._native.active_clauses
 
     def set_messages(self, values):
-        """Replace messages and saved values in normalized incidence order.
+        """Replace live and frozen messages in normalized incidence order.
 
         Parameters
         ----------
         values : array_like
-            A flat array of length formula.edges with finite probabilities in
-            [0,1]. Values on currently inactive or fixed
-            incidences are saved for restoration, while their live values are
-            zero. Unsafe GPU f32 conversion triggers a recorded CPU fallback.
+            Flat array of length formula.edges with finite probabilities in [0, 1].
+            Inactive/fixed values are saved for restoration; live incidences stay zero.
+
+        Returns
+        -------
+        None
+            Native state is updated in place.
 
         Raises
         ------
         ValueError
-            If shape, length, or probability values are invalid.
+            If the array is not flat, has the wrong length, or contains invalid values.
 
         Notes
         -----
-        This invalidates surveys and clears terminal state, but does not reset
-        counters, elapsed time, or cancellation. Mutating ``messages`` alone
-        does not change the solver; pass the modified array here.
+        This invalidates surveys and clears terminal state. Counters, elapsed time,
+        and cancellation persist. Unsafe GPU f32 conversion records a CPU fallback.
         """
         a = np.asarray(values, dtype=np.float64)
         if a.ndim != 1:
@@ -335,175 +509,487 @@ class Solver:
         self._native.set_messages(np.ascontiguousarray(a))
 
     def fix(self, variable, value):
-        """Fix a zero-based variable to a Boolean value and simplify incidences.
+        """Fix one variable and simplify its incidences.
 
-        The variable must currently be free; already fixed or out-of-range
-        requests raise ValueError. Unit propagation is deferred until
-        ``propagate()``, ``converge()``, or ``advance()``. Free surveys become
-        stale. This explicit decision can later be released.
+        Parameters
+        ----------
+        variable : int
+            Zero-based index of a currently free variable in [0, formula.n).
+        value : bool
+            True fixes the variable true; False fixes it false.
+
+        Returns
+        -------
+        None
+            Graph state is updated in place.
+
+        Raises
+        ------
+        ValueError
+            If the variable is out of range or already fixed.
+
+        Notes
+        -----
+        Unit propagation is deferred until propagate(), converge(), or advance().
+        Free surveys become stale. This explicit decision can later be released.
         """
         self._native.fix(variable, value)
 
     def release(self, variable):
-        """Unfix a zero-based decision variable and restore saved edge messages.
+        """Unfix an explicit decision and restore its frozen messages.
 
-        Already free, out-of-range, and unit-forced variables raise ValueError.
-        Release clears terminal
-        state and invalidates free-variable surveys.
+        Parameters
+        ----------
+        variable : int
+            Zero-based index of a fixed decision variable in [0, formula.n).
+
+        Returns
+        -------
+        None
+            Graph state is updated in place and terminal state is cleared.
+
+        Raises
+        ------
+        ValueError
+            If the index is invalid, the variable is free, or it was unit-forced.
+
+        Notes
+        -----
+        Free surveys become stale. Unit implications are not rolled back; construct a
+        fresh solver to explore an independent branch with fresh implications.
         """
         self._native.release(variable)
 
     def propagate(self):
-        """Apply the queued unit implications and return newly forced count.
+        """Apply queued unit implications.
 
-        Raises RuntimeError on a contradictory residual, cancellation, timeout,
-        or numerical/device failure. A contradiction under heuristic decisions
-        is not a proof that the original formula is UNSAT.
+        Returns
+        -------
+        int
+            Number of newly forced variables in this call.
+
+        Raises
+        ------
+        RuntimeError
+            On a contradictory residual, cancellation, timeout, or numerical/device
+            failure. A contradiction under heuristic decisions is not an UNSAT proof.
         """
         return self._native.propagate()
 
     def sweep(self):
-        """Run one synchronous cavity/clause update and return undamped residual.
+        """Run one synchronous cavity/clause update.
 
-        Does not propagate units or refresh surveys. Raises RuntimeError on
-        numerical failure, contradiction, cancellation, or timeout. Intended
-        for controlled experiments; use ``converge()`` for fixed points.
+        Returns
+        -------
+        float
+            Maximum absolute undamped message update in the sweep.
+
+        Raises
+        ------
+        RuntimeError
+            On numerical failure, contradiction, cancellation, or timeout.
+
+        Notes
+        -----
+        Units are not propagated and surveys are not refreshed. Use converge() for a
+        fixed-point attempt. The returned array snapshots are synchronized.
         """
         return self._native.sweep()
 
     def sweep_many(self, count):
-        """Run ``count`` raw synchronous sweeps, synchronizing snapshots once.
+        """Run raw synchronous sweeps, synchronizing snapshots once.
 
-        Returns the final undamped residual; count=0 returns 0.0. Units and
-        surveys are not refreshed. This amortizes GPU readback costs compared
-        with repeated ``sweep()`` calls. Numerical recovery and cooperative
-        cancellation/timeout remain enabled. Native failures raise RuntimeError.
+        Parameters
+        ----------
+        count : int
+            Nonnegative number of sweeps. Zero returns 0.0 without updating messages.
+
+        Returns
+        -------
+        float
+            Final undamped residual, or 0.0 for zero sweeps.
+
+        Raises
+        ------
+        OverflowError
+            If count is negative or outside the native index range.
+        RuntimeError
+            On numerical/device failure, contradiction, cancellation, or timeout.
+
+        Notes
+        -----
+        Units and surveys are not refreshed. GPU readback is amortized across sweeps;
+        numerical recovery and cooperative interruption remain enabled.
         """
         return self._native.sweep_many(count)
 
     def converge(self):
-        """Propagate units, find an SP fixed point, then refresh surveys.
+        """Propagate units, attempt an SP fixed point, then refresh surveys.
 
-        Returns a dict with ``sweeps`` for this attempt, ``residual`` of the last
-        undamped update, total ``complexity`` estimate, and ``paramagnetic``.
-        The latter is an implementation stopping diagnostic, not a SAT verdict.
-        Raises RuntimeError on nonconvergence, contradiction, numerical failure,
-        cancellation, or timeout. At most ``options.max_sweeps`` are attempted
-        per precision attempt; GPU recovery can retry in CPU f64.
+        Returns
+        -------
+        dict
+            sweeps for this attempt, last undamped residual, total complexity estimate,
+            and paramagnetic diagnostic. The latter is not a SAT verdict.
+
+        Raises
+        ------
+        RuntimeError
+            On nonconvergence, contradiction, numerical/device failure, cancellation,
+            or timeout.
+
+        Notes
+        -----
+        At most max_sweeps are attempted per precision attempt. GPU numerical recovery
+        can retry on CPU f64. Convergence alone does not certify survey accuracy.
         """
         return json.loads(self._native.converge())
 
     def advance(self):
-        """Converge and perform one scheduled BSP action, returning a step dict.
+        """Converge and perform one scheduled BSP action.
 
-        Actions are ``decimate``, ``backtrack``, or ``walksat``. The WalkSAT
-        action may finish the search. Terminal conditions raise RuntimeError;
-        call ``solve()`` to retrieve a terminal result record instead. Step
-        free/active counts describe the state before the action.
+        Returns
+        -------
+        dict
+            Step record with action (decimate/backtrack/walksat), index, pre-action
+            free/active counts, cumulative sweeps, residual, complexity, and change count.
+
+        Raises
+        ------
+        RuntimeError
+            On a terminal condition, including calls after termination.
+
+        Notes
+        -----
+        WalkSAT may finish the search. Use solve() to retrieve a terminal result record.
         """
         return json.loads(self._native.advance())
 
     def decimate(self):
-        """Fix the top survey-certainty batch and return the number changed.
+        """Fix the highest-certainty free-variable batch using cached surveys.
 
-        Call ``converge()`` first: this method uses cached surveys and does not
-        compute a fixed point. Ties use ascending variable index; an equal
-        True/False forcing survey selects False. Does not propagate units.
+        Returns
+        -------
+        int
+            Number of variables changed by this decision batch.
+
+        Raises
+        ------
+        RuntimeError
+            If interruption or a native operational failure prevents the action.
+
+        Notes
+        -----
+        Call converge() first. This method does not compute a fixed point or propagate
+        units. Equal certainty uses ascending variable index; equal true/false forcing
+        selects false.
         """
         return self._native.decimate()
 
     def backtrack(self):
-        """Release low-score stored decisions and return the number changed.
+        """Release eligible decisions with the lowest frozen certainty.
 
-        The release budget uses the last decimation batch plus pending unit
-        implications, capped by eligible decisions. Scores are frozen when a
-        variable is fixed; unit-forced variables are not eligible. Does not
-        recompute surveys or propagate units.
+        Returns
+        -------
+        int
+            Number of decisions released by this action.
+
+        Raises
+        ------
+        RuntimeError
+            If interruption or a native operational failure prevents the action.
+
+        Notes
+        -----
+        The budget uses the preceding decimation batch plus pending unit implications,
+        capped by eligible decisions. Unit-forced variables cannot be released. This
+        does not recompute surveys or propagate units.
         """
         return self._native.backtrack()
 
     def residual_formula(self):
-        """Return active clauses with fixed literals removed, keeping original n.
+        """Return active clauses with fixed literals removed.
 
-        Variable IDs are not compacted, so unused variables remain declared.
-        This formula encodes the remaining constraints; keep the partial
-        assignment separately to reconstruct a completion of the original CNF.
+        Returns
+        -------
+        Formula
+            Normalized residual with the original declared variable count and labels.
+
+        Notes
+        -----
+        Variable IDs are not compacted. Retain the partial assignment separately when
+        reconstructing a completion of the original input.
         """
         return self._native.residual_formula()
 
     def solve(self):
-        """Continue until a terminal condition and return a :class:`SolveResult`.
+        """Continue the current search until a terminal condition.
 
-        Operational search outcomes are recorded in ``result.status`` rather
-        than raised as RuntimeError. Existing work, counters, elapsed time,
-        decisions, and cancellation are retained. Every SAT assignment passes
-        CPU verification. A profile-write error is recorded in execution
-        metadata without replacing an otherwise valid result.
+        Returns
+        -------
+        SolveResult
+            Owned result with a CPU-verified assignment only for status 'sat'. Other
+            statuses report heuristic failures or limits and do not prove UNSAT.
+
+        Notes
+        -----
+        Existing work, decisions, counters, cancellation, and elapsed time are retained.
+        Operational failures are represented in status, rather than raised as
+        RuntimeError. A profile-write error is recorded in execution metadata without
+        replacing an otherwise valid result.
         """
         return SolveResult(json.loads(self._native.solve()))
 
 
-def solve(formula, options=None, *, execution=None, **parameters):
-    """Construct a fresh :class:`Solver` and return its terminal result.
-
-    Parameters and direct keywords are the same as ``Solver``. For example,
-    ``solve(formula=formula, seed=3, backend="cpu", timeout_seconds=10)``.
-    Input/configuration errors raise
-    ValueError or TypeError; heuristic failures are represented by status.
-
-    Examples
-    --------
-    >>> result = solve(formula=Formula([[1], [-2]], n=2), seed=3)
-    >>> result.status
-    'sat'
-    >>> result.assignment.tolist()
-    [1, 0]
-    """
-    return Solver(formula, options, execution=execution, **parameters).solve()
-
-
-def solve_many(formulas, options=None, *, execution=None, **parameters):
-    """Solve independent jobs with bounded workers, preserving input order.
+def solve(
+    formula, options=None,
+    *,
+    execution=None,
+    seed=_DEFAULT,
+    backtrack_ratio=_DEFAULT,
+    batch_fraction=_DEFAULT,
+    epsilon=_DEFAULT,
+    damping=_DEFAULT,
+    max_sweeps=_DEFAULT,
+    max_steps=_DEFAULT,
+    max_flips=_DEFAULT,
+    walksat_restarts=_DEFAULT,
+    walksat_noise=_DEFAULT,
+    timeout_seconds=_DEFAULT,
+    backend=_DEFAULT,
+    threads=_DEFAULT,
+    profile=_DEFAULT,
+):
+    """Construct a fresh solver and return one terminal result.
 
     Parameters
     ----------
-    formulas : iterable of Formula
-        Inputs, materialized before solving. Repeated native Formula objects
-        share immutable CPU topology while keeping independent solver state.
-    options : Options or iterable of Options or None, default=None
-        One immutable configuration for all jobs, one per job, or defaults.
-        Assign distinct seeds explicitly when requesting independent restarts.
+    formula : Formula
+        Immutable normalized formula, or a compatible object exposing clauses and n.
+    options : Options or None, default=None
+        Optional compatibility configuration. Prefer the named algorithm keywords.
+        Combining this object with any algorithm keyword raises TypeError.
     execution : ExecutionOptions or None, default=None
-        Shared worker/backend settings. GPU concurrency is additionally bounded
-        by estimated device memory. Profiling must be None for batch calls.
-    **parameters
-        The same direct algorithm and hardware keywords as ``Solver``.
-        Algorithm keywords are broadcast to all jobs, including the seed.
-        For distinct seeds, pass a sequence of Options through ``options``;
-        direct hardware keywords can still be used alongside that sequence.
-        Mixing both sources within the same group raises TypeError.
+        Optional compatibility configuration. Prefer backend, threads, and profile.
+        Combining this object with any hardware keyword raises TypeError.
+    seed : int, default=1
+        Unsigned 64-bit solver RNG seed. Controls initial messages and local
+        search. It does not change a formula already generated with another seed.
+    backtrack_ratio : float, default=0.9
+        Target ratio of backtracking actions to decimation actions, in ``[0,1)``.
+        This is a deterministic scheduling ratio, not a per-step probability.
+        Zero disables scheduled backtracking. Large values increase revisiting.
+    batch_fraction : float, default=0.00125
+        Fraction in ``(0,1]`` of currently free variables selected per decimation.
+        The batch is ``max(1, floor(batch_fraction * free_variables))``, capped by
+        the number free. Smaller batches require more SP fixed points.
+    epsilon : float, default=0.01
+        Absolute tolerance in ``(0,1)`` on the largest *undamped* message update.
+        Convergence does not establish the accuracy of the survey approximation.
+    damping : float, default=0.0
+        Old-message weight in ``[0,1)``: new = raw + damping * (old - raw).
+        Zero is undamped. Increasing it can stabilize oscillations but slows
+        relaxation. The convergence test still compares raw against old.
+    max_sweeps : int, default=1024
+        Positive sweep limit for each SP fixed-point attempt.
+    max_steps : int, default=100000
+        Positive limit on recorded BSP actions. A step can contain many sweeps.
+    max_flips : int, default=10000000
+        Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
+        Zero permits checking an initial completion but permits no flips.
+    walksat_restarts : int, default=4
+        Positive maximum number of randomized completions. Each restart has a
+        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+    walksat_noise : float, default=0.5
+        Probability in ``[0,1]`` of a uniformly random free variable in a sampled
+        unsatisfied clause when every candidate has positive break count.
+        Otherwise choose among minimum-break candidates, breaking ties randomly.
+    timeout_seconds : float or None, default=None
+        Positive finite cooperative wall-time limit since solver construction,
+        including backend setup and time between calls. None disables it.
+    backend : {'cpu', 'cpu-parallel', 'metal', 'cuda', 'cuda-f32'}, default='cpu'
+        Scalar CPU double precision, multicore CPU double precision, Apple GPU
+        single precision, NVIDIA GPU double precision, or NVIDIA GPU single
+        precision. Metal requires a macOS ``metal`` build; CUDA requires a Linux
+        ``cuda`` build and a supported device. Availability is checked when a
+        solver is constructed. Single precision may change the search path.
+    threads : int, default=0
+        Worker limit in ``0..1024``. Zero selects available logical CPUs.
+        A single scalar CPU or GPU solver uses one host execution thread;
+        ``solve_many`` uses this budget for independent jobs. The parallel CPU
+        backend also uses it for sweeps within a job when appropriate.
+    profile : str or pathlib.Path or None, default=None
+        JSON profile destination written by ``Solver.solve()``. Enables phase
+        timers and GPU timestamps; GPU instrumentation changes submission costs.
+        Batch solving rejects profiling: profile individual solvers instead.
 
     Returns
     -------
-    list of SolveResult
-        One result per input, in original order, including heuristic failures.
+    SolveResult
+        Verified assignment on status 'sat'; otherwise a heuristic failure or limit.
 
     Raises
     ------
     ValueError
-        If lengths/configurations disagree, profiling is requested, or backend
-        setup fails.
+        If input/settings are invalid or backend setup fails.
+    TypeError
+        If keywords are unknown or configuration sources conflict.
+
+    Notes
+    -----
+    DEFAULT denotes an omitted setting; effective defaults are listed above.
+    Formula generation has its own seed. A failed search is not an UNSAT proof.
+
+    Examples
+    --------
+    >>> result = solve(formula=Formula([[1], [-2]], n=2), seed=3)
+    >>> result.status, result.assignment.tolist()
+    ('sat', [1, 0])
     """
-    options, execution = _configuration(options, execution, parameters)
-    formulas = list(formulas)
+    return Solver(formula=formula, options=options, execution=execution,
+                  **_direct_settings(locals())).solve()
+
+
+def solve_many(
+    formulas, options=None,
+    *,
+    execution=None,
+    seed=_DEFAULT,
+    backtrack_ratio=_DEFAULT,
+    batch_fraction=_DEFAULT,
+    epsilon=_DEFAULT,
+    damping=_DEFAULT,
+    max_sweeps=_DEFAULT,
+    max_steps=_DEFAULT,
+    max_flips=_DEFAULT,
+    walksat_restarts=_DEFAULT,
+    walksat_noise=_DEFAULT,
+    timeout_seconds=_DEFAULT,
+    backend=_DEFAULT,
+    threads=_DEFAULT,
+    profile=_DEFAULT,
+    seeds=None,
+):
+    """Solve independent jobs with bounded workers and stable input order.
+
+    Parameters
+    ----------
+    formulas : iterable of Formula
+        Inputs, materialized before solving. Repeated Formula objects share immutable
+        CPU topology while each job retains independent mutable solver state.
+    options : Options or iterable of Options or None, default=None
+        Optional compatibility settings, shared or one per formula. Prefer named
+        algorithm keywords and seeds for the common per-job seed case.
+        Combining this object with any algorithm keyword raises TypeError.
+    execution : ExecutionOptions or None, default=None
+        Optional compatibility configuration. Prefer backend, threads, and profile.
+        Combining this object with any hardware keyword raises TypeError.
+    seed : int, default=1
+        Unsigned 64-bit solver RNG seed. Controls initial messages and local
+        search. It does not change a formula already generated with another seed.
+    backtrack_ratio : float, default=0.9
+        Target ratio of backtracking actions to decimation actions, in ``[0,1)``.
+        This is a deterministic scheduling ratio, not a per-step probability.
+        Zero disables scheduled backtracking. Large values increase revisiting.
+    batch_fraction : float, default=0.00125
+        Fraction in ``(0,1]`` of currently free variables selected per decimation.
+        The batch is ``max(1, floor(batch_fraction * free_variables))``, capped by
+        the number free. Smaller batches require more SP fixed points.
+    epsilon : float, default=0.01
+        Absolute tolerance in ``(0,1)`` on the largest *undamped* message update.
+        Convergence does not establish the accuracy of the survey approximation.
+    damping : float, default=0.0
+        Old-message weight in ``[0,1)``: new = raw + damping * (old - raw).
+        Zero is undamped. Increasing it can stabilize oscillations but slows
+        relaxation. The convergence test still compares raw against old.
+    max_sweeps : int, default=1024
+        Positive sweep limit for each SP fixed-point attempt.
+    max_steps : int, default=100000
+        Positive limit on recorded BSP actions. A step can contain many sweeps.
+    max_flips : int, default=10000000
+        Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
+        Zero permits checking an initial completion but permits no flips.
+    walksat_restarts : int, default=4
+        Positive maximum number of randomized completions. Each restart has a
+        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+    walksat_noise : float, default=0.5
+        Probability in ``[0,1]`` of a uniformly random free variable in a sampled
+        unsatisfied clause when every candidate has positive break count.
+        Otherwise choose among minimum-break candidates, breaking ties randomly.
+    timeout_seconds : float or None, default=None
+        Positive finite cooperative wall-time limit since solver construction,
+        including backend setup and time between calls. None disables it.
+    backend : {'cpu', 'cpu-parallel', 'metal', 'cuda', 'cuda-f32'}, default='cpu'
+        Scalar CPU double precision, multicore CPU double precision, Apple GPU
+        single precision, NVIDIA GPU double precision, or NVIDIA GPU single
+        precision. Metal requires a macOS ``metal`` build; CUDA requires a Linux
+        ``cuda`` build and a supported device. Availability is checked when a
+        solver is constructed. Single precision may change the search path.
+    threads : int, default=0
+        Worker limit in ``0..1024``. Zero selects available logical CPUs.
+        A single scalar CPU or GPU solver uses one host execution thread;
+        ``solve_many`` uses this budget for independent jobs. The parallel CPU
+        backend also uses it for sweeps within a job when appropriate.
+    profile : str or pathlib.Path or None, default=None
+        JSON profile destination written by ``Solver.solve()``. Enables phase
+        timers and GPU timestamps; GPU instrumentation changes submission costs.
+        Batch solving rejects profiling: profile individual solvers instead.
+    seeds : iterable of int or None, default=None
+        One unsigned 64-bit solver seed per formula. Length must match formulas.
+        Combine with shared algorithm and hardware keywords. Do not combine with
+        seed or options. None broadcasts seed (whose effective default is 1).
+
+    Returns
+    -------
+    list of SolveResult
+        Results in input order, including heuristic failures. Empty input returns [].
+
+    Raises
+    ------
+    ValueError
+        If lengths/settings disagree, profile is not None, or backend setup fails.
+    TypeError
+        If keywords are unknown or configuration sources conflict.
+
+    Notes
+    -----
+    Shared algorithm keywords apply to every job. Use seeds for independent restart
+    seeds, or compatibility Options sequences for arbitrary per-job configurations.
+    GPU concurrency is additionally bounded by estimated device memory. DEFAULT
+    marks omission; effective defaults are listed above. Profile individual Solver
+    objects instead of using a shared batch profile path.
+
+    Examples
+    --------
+    >>> formula = Formula([[1], [-2]], n=2)
+    >>> results = solve_many(formulas=[formula] * 3, seeds=[3, 4, 5], threads=2)
+    >>> [result.seed for result in results]
+    [3, 4, 5]
+    """
+    parameters = _direct_settings(locals())
+    if seeds is not None and (seed is not _DEFAULT or options is not None):
+        raise TypeError("use seeds without seed or options")
+    sequence = options is not None and not isinstance(options, Options)
+    if sequence and any(name in _ALGORITHM_DEFAULTS for name in parameters):
+        raise TypeError("use either options or direct algorithm keywords, not both")
+    algorithm, hardware = _configuration(None if sequence else options, execution, parameters)
     formulas = [f if isinstance(f, Formula) else Formula(f.clauses, n=f.n) for f in formulas]
-    if isinstance(options, Options):
-        options = [options] * len(formulas)
-    else:
+    if seeds is not None:
+        seeds = list(seeds)
+        if len(seeds) != len(formulas):
+            raise ValueError("one seed is required per formula")
+        configurations = [algorithm | {"seed": value} for value in seeds]
+    elif sequence:
         options = list(options)
-    if len(options) != len(formulas) or any(not isinstance(o, Options) for o in options):
-        raise ValueError("one Options value is required per formula")
-    return [SolveResult(data) for data in json.loads(_core.solve_many(formulas, [o._json() for o in options], execution._json()))]
+        if len(options) != len(formulas) or any(not isinstance(o, Options) for o in options):
+            raise ValueError("one Options value is required per formula")
+        configurations = [asdict(o) for o in options]
+    else:
+        configurations = [algorithm] * len(formulas)
+    if not formulas:
+        _core.validate_options(_json(algorithm))
+    data = _core.solve_many(formulas, [_json(o) for o in configurations], _json(hardware))
+    return [SolveResult(item) for item in json.loads(data)]
 
 
 def from_file(path):
@@ -512,7 +998,7 @@ def from_file(path):
     Parameters
     ----------
     path : str or pathlib.Path
-        Text file with exactly one ``p cnf N M`` header and zero-terminated clauses.
+        UTF-8 text file with one ``p cnf N M`` header and zero-terminated clauses.
 
     Returns
     -------
@@ -526,4 +1012,4 @@ def from_file(path):
     ValueError
         If DIMACS counts, termination, or literal ranges are invalid.
     """
-    return Formula.from_dimacs(Path(path).read_text())
+    return Formula.from_dimacs(Path(path).read_text(encoding="utf-8"))

@@ -14,7 +14,7 @@ compute observables from the final messages. The survey columns are ordered
    import numpy as np
    from pybsp_rust import Formula, Solver
 
-   formula = Formula.random(3, 4.15, 400, seed=3)
+   formula = Formula.random(k=3, alpha=4.15, n=400, seed=3)
    solver = Solver(formula=formula, seed=3, timeout_seconds=10)
    report = solver.converge()       # may raise RuntimeError: non_converged, etc.
    free = solver.assignment == -1
@@ -32,7 +32,7 @@ Explicit fix, release, and propagation
 .. doctest::
 
    >>> f = Formula([[1, 2], [-2, 3]], n=3)
-   >>> s = Solver(f)
+   >>> s = Solver(formula=f)
    >>> s.fix(0, False)
    >>> s.propagate()
    2

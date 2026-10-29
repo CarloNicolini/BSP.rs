@@ -19,6 +19,7 @@ uv sync --extra test
 uv run pytest -q tests/python
 uv run python examples/solve.py examples/3sat.cnf
 uv sync --extra docs --extra test
+uv run python tools/check_doc_examples.py --rust
 uv run sphinx-build -W --keep-going -b html docs docs/_build/html
 uv run sphinx-build -W --keep-going -b doctest docs docs/_build/doctest
 ```

@@ -1,5 +1,12 @@
 # BSP with one billion variables: memory and feasibility audit
 
+**Historical audit.** The ledger and source discussion below describe the
+recorded baseline, before the retained norm-storage reductions. Those reductions
+are now integrated in main through PR #8; see the
+[paired memory report](../memory_ablation_20261029/REPORT.md) for the measured
+changes. Implicit topology, compact graph state, and quantized messages remain
+research proposals. This document does not describe a billion-variable solver.
+
 2026-10-29. Source audited: `aec3bed32d49bb1450132594c1df3f16ebc8449a`.
 This is a design analysis plus a small numerical probe, not an implemented
 billion-variable backend. Production solver code has not been changed.

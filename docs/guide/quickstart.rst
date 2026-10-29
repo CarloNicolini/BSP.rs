@@ -32,7 +32,7 @@ Load DIMACS
    from pybsp_rust import from_file, solve
 
    formula = from_file("examples/3sat.cnf")
-   result = solve(formula)
+   result = solve(formula=formula)
    if result.status == "sat":
        assert formula.is_satisfied(result.assignment)
 

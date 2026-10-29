@@ -107,7 +107,7 @@ from pybsp_rust import Formula, Solver
 
 # Force SP work on a moderately sized graph; don't rely on a tiny solve
 # exercising the GPU before WalkSAT completes it.
-formula = Formula.random(3, 4.2, 10000, seed=7)
+formula = Formula.random(k=3, alpha=4.2, n=10000, seed=7)
 for backend in ("cuda", "cuda-f32"):
     solver = Solver(formula=formula, backend=backend)
     solver.sweep_many(10)
@@ -119,7 +119,7 @@ for backend in ("cuda", "cuda-f32"):
     assert report["device_error"] is None, report
 
 # Independently check the returned assignment against the original formula.
-easy = Formula.random(3, 2.5, 128, seed=3)
+easy = Formula.random(k=3, alpha=2.5, n=128, seed=3)
 solver = Solver(
     formula=easy,
     seed=3,

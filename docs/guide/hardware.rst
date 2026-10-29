@@ -55,6 +55,21 @@ Memory and synchronization
 --------------------------
 
 GPU topology, live/saved messages, cavities, and scratch buffers stay resident.
+CPU and Metal cavity normalizers reuse the saved-message slots of active/free
+incidences. Frozen slots retain their original messages for backtracking. This
+removes one host f64 array of length E and one Metal f32 array of length E,
+where E is the number of normalized literal incidences. Metal also omits its
+generic prefix scratch when every clause uses a specialized width-3/4 kernel.
+Generic-width inputs still allocate the required scratch. CUDA device buffers
+retain their existing layout.
+
+These changes reduce allocation; they do not guarantee a speedup. The recorded
+million-variable 3-SAT action prefixes used about 12.3% less scalar CPU footprint
+and 14.8% less Metal process footprint, with about 5–7% longer runtimes. See the
+`paired memory experiments <https://github.com/CarloNicolini/BSP.rs/blob/main/bench/results/memory_ablation_20261029/REPORT.md>`_
+for the workloads, controls, timing limits, and denser 4-SAT results. The process
+footprint already includes unified GPU allocations; do not add those metrics.
+
 Graph edits are applied consistently with message freeze/restore order. Public
 methods refresh host snapshots before returning; internal solving exchanges
 control information and surveys and performs additional readback for numerical
@@ -78,7 +93,7 @@ Measure throughput and latency separately
    from time import perf_counter
    from pybsp_rust import Formula, Solver
 
-   formula = Formula.random(3, 4.2, 100000, seed=7)
+   formula = Formula.random(k=3, alpha=4.2, n=100000, seed=7)
    solver = Solver(formula=formula, damping=0.2, backend="cpu-parallel", threads=8)
    start = perf_counter()
    solver.sweep_many(30)

@@ -4,8 +4,9 @@ Python API reference
 .. currentmodule:: pybsp_rust
 
 The public wrapper is intentionally small. Formula and cancellation objects are
-native PyO3 classes; the other documented classes provide Python configuration,
-snapshot conversion, and structured results around the same Rust solver.
+native PyO3 classes. Solver entry points expose explicit keyword settings;
+configuration dataclasses are optional compatibility records, created lazily
+when requested. Snapshots and structured results wrap the same Rust solver.
 
 .. autosummary::
    :nosignatures:
