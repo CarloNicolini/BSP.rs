@@ -1,5 +1,11 @@
 # Isolated BSP memory and speed experiments
 
+**Integration status.** The three retained changes below were reviewed and
+merged into main through PR #8 after fresh Rust, Python, and Metal device tests.
+The measurements and preservation statements below remain the historical record
+of the isolated campaign at its recorded revisions; they were not rerun after
+the SDK/documentation changes. Rejected alternatives are not production changes.
+
 2026-10-29. Reference production commit:
 `aec3bed32d49bb1450132594c1df3f16ebc8449a`. Development branch:
 `codex/memory-ablation-dev`. Main was kept separate throughout; nothing was

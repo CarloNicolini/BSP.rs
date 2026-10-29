@@ -4,6 +4,11 @@
 
 ## Speed comparison: Apple M1 Pro
 
+These are historical measurements from before the retained CPU/Metal memory
+changes. They were not rerun for the simplified SDK. See the
+[memory experiment report](bench/results/memory_ablation_20261029/REPORT.md)
+for the separate allocation results and their workload-dependent timing costs.
+
 The C++ counterpart is [Carlo Nicolini's pybsp](https://github.com/CarloNicolini/pybsp),
 based on [Raffaele Marino's original BSP code](https://github.com/raffaelemarino/The-Backtracking-Survey-Propagation-Algorithm-code).
 The following Python API measurements were collected on 2026-10-29 using an

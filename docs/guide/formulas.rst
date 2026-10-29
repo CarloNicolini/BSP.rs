@@ -12,7 +12,7 @@ The value argument is Boolean; assignment arrays encode False as 0 and True as 1
 .. doctest::
 
    >>> f = Formula([[1, -3]], n=3)
-   >>> s = Solver(f)
+   >>> s = Solver(formula=f)
    >>> s.fix(2, False)
    >>> s.assignment.tolist()
    [-1, -1, 0]

@@ -161,7 +161,7 @@ def test_batch_direct_keywords_and_per_job_options():
 
 
 @pytest.mark.parametrize("kwargs, error, match", [
-    ({"sead": 3}, TypeError, "unexpected solver keyword"),
+    ({"sead": 3}, TypeError, "unexpected keyword argument"),
     ({"options": Options(), "seed": 1}, TypeError, "either options"),
     ({"execution": ExecutionOptions(), "backend": "cpu"}, TypeError, "either execution"),
     ({"execution": ExecutionOptions(), "profile": None}, TypeError, "either execution"),

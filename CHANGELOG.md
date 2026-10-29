@@ -5,6 +5,17 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Python SDK
+
+- Expose every solver setting as an explicit keyword on `Solver`, `solve`, and
+  `solve_many`; serialize direct settings without constructing configuration
+  dataclasses. Existing configuration-object calls remain supported, with lazy
+  compatibility snapshots for keyword callers.
+- Accept `seeds` for per-job batch seeds alongside shared algorithm keywords.
+- Document each public parameter and native adapter with NumPy-style contracts;
+  bind documentation examples against the installed Python API and compile the
+  documented Rust examples in CI.
+
 ### Documentation
 
 - Reorganize the README around installation and standalone CLI use; move the

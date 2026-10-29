@@ -11,6 +11,7 @@ Install the real native extension and the docs extra from the repository root:
    python -m venv .venv-docs
    source .venv-docs/bin/activate
    python -m pip install -e '.[docs,test]'
+   python tools/check_doc_examples.py --rust
    python -m sphinx -W --keep-going -b html docs docs/_build/html
    python -m sphinx -W --keep-going -b doctest docs docs/_build/doctest
    python -m http.server 8000 --directory docs/_build/html

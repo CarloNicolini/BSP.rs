@@ -106,8 +106,9 @@ The solver has no wall-time limit by default (`timeout_seconds=None`).
 
 Pass algorithm and execution settings directly as keywords to `solve`, `Solver`,
 or `solve_many`; the [parameter guide](docs/guide/parameters.rst) lists every
-setting and default. Reusable `Options` and `ExecutionOptions` objects remain
-supported. Mixing an object with direct keywords for the same settings raises
+setting and default. For batches, use `solve_many(formulas=jobs, seeds=range(4),
+threads=4)` to assign one seed per job. Reuse a settings dictionary with
+`**settings`. Optional `Options` and `ExecutionOptions` objects remain supported. Mixing an object with direct keywords for the same settings raises
 `TypeError`.
 
 Save this as `quickstart.py` and run `uv run python quickstart.py`.
@@ -186,7 +187,7 @@ For Colab's T4, follow the [Colab quick test](README_COLAB.md).
 ```python
 from pybsp_rust import Formula, Solver
 
-formula = Formula.random(3, 2.5, 128, seed=3)
+formula = Formula.random(k=3, alpha=2.5, n=128, seed=3)
 solver = Solver(
     formula=formula,
     seed=3,

@@ -20,8 +20,7 @@ Bounded batches
 
    >>> formula = Formula([[1], [-2]], n=2)
    >>> jobs = [formula] * 3
-   >>> configs = [Options(seed=seed) for seed in range(3)]
-   >>> results = solve_many(formulas=jobs, options=configs, backend="cpu", threads=2)
+   >>> results = solve_many(formulas=jobs, seeds=range(3), backend="cpu", threads=2)
    >>> [r.seed for r in results]
    [0, 1, 2]
    >>> [r.status for r in results]
@@ -29,9 +28,10 @@ Bounded batches
 
 Results preserve input order, not completion order. Repeated Formula objects
 share immutable CPU topology but not mutable state. Each job has independent
-options, seed, counters, time origin, and local-search history. A single Options
-object can also be broadcast to every input, but then every repeated formula
-receives the same solver seed. An empty input returns an empty list.
+settings, seed, counters, time origin, and local-search history. Use ``seeds``
+for one solver seed per job. A shared ``seed`` is broadcast to every input;
+combining ``seed`` and ``seeds`` raises TypeError. Shared algorithm keywords
+apply to every job. An empty input returns an empty list.
 
 The shared execution setting chooses a backend and worker budget. Inner CPU
 parallelism is suppressed when enough independent work already occupies the
@@ -46,8 +46,9 @@ collection, submit bounded batches yourself instead of an unbounded iterator.
 .. code-block:: python
 
    results = solve_many(
-       formulas=[Formula.random(3, 4.15, 400, seed=s) for s in range(5)],
-       options=[Options(seed=s, timeout_seconds=10) for s in range(5)],
+       formulas=[Formula.random(k=3, alpha=4.15, n=400, seed=s) for s in range(5)],
+       seeds=range(5),
+       timeout_seconds=10,
        backend="cuda-f32",
        threads=4,
    )
