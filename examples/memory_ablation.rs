@@ -23,8 +23,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let backend = match args[2].as_str() {
         "cpu" => Backend::Cpu,
+        "cpu-parallel" => Backend::CpuParallel,
         "metal" => Backend::Metal,
-        _ => return Err("backend must be cpu or metal".into()),
+        _ => return Err("backend must be cpu, cpu-parallel or metal".into()),
     };
     let parsed = Instant::now();
     let formula = Formula::from_dimacs(&fs::read_to_string(&args[1])?)?;
@@ -40,7 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         options.clone(),
         ExecutionOptions {
             backend,
-            threads: 1,
+            threads: if backend == Backend::CpuParallel {
+                8
+            } else {
+                1
+            },
             profile: None,
         },
     )?;
