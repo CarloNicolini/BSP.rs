@@ -92,6 +92,7 @@ def run(job):
         text = stdout.read()
         native = json.loads(text) if process.returncode == 0 else None
         errors = stderr.read()
+    process_seconds = time.monotonic() - started
     verify_seconds = None
     independent_verified = None
     if native is not None and native["report"].get("status") == "sat":
@@ -101,7 +102,7 @@ def run(job):
         if not independent_verified:
             raise RuntimeError(f"independent witness check failed: {prefix}")
     result = dict(job=job, command=command, platform=platform.platform(),
-        process_seconds=time.monotonic() - started, returncode=process.returncode,
+        process_seconds=process_seconds, returncode=process.returncode,
         hard_timeout=killed, error=errors, native=native,
         maximum_rss_bytes=usage.ru_maxrss, sampled_peak_resident_bytes=peak_rss,
         sampled_peak_phys_footprint_bytes=peak_footprint,
