@@ -1,0 +1,32 @@
+# Changelog
+
+All notable public changes are recorded here. Versions follow the compatibility
+policy in [RELEASING.md](RELEASING.md).
+
+## [Unreleased]
+
+## [0.1.0]
+
+Initial versioned release. Publication date will be recorded after draft review.
+
+### Added
+
+- Native Rust BSP and WalkSAT solver with verified SAT assignments, random
+  k-SAT generation, DIMACS input, JSON CLI, and inspectable NumPy Python API.
+- Direct Python algorithm and execution keywords on `solve`, `Solver`, and
+  `solve_many`, such as `solve(formula=formula, seed=3, backend="cpu")`.
+  Existing `Options` and `ExecutionOptions` calls remain supported; ambiguous
+  mixed settings and unknown keywords raise `TypeError`.
+- Optional multicore CPU, Apple Metal, and NVIDIA CUDA execution, bounded batch
+  solving, cancellation, cooperative timeouts, and execution profiling.
+- Standalone CLI installation and quickstart, including `bsp-rust --version`.
+- PR/issue templates, contributor/agent workflow, synchronized-version checks,
+  and validated, checksummed draft releases from immutable annotated tags.
+
+### Limitations
+
+- BSP is heuristic and cannot prove UNSAT. Failed searches are not UNSAT claims.
+- GPU single precision can change numerical behavior and search trajectories.
+  Hosted CUDA CI validates compilation/linking, not NVIDIA device execution.
+- Packages are distributed as GitHub release assets; no automated PyPI or
+  crates.io publication is configured.

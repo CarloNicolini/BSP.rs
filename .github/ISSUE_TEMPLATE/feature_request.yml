@@ -1,0 +1,23 @@
+name: Feature or release request
+description: Propose a scoped feature or controlled release
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem and scope
+      description: Explain the need, intended behavior, and scope boundaries.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and validation
+      description: List observable outcomes and checks, including release checks if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and version impact
+      description: Proposed version, public changes, migration, and known limitations.
