@@ -6,107 +6,18 @@
 [![License: GPL v2 or later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 [![Rust 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange.svg)](Cargo.toml)
 
-BSP.rs solves CNF SAT problems with a native Rust implementation of Backtracking
-Survey Propagation (BSP), followed by native WalkSAT completion. It supports
-random k-SAT generation, DIMACS files, a Rust library, a JSON command-line tool,
-and Python bindings with NumPy state access. It requires no C++ solver or
-external SAT executable.
+BSP.rs is a Rust SAT solver with a Python API. Generate random k-SAT formulas
+or load DIMACS files, solve them, and inspect the solver state through NumPy.
+CPU execution works on macOS and Linux; optional GPU backends support Apple
+silicon (Metal) and NVIDIA GPUs on Linux (CUDA).
 
-Large graphs can use a multicore `f64` backend, Apple Metal `f32`, or NVIDIA CUDA
-in `f64` or `f32`. Both the CLI and Python API expose hardware selection, worker
-limits, batch solving, and phase profiling. See [CPU and GPU execution](ACCELERATION.md)
-for builds, numerical behavior, and benchmark commands.
+BSP is a heuristic: returned SAT assignments are verified, but an unsuccessful
+run does not prove UNSAT.
 
-BSP is a heuristic. Every returned SAT assignment is checked against the formula.
-A failed run or a contradictory residual does not prove the input UNSAT.
+## Quick start: standalone CLI
 
-## Speed comparison: Apple M1 Pro
-
-The C++ counterpart is [Carlo Nicolini's pybsp](https://github.com/CarloNicolini/pybsp),
-based on [Raffaele Marino's original BSP code](https://github.com/raffaelemarino/The-Backtracking-Survey-Propagation-Algorithm-code).
-The following Python API measurements were collected on 2026-10-29 using an
-**Apple M1 Pro with 16 GiB unified memory**, macOS 26.5.2, and Python 3.12.12.
-Inputs are random 3-SAT formulas in the easy regime, with **alpha = 4** and
-exactly `4N` clauses. Both CPU implementations run on one thread.
-
-**Every column measures time to one verified solution.** The C++ benchmark uses
-an isolated Release rebuild requesting one WalkSAT completion, with post-solution
-whitening disabled. Its stock API collects ten assignments after a shared BSP
-reduction; dividing that batch time by ten would not measure first-solution
-latency. All 57 C++ calls reproduced the original batch's first assignment and
-BSP sweep count. All 171 calls in the one-solution comparison passed an independent
-clause check; Metal reported no CPU fallback.
-
-| Variables | BSP.rs CPU (s) | BSP.rs Apple GPU / Metal (s) | C++ pybsp, one solution (s) |
-| ---: | ---: | ---: | ---: |
-| 500 | 0.298 | 1.470 | 0.403 |
-| 1,000 | 1.122 | 2.876 | 1.387 |
-| 2,000 | 3.095 | 3.753 | 4.103 |
-| 5,000 | 10.348 | 6.391 | 25.055 |
-| 10,000 | 21.087 | 8.733 | 73.474 |
-| 20,000 | 42.499 | 14.331 | 181.735 |
-
-At 20,000 variables, BSP.rs CPU is **4.28x faster than C++**, and Metal is
-**12.68x faster than C++**, or **2.97x faster than BSP.rs CPU**. BSP.rs CPU is the
-fastest option through 2,000 variables in this sample; Metal is fastest from 5,000 onward.
-
-![Speedup over the one-solution C++ baseline on Apple M1 Pro; Metal becomes faster on larger formulas.](docs/_static/benchmarks/apple-m1-pro-alpha4.svg)
-
-Bars show `C++ seconds / BSP.rs seconds`; values above the dashed 1x reference
-favor BSP.rs. CUDA has no bar because it was not measured in this comparison.
-
-Each row averages the per-formula median times for three shared formulas.
-Small cases have six repetitions per formula at 500 variables and five at
-1,000–2,000; larger cases have one call per formula. Timing includes solver setup,
-search, synchronization, and Python result conversion, excluding formula
-construction and discarded warmups. Rust CPU and Metal were measured in the
-initial campaign; C++ was rebuilt and measured in a later campaign. CPU uses
-`f64`, while Metal uses `f32` and can follow a different search trajectory.
-These results describe this hardware and sample.
-
-See the [benchmark report and correctness audit](bench/results/easy_alpha4_20261029/REPORT.md),
-[plot data](bench/data/apple_m1_pro_alpha4.csv), and
-[SVG generator](bench/plot_easy_regime.py) for the measurements and reproduction details.
-
-### Apple GPU and NVIDIA CUDA
-
-The Apple GPU backend is named **`metal`**. It uses custom Metal compute kernels
-directly, with no MPS framework or PyTorch dependency. Messages and graph topology
-stay in GPU allocations while kernels compute cavity messages, clause updates,
-and observables. Small formulas can spend more time on GPU submission and
-synchronization than they save in computation, as the measurements above show.
-
-On Linux, **`cuda`** provides NVIDIA GPU execution in `f64`, and **`cuda-f32`** uses
-`f32`. CUDA also keeps solver arrays on the GPU and accelerates message updates
-and reductions. BSP decisions, unit propagation, and WalkSAT remain on the CPU
-for both GPU backends. **CUDA performance for this complete-solve comparison is
-not yet measured.** Any CUDA speedup will depend on the NVIDIA device, precision,
-formula size, and the fraction of time spent in CPU work; no CUDA speedup factor
-is claimed here. See the [Metal quick start](#quick-start-apple-silicon-gpu-metalmps),
-[CUDA quick start](#quick-start-nvidia-gpu-cuda-linux), and
-[GPU execution guide](ACCELERATION.md).
-
-## Python documentation
-
-The Sphinx documentation includes a full Python API reference, parameter and
-hardware guides, and research-level chapters developing belief propagation,
-survey propagation, and BSP, with arXiv references and TikZ/SVG factor graphs.
-Build the PyData-themed site locally:
-
-```sh
-python -m pip install -e '.[docs]'
-python -m sphinx -W --keep-going -b html docs docs/_build/html
-python -m http.server 8000 --directory docs/_build/html
-```
-
-Open `http://localhost:8000`. MathJax is bundled locally, and prebuilt SVG diagrams
-are included; HTML builds require neither a TeX installation nor an external CDN.
-See [documentation development](docs/building.rst) for executable examples and
-TikZ regeneration. CI also provides a `bsp-python-documentation` HTML artifact.
-
-## Quick start: command line
-
-Install Rust 1.88 or newer with [rustup](https://rustup.rs), then clone and build:
+The CLI requires Rust 1.88+ and platform compiler tools. Build and run it directly;
+Python, NumPy, uv, and maturin are not needed:
 
 ```sh
 git clone https://github.com/CarloNicolini/BSP.rs.git
@@ -117,139 +28,160 @@ target/release/bsp-rust examples/3sat.cnf
 target/release/bsp-rust --generate 3 2.5 128 --seed 3 --timeout 10
 ```
 
-This builds a standalone native executable: Python, NumPy, and maturin are not
-required. Run the release binary directly for command-line workloads. The Python
-API calls the same Rust solver; relative performance depends on input/output and
-state inspection overhead and should be measured for your workload.
+Install on PATH with `cargo install --path . --locked`, then use
+`bsp-rust --help`. Output is JSON: exit 0 means a verified SAT assignment, 1 means
+a heuristic failure or limit, and 2 means invalid input. For GPU execution, build
+with `--features metal` on Apple silicon or `--features cuda` on NVIDIA/Linux,
+then select `--backend metal`, `cuda`, or `cuda-f32`.
 
-The executable is `target/release/bsp-rust` (`bsp-rust.exe` on Windows). Install it
-on your PATH with `cargo install --path . --locked`. Run `bsp-rust --help` for all
-options. GitHub Actions also builds downloadable CLI artifacts on Linux, macOS,
-and Windows. Artifact binaries target the architecture of their build runner.
+Both interfaces run the same Rust solver. Any speed difference depends on setup,
+serialization, and state inspection; measure your workload.
 
-Input uses DIMACS, for example:
+## 1. Install the build tools
 
-```text
-p cnf 3 4
-1 2 3 0
--1 2 -3 0
-1 -2 3 0
--1 -2 -3 0
-```
+The Python package builds a native extension from source. Install the tools for
+your platform once; no separate Python, NumPy, or maturin installation is needed.
 
-Each output is a JSON result with `status`, `assignment`, `sp_sweeps`, `flips`,
-and step history. Assignments are ordered by variable, with 0=false and 1=true.
-Partial assignments use -1 for free variables. Exit codes are 0 for SAT, 1 for a
-heuristic failure or a limit, and 2 for invalid input.
-
-Generate an instance for later use:
+**macOS / Apple silicon** — install Apple's compiler tools, then wait for the
+installer to finish before continuing:
 
 ```sh
-bsp-rust --generate 3 4.15 400 --seed 3 --write-formula instance.cnf
-bsp-rust --timeout 10 --max-flips 1000000 instance.cnf
+xcode-select --install
 ```
 
-Random generation uses distinct variables per clause and `floor(alpha*N)`
-clauses. General DIMACS formulas may have mixed clause widths. Construction
-removes duplicate literals and tautological clauses, while keeping empty clauses.
-
-## Quick start: Apple silicon GPU (Metal/MPS)
-
-Install Rust 1.88 or newer and Xcode Command Line Tools (`xcode-select --install`).
-The Apple GPU backend is named `metal`: it uses custom Metal compute kernels
-directly, with no PyTorch or MPS framework dependency. Full Xcode is unnecessary.
-
-From the repository root, compile:
+**Linux / Ubuntu** — install a C/C++ compiler, linker, and Git:
 
 ```sh
-cargo build --release --locked --features metal
+sudo apt-get update
+sudo apt-get install -y build-essential curl git
 ```
 
-Solve a DIMACS file or generate an instance:
+**Both platforms** — install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+and [Rust](https://rustup.rs):
 
 ```sh
-target/release/bsp-rust --backend metal examples/3sat.cnf
-target/release/bsp-rust --backend metal --generate 3 2.5 128 --seed 3 --timeout 10
+curl -LsSf https://astral.sh/uv/install.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+. "$HOME/.local/bin/env"
+. "$HOME/.cargo/env"
+uv --version
+rustc --version
 ```
 
-Compare scalar CPU and Apple GPU throughput on the same seeded formula:
+Rust must be **1.88 or newer**. If an existing installation is older, run
+`rustup update stable`. On macOS, Git is included in the Command Line Tools.
+
+## 2. Clone and sync
 
 ```sh
-target/release/bsp-rust --backend cpu --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
-target/release/bsp-rust --backend metal --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+git clone https://github.com/CarloNicolini/BSP.rs.git
+cd BSP.rs
+uv sync --python 3.12
 ```
 
-Compare the JSON `seconds` values. Metal uses `f32`; scalar CPU uses `f64`.
-These commands measure sweeps, including the final host snapshot, and exclude
-construction and backend setup. Small complete solves can be faster on CPU.
+This downloads Python 3.12 if needed, creates `.venv`, installs NumPy, and builds
+`pybsp-rust` in release mode. The import name is `pybsp_rust`.
+Run commands with `uv run`; activating the environment is unnecessary.
 
-## Quick start: NVIDIA GPU (CUDA, Linux)
-
-Install Rust 1.88 or newer, an NVIDIA driver, and a CUDA toolkit containing
-`nvcc`, runtime headers, and `libcudart`. On the tested Ubuntu machine:
+## 3. Solve your first formula
 
 ```sh
-sudo apt install nvidia-cuda-toolkit
+uv run python examples/solve.py examples/3sat.cnf
+```
+
+Or use the library directly:
+
+```python
+from pybsp_rust import Formula, solve
+
+formula = Formula.random(k=3, alpha=2.5, n=128, seed=3)
+result = solve(formula=formula, seed=3)
+print(result.status)
+if result.assignment is not None:
+    assert formula.is_satisfied(result.assignment)
+    print(result.assignment)
+```
+
+The solver has no wall-time limit by default (`timeout_seconds=None`).
+
+Pass algorithm and execution settings directly as keywords to `solve`, `Solver`,
+or `solve_many`; the [parameter guide](docs/guide/parameters.rst) lists every
+setting and default. Reusable `Options` and `ExecutionOptions` objects remain
+supported. Mixing an object with direct keywords for the same settings raises
+`TypeError`.
+
+Save this as `quickstart.py` and run `uv run python quickstart.py`.
+To load a file, use `Formula.from_dimacs(Path("instance.cnf").read_text())`
+with `from pathlib import Path`.
+
+## 4. Enable your GPU (optional)
+
+### Apple silicon: Metal
+
+The Command Line Tools installed above are sufficient; full Xcode and PyTorch
+are unnecessary. From the repository root:
+
+```sh
+uv sync --reinstall-package pybsp-rust --config-settings 'build-args=--features extension-module,metal'
+```
+
+Select `backend="metal"` in the example below. Metal uses single precision;
+small formulas can run faster on CPU.
+
+### NVIDIA: CUDA on Linux
+
+Install a compatible NVIDIA driver and the CUDA toolkit using
+[NVIDIA's Linux installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/).
+Choose the toolkit for your distribution and GPU; install the **toolkit** as well
+as the driver. Check both:
+
+```sh
 nvidia-smi
 nvcc --version
 ```
 
-Build from the repository root for your GPU's compute capability. This example
-targets the GTX 1060 (6.1); use `86` for a GPU with compute capability 8.6:
+`nvidia-smi` reports the driver's supported CUDA version; `nvcc` reports the
+installed compiler. If `nvcc` is missing, the toolkit is missing or not on `PATH`.
+For a toolkit installed at `/usr/local/cuda`:
 
 ```sh
-BSP_CUDA_ARCH=61 cargo build --release --locked --features cuda
+export CUDA_HOME=/usr/local/cuda
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 ```
 
-The GTX 1060 requires CUDA 12.9 or earlier for compilation. The tested toolkit
-is CUDA 12.0. The CUDA version shown by `nvidia-smi` is the driver's capability;
-check `nvcc --version` for the installed compiler.
-
-Solve with double precision (`cuda`) or single precision (`cuda-f32`):
+Find your GPU's compute capability:
 
 ```sh
-target/release/bsp-rust --backend cuda examples/3sat.cnf
-target/release/bsp-rust --backend cuda-f32 --generate 3 2.5 128 --seed 3 --timeout 10
+nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
 ```
 
-Compare sweep throughput with the same input and damping:
+Set `BSP_CUDA_ARCH` to that capability **without the dot**, then build:
 
 ```sh
-target/release/bsp-rust --backend cpu --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
-target/release/bsp-rust --backend cuda --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
-target/release/bsp-rust --backend cuda-f32 --generate 3 4.2 100000 --seed 7 --damping 0.2 --sweeps 300
+export BSP_CUDA_ARCH=89  # example: 8.9; replace with your GPU's capability
+uv sync --reinstall-package pybsp-rust --config-settings 'build-args=--features extension-module,cuda'
 ```
 
-Single precision can follow a different search trajectory. Every returned SAT
-assignment is verified on CPU. Execution metadata reports the actual backend,
-precision, device, and any numerical fallback. See [CUDA execution](CUDA.md) for
-toolkit configuration and [measured performance](PERFORMANCE.md) for results.
+Common targets from [NVIDIA's GPU table](https://developer.nvidia.com/cuda/gpus):
 
-### Python with an Apple or NVIDIA GPU
+| GPU | `BSP_CUDA_ARCH` | Toolkit requirement |
+| --- | --- | --- |
+| T4 | `75` | CUDA 12 or newer |
+| A100 | `80` | CUDA 12 or newer |
+| RTX 30 series / A10 | `86` | CUDA 12 or newer |
+| RTX 40 series / L4 | `89` | CUDA 12 or newer |
+| H100 / H200 | `90` | CUDA 12 or newer |
+| B200 | `100` | CUDA 12.8 or newer |
+| RTX 50 series | `120` | CUDA 12.8 or newer |
 
-Use Python 3.12 or newer, create a virtual environment, then build the extension
-with the feature for your platform:
+Blackwell compilation support starts with [CUDA 12.8](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-toolkit-release-notes/index.html).
+Use a toolkit supported by your installed driver. Always set the architecture:
+the project's legacy default is `61`, which CUDA 13 cannot compile.
+If your `nvidia-smi` lacks `compute_cap`, look up the model in the linked table.
+For Colab's T4, follow the [Colab quick test](README_COLAB.md).
 
-```sh
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install maturin numpy
-```
-
-On Apple silicon:
-
-```sh
-maturin develop --release --features extension-module,metal
-```
-
-On NVIDIA/Linux:
-
-```sh
-python -m pip install patchelf
-BSP_CUDA_ARCH=61 maturin develop --release --features extension-module,cuda
-```
-
-Select the compiled backend explicitly in Python:
+### Select and check the backend
 
 ```python
 from pybsp_rust import Formula, Solver
@@ -258,223 +190,105 @@ formula = Formula.random(3, 2.5, 128, seed=3)
 solver = Solver(
     formula=formula,
     seed=3,
-    timeout_seconds=10,
-    backend="metal",  # Linux: "cuda" or "cuda-f32"
+    backend="metal",  # NVIDIA: "cuda-f32" or "cuda"
 )
 result = solver.solve()
 print(result.status, result.execution)
-```
-
-## Quick start: Rust library
-
-Inside this repository, run the complete example:
-
-```sh
-cargo run --release --example solve_ksat -- examples/3sat.cnf
-cargo run --release --example solve_ksat
-```
-
-To use it from another Rust project, add the Git dependency. This package is not
-yet published on crates.io:
-
-```toml
-[dependencies]
-bsp-rust = { git = "https://github.com/CarloNicolini/BSP.rs.git" }
-```
-
-```rust
-use bsp_rust::{Formula, Options, Solver, Status};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let formula = Formula::random(3, 2.5, 128, 3)?;
-    let mut solver = Solver::new(formula.clone(), Options::default())?;
-    let result = solver.solve();
-    if result.status == Status::Sat {
-        let assignment = result.assignment.as_ref().unwrap();
-        assert!(formula.is_satisfied(assignment));
-        println!("{assignment:?}");
-    } else {
-        println!("Solver stopped: {}", result.status);
-    }
-    Ok(())
-}
-```
-
-Use `Formula::from_dimacs(&text)` to load a CNF file. `cargo doc --open` builds
-API documentation. Pin a Git revision in your dependency for reproducible runs.
-
-## Quick start: Python
-
-Use Python 3.12 or newer. A source installation also needs Rust and the platform's
-linker/build tools (Xcode Command Line Tools on macOS, or Visual Studio Build
-Tools on Windows):
-
-```sh
-python -m venv .venv
-# macOS/Linux:
-source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install .
-python examples/solve.py examples/3sat.cnf
-```
-
-Or install directly from GitHub:
-
-```sh
-python -m pip install "git+https://github.com/CarloNicolini/BSP.rs.git"
-```
-
-The Python distribution is `pybsp-rust`; the import name is `pybsp_rust`.
-It is not yet published on PyPI. CI builds wheels for Python 3.12+ and source
-archives as downloadable Actions artifacts. To use a downloaded wheel, run
-`python -m pip install path/to/pybsp_rust-*.whl` with a wheel matching your OS and
-CPU architecture.
-
-```python
-from pathlib import Path
-from pybsp_rust import Formula, solve
-
-formula = Formula.from_dimacs(Path("examples/3sat.cnf").read_text())
-result = solve(formula=formula, seed=3, timeout_seconds=10)
-print(result.status)
 if result.assignment is not None:
     assert formula.is_satisfied(result.assignment)
-    print(result.assignment)
-
-random_formula = Formula.random(k=3, alpha=2.5, n=128, seed=3)
-random_result = solve(formula=random_formula, seed=3)
 ```
 
-Pass algorithm settings (`seed`, `damping`, `max_sweeps`, `timeout_seconds`, and
-others) and hardware settings (`backend`, `threads`, `profile`) directly as
-keywords to `solve`, `Solver`, or `solve_many`. The [parameter guide](docs/guide/parameters.rst)
-lists every setting and default. Existing `Options` and `ExecutionOptions` calls
-remain supported for reusable configurations; mixing a configuration object with
-direct keywords for the same group raises `TypeError`.
+`cuda-f32` uses single precision; `cuda` uses double precision. Inspect execution
+metadata for the actual backend, device, GPU sweep count, and numerical fallbacks.
+GPU kernels accelerate SP; BSP decisions and WalkSAT still run on CPU.
 
-Each result includes an owned `int8` NumPy assignment, partial assignment, status,
-SP/WalkSAT counters, and step history. Python and Rust run the same native core.
-The package does not launch a subprocess or write implicit solver files.
+After changing build features, repeat the corresponding `uv sync` command with
+`--reinstall-package`. Use `uv run --no-sync` for a GPU-built environment to avoid
+automatic synchronization rebuilding it with default CPU features, for example:
 
-## Inspect and control the solver
-
-```python
-from pybsp_rust import Formula, Solver
-
-formula = Formula([[1, 2, 3], [-1, 2, 4], [1, -3, -4]], n=4)
-solver = Solver(formula)
-token = solver.cancellation_token
-report = solver.converge()
-messages = solver.messages       # owned float64 snapshot
-surveys = solver.surveys         # N x 3: true, false, unfrozen
-solver.fix(0, True)              # zero-based variable ID
-residual = solver.residual_formula()
-solver.release(0)
-solver.set_messages(messages)
-solver.sweep()                   # one synchronous SP sweep
-step = solver.advance()          # one fixed point and BSP action
-result = solver.solve()          # continue from current state
+```sh
+uv run --no-sync python quickstart.py
 ```
 
-Call `converge()` before manual `decimate()` calls. `fix()` does not propagate
-implicitly; use `propagate()` when needed. Unit-propagated assignments stay fixed.
-Message order follows the normalized `Formula.clauses`. Array snapshots own their
-storage; use `set_messages()` to update native state.
+## Why can a GPU make BSP faster?
 
-Long native calls release the GIL. Independent solvers can run in Python threads.
-Get the token before starting a native call, then call `token.cancel()` from
-another thread. Cancellation is permanent for that solver. Timeout and
-cancellation checks are cooperative: once per SP sweep and every 256 WalkSAT
-flips. Python signal handling resumes when the native call returns.
+A SAT formula is a graph: variable nodes connect to clause nodes wherever a
+literal occurs. Survey propagation (SP) repeatedly sends a small numerical
+message along each connection. These messages estimate how strongly clauses
+constrain variables. A sweep updates the whole graph; solving can require many
+sweeps between decisions.
 
-## Algorithm, optimization, and limits
+For example, random 3-SAT with 100,000 variables and four clauses per variable
+has 400,000 clauses and 1.2 million literal occurrences. Most of the work in a
+sweep consists of similar arithmetic on these connections. The scalar CPU
+backend visits variables and clauses in sequence. Metal and CUDA distribute
+that work across many GPU threads:
 
-The solver provides zero-temperature SP, certitude-ranked batch decimation,
-stored-certitude backtracking, unit propagation, and min-break WalkSAT.
-Research extensions in the original C++ code, including ThermoSP, 1RSB/2RSB,
-oracle policies, whitening, and multiple-solution collection, are outside this
-repository. The original C++ solver remains at [pybsp](https://github.com/CarloNicolini/pybsp).
+| Stage of an SP sweep | Work performed in parallel |
+| --- | --- |
+| Variable cavities | For each variable, combine incoming messages to compute outgoing probabilities, excluding the recipient clause. Variables can be processed independently using the previous sweep's messages. |
+| Clause messages | Each clause combines its variables' cavity probabilities and updates its outgoing warnings. Different clauses can be processed independently. |
+| Convergence check | Compute message changes across clauses, then reduce them to a global maximum. |
+| Observables | Compute variable surveys and clause contributions, then reduce the quantities needed for BSP decisions. |
 
-Storage uses packed 32-bit literals/indices, contiguous CSR adjacency, and 64-bit
-masks. Prefix/suffix products make clause updates linear in clause width and
-handle zero messages without dividing by `1-eta`. Partial selection ranks free
-variables; an indexed min-heap ranks fixed decisions in logarithmic time. Active
-degrees and the sole free literal of a unit clause have constant-time cached
-lookups. The [complexity audit](COMPLEXITY.md) covers remaining scans and measured
-tradeoffs. Probabilities use `f64`; release builds use optimization
-level 3, ThinLTO, and one code-generation unit. The core forbids unsafe Rust.
+The stages run in order: clause updates wait for the variable stage, and the
+next sweep waits for the current one. Within a stage, thousands of variables or
+clauses can be in flight. Short clauses use specialized kernels; variable
+updates also use cooperating SIMD groups or thread blocks for suitable degrees.
+Prefix/suffix products reuse intermediate arithmetic when excluding each edge,
+so the implementation avoids recomputing a whole neighborhood for every message.
 
-Use `RUSTFLAGS='-C target-cpu=native' cargo build --release --locked` for a local
-CPU-specific binary on macOS/Linux. Portable builds remain the default. The
-[performance report](PERFORMANCE.md) records a 1.23-2.18x SP-kernel improvement on
-four matched ARM64 workloads. It does not establish a general complete-solver
-speedup or zero cache misses. The comparison harness requires a separate C++
-checkout; normal builds and tests do not.
+Keeping data near the arithmetic matters too. The graph, messages, and scratch
+arrays stay in GPU allocations across sweeps. Changes caused by CPU decisions
+are queued as edits. This avoids uploading and downloading the entire graph on
+every iteration, although inspecting arrays from Python requires host snapshots.
+Apple's unified memory helps with access, but GPU submission and synchronization
+still cost time. Batching sweeps amortizes those costs.
 
-Statuses distinguish SAT, residual contradiction, SP nonconvergence, negative
-complexity, numerical failure, step/flip limits, cancellation, and timeout.
-Extreme degrees and incompatible hard warnings can produce zero normalizers.
-Reproducibility requires the same formula, options, dependency lock, compiler,
-CPU target, and operation order.
+BSP's decisions, backtracking, unit propagation, and WalkSAT completion run on
+the CPU. The GPU accelerates the repeated SP calculation rather than trying
+independent full SAT searches for every thread. If SP accounts for 90% of a run
+and becomes ten times faster, the whole run becomes about 5.3 times faster:
+`1 / (0.10 + 0.90 / 10)`. This illustrative limit explains why kernel throughput
+and time to a complete solution are different measurements.
+
+Large formulas provide enough parallel work to amortize GPU overhead; small
+ones can be faster on CPU. Precision matters: Metal uses `f32`, CUDA offers both
+`f32` and `f64`, and CPU uses `f64`. Single precision reduces memory traffic and
+can be much faster on GPUs with limited double-precision throughput, but it can
+also change convergence and the search trajectory. Numerical recovery is
+reported in the execution metadata.
+
+The [Apple comparison](BENCHMARKS.md) measures complete verified solves;
+[CUDA measurements](PERFORMANCE.md) also include isolated sweep workloads.
+Their speedups describe specific hardware, inputs, precision, and baselines.
+They should not be treated as a fixed multiplier for every SAT problem.
 
 ## Versions and contribution workflow
 
-The initial release is **0.1.0**. Use tagged versions for reproducible installs
-and experiments. See [release policy](RELEASING.md), [changelog](CHANGELOG.md), and
-[contributor/agent workflow](AGENTS.md). Changes go through issues and PRs on
-topic branches. Version tags trigger validated, checksummed draft releases;
-publication is a separate maintainer decision.
+The initial release is **0.1.0**. See the [changelog](CHANGELOG.md),
+[release policy](RELEASING.md), and [contributor/agent workflow](AGENTS.md).
+Changes go through issues and PRs on topic branches. Version tags produce
+validated, checksummed draft releases for separate publication review.
 
-## Development and CI
+## Where to go next
 
-```sh
-cargo test --locked
-cargo test --release --locked
-cargo clippy --all-targets -- -D warnings
-cargo fmt --check
-uv sync --extra test
-uv run pytest -q tests/python
-```
+- [Colab T4: install, build, and verify CUDA execution](README_COLAB.md)
+- [CLI, Rust API, solver inspection, and development](USAGE.md)
+- [Python API and algorithm documentation](docs/index.rst)
+- [GPU execution and numerical behavior](ACCELERATION.md), [CUDA details](CUDA.md)
+- [Apple M1 Pro comparison](BENCHMARKS.md), [performance measurements](PERFORMANCE.md)
+- [Contributing and validation](CONTRIBUTING.md)
 
-CI runs on every push and pull request, and can also be started manually:
-
-| Workflow | Platforms / features | Validation and delivery |
-| --- | --- | --- |
-| Build and test | Linux, macOS, Windows; no GPU features | Formatting, Clippy, debug/release/doc tests, CLI example, release binaries |
-| Python tests and wheels | Linux, macOS, Windows; Python 3.12/3.13 | Installed-wheel tests, examples, wheels and source archives |
-| CUDA and Metal builds | Linux x64 + CUDA 12.6 (sm61); macOS ARM64 + Metal | Clippy, debug/release/doc tests, CPU smoke test, GPU-enabled release binaries |
-| Release artifacts | `v*` tags; all build/test workflows | Checksummed archives attached to a draft GitHub release |
-| GPU hardware tests (manual) | Self-hosted NVIDIA/Linux or Apple silicon/macOS | Device tests, numerical comparisons, verified GPU solves |
-
-CUDA is supported on Linux; Metal is supported on macOS. The default builds
-on both platforms require neither toolkit. Standard hosted CI compiles and links
-the GPU backends and runs tests that do not require a GPU. Device tests are
-explicitly ignored there; a green build badge does not certify GPU execution.
-CUDA binaries require a compatible CUDA 12 runtime on the destination machine.
-Download binaries and Python packages from the corresponding run's **Artifacts**.
-
-To run device tests, register a self-hosted runner with labels
-`self-hosted,linux,x64,cuda` (driver, CUDA toolkit, and Rust installed) or
-`self-hosted,macOS,ARM64,metal` (Apple GPU, Xcode Command Line Tools, and Rust).
-Set `CUDA_HOME` and the toolkit library path on the CUDA runner if needed.
-Then use **Actions → GPU hardware tests → Run workflow**, or:
+Build the Python documentation locally:
 
 ```sh
-gh workflow run gpu.yml -f backend=cuda -f cuda_arch=61
-gh workflow run gpu.yml -f backend=metal
+uv sync --extra docs
+uv run sphinx-build -W --keep-going -b html docs docs/_build/html
+uv run python -m http.server 8000 --directory docs/_build/html
 ```
 
-No self-hosted runners are required for the automatic workflows. Pushing a
-version tag such as `v0.1.0` runs all three build/test workflows and creates a
-draft GitHub release only after every job passes. The release contains platform
-archives and `SHA256SUMS`; review the draft in **Releases** before publishing.
-This workflow does not publish packages to PyPI or crates.io.
-
-CI also tests Rust and the CLI on Linux, macOS, and Windows. It builds and installs
-Python wheels in clean environments, runs the Python examples and tests, and
-uploads binaries, wheels, and source archives. See [CONTRIBUTING.md](CONTRIBUTING.md)
-for validation rules. The tests include scalar SP comparisons, subnormal
-products, reversible masks, bounded WalkSAT, and real BSP backtracking.
+Open <http://localhost:8000>. MathJax and prebuilt diagrams are included.
 
 ## License and attribution
 
