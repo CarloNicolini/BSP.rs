@@ -167,6 +167,7 @@ pub struct Solver {
     degree: Vec<u32>,
     decisions: DecisionHeap,
     eta: Vec<f64>,
+    // Frozen incidences retain eta; active/free slots can hold observable norms.
     saved_eta: Vec<f64>,
     q: Vec<f64>,
     plus: Vec<f64>,

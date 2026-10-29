@@ -9,6 +9,8 @@ inline float checked_product(float a, float b, device Control &s) {
     if (a>0 && b>0 && p==0) atomic_fetch_or_explicit(&s.error,4u,memory_order_relaxed);
     return p;
 }
+// Normalizers borrow saved_eta (slot 9) only for active/free incidences.
+// Freeze replaces those scratch values; inactive/fixed payloads stay untouched.
 kernel void cavities(const device uint *vo [[buffer(0)]], const device uint *ve [[buffer(1)]],
     const device uint *ec [[buffer(4)]], const device char *assignment [[buffer(5)]],
     const device uint *active [[buffer(6)]], device uint *degree [[buffer(7)]],

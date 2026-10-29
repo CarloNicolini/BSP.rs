@@ -183,7 +183,10 @@ impl MetalSolver {
         }
         // Specialized widths keep prefixes in registers. Only the generic
         // clause kernel indexes the edge-sized prefix scratch.
-        let general_edges = if buckets.iter().any(|(name, count, _)| name == "clauses_general" && *count > 0) {
+        let general_edges = if buckets
+            .iter()
+            .any(|(name, count, _)| name == "clauses_general" && *count > 0)
+        {
             edges
         } else {
             0
