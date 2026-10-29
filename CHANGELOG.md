@@ -5,6 +5,10 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.0]
+
+Draft release; publication awaits maintainer review.
+
 ### Python SDK
 
 - Expose every solver setting as an explicit keyword on `Solver`, `solve`, and
@@ -28,6 +32,19 @@ policy in [RELEASING.md](RELEASING.md).
   allocate Metal's generic prefix buffer only for clause widths that need it.
   Paired experiments report allocation savings with workload-dependent timing
   costs; these changes do not establish billion-variable capacity or a speedup.
+
+### Compatibility and limits
+
+- Restore CLI executable permissions at both supported artifact layouts before
+  packaging release archives, including the nested `target/release` path.
+- Existing `Options` and `ExecutionOptions` calls remain supported. New code can
+  use named keywords, plain settings dictionaries, and per-job `seeds`.
+- The memory reductions preserve the tested per-backend trajectories, with
+  workload-dependent timing costs. No general speedup, billion-variable support,
+  implicit topology, or quantized production backend is claimed.
+- Hosted CUDA CI builds and links the backend; NVIDIA hardware execution was not
+  rerun for this release. Metal device tests are run explicitly on supported Macs.
+- `v0.1.0` remains the immutable initial baseline; it is not moved to this release.
 
 ## [0.1.0]
 

@@ -267,7 +267,8 @@ They should not be treated as a fixed multiplier for every SAT problem.
 
 ## Versions and contribution workflow
 
-The initial release is **0.1.0**. See the [changelog](CHANGELOG.md),
+The current version is **0.2.0**; **0.1.0** remains the initial tagged baseline.
+See the [changelog](CHANGELOG.md),
 [release policy](RELEASING.md), and [contributor/agent workflow](AGENTS.md).
 Changes go through issues and PRs on topic branches. Version tags produce
 validated, checksummed draft releases for separate publication review.
