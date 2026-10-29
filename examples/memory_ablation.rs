@@ -14,6 +14,18 @@ fn message_hash(solver: &Solver) -> String {
     format!("{hash:016x}")
 }
 
+fn write_witness(output: &Path, values: &[i8]) -> std::io::Result<()> {
+    let mut file = fs::File::create(output.with_extension("assignment.bin"))?;
+    let mut block = [0u8; 8192];
+    for values in values.chunks(block.len()) {
+        for (dst, &value) in block.iter_mut().zip(values) {
+            *dst = value as u8;
+        }
+        file.write_all(&block[..values.len()])?;
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().collect();
     if args.len() != 8 {
@@ -64,14 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err("returned SAT assignment failed verification".into());
         }
         if let Some(values) = &result.assignment {
-            let mut file = fs::File::create(output.with_extension("assignment.bin"))?;
-            let mut block = [0u8; 8192];
-            for values in values.chunks(block.len()) {
-                for (dst, &value) in block.iter_mut().zip(values) {
-                    *dst = value as u8;
-                }
-                file.write_all(&block[..values.len()])?;
-            }
+            write_witness(output, values)?;
         }
         fs::write(
             output.with_extension("steps.json"),
@@ -98,6 +103,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         let seconds = compute.elapsed().as_secs_f64();
+        if terminal == Some(Status::Sat) {
+            // advance() can finish a solve before this prefix's action limit.
+            // Export and verify outside the compute timer, as in solve mode.
+            let result = solver.solve();
+            let values = result.assignment.as_ref().ok_or("SAT without witness")?;
+            if !formula.is_satisfied(values) {
+                return Err("prefix SAT assignment failed verification".into());
+            }
+            write_witness(output, values)?;
+        }
         fs::write(
             output.with_extension("steps.json"),
             serde_json::to_vec(&steps)?,
