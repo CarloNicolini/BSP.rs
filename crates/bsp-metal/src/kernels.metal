@@ -13,7 +13,7 @@ kernel void cavities(const device uint *vo [[buffer(0)]], const device uint *ve 
     const device uint *ec [[buffer(4)]], const device char *assignment [[buffer(5)]],
     const device uint *active [[buffer(6)]], device uint *degree [[buffer(7)]],
     const device float *eta [[buffer(8)]], device float *q [[buffer(10)]],
-    device float *norms [[buffer(11)]], device float2 *products [[buffer(13)]],
+    device float *norms [[buffer(9)]], device float2 *products [[buffer(13)]],
     device Control &state [[buffer(19)]], constant Config &cfg [[buffer(20)]], const device uint *ids [[buffer(21)]], uint id [[thread_position_in_grid]]) {
     if (id>=ids[0]) return;uint v=ids[id+1];
     if (v>=cfg.n || assignment[v]>=0 || stopped(state)) return;
@@ -35,7 +35,7 @@ kernel void cavities(const device uint *vo [[buffer(0)]], const device uint *ve 
             suffix=checked_product(suffix,1-eta[e],state);
             float z=opposite+(1-opposite)*same;
             if (!(z>0) || !isfinite(z)) { atomic_fetch_or_explicit(&state.error,1u,memory_order_relaxed); return; }
-            q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f); if (cfg.observables) norms[qi]=z;
+            q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f); if (cfg.observables && active[ec[e]]) norms[qi]=z;
         }
     }
 }
@@ -44,7 +44,7 @@ kernel void cavities_simd(const device uint *vo [[buffer(0)]], const device uint
     const device uint *ec [[buffer(4)]], const device char *assignment [[buffer(5)]],
     const device uint *active [[buffer(6)]], device uint *degree [[buffer(7)]],
     const device float *eta [[buffer(8)]], device float *q [[buffer(10)]],
-    device float *norms [[buffer(11)]], device float2 *products [[buffer(13)]],
+    device float *norms [[buffer(9)]], device float2 *products [[buffer(13)]],
     device Control &state [[buffer(19)]], constant Config &cfg [[buffer(20)]],
     uint i [[thread_position_in_grid]], uint lane [[thread_index_in_simdgroup]]) {
     uint v=i/32;
@@ -68,7 +68,7 @@ kernel void cavities_simd(const device uint *vo [[buffer(0)]], const device uint
             atomic_fetch_or_explicit(&state.error,4u,memory_order_relaxed);
         float z=opposite+(1-opposite)*same;
         if (!(z>0) || !isfinite(z)) atomic_fetch_or_explicit(&state.error,1u,memory_order_relaxed);
-        else {uint qi=e;q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f);if (cfg.observables) norms[qi]=z;}
+        else {uint qi=e;q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f);if (cfg.observables && active[ec[e]]) norms[qi]=z;}
     }
 }
 
@@ -78,7 +78,7 @@ kernel void cavities_wide(const device uint *vo [[buffer(0)]], const device uint
     const device uint *ec [[buffer(4)]], const device char *assignment [[buffer(5)]],
     const device uint *active [[buffer(6)]], device uint *degree [[buffer(7)]],
     const device float *eta [[buffer(8)]], device float *q [[buffer(10)]],
-    device float *norms [[buffer(11)]], device float2 *products [[buffer(13)]],
+    device float *norms [[buffer(9)]], device float2 *products [[buffer(13)]],
     device Control &state [[buffer(19)]], constant Config &cfg [[buffer(20)]], const device uint *ids [[buffer(24)]],
     uint group [[threadgroup_position_in_grid]], uint lane [[thread_index_in_threadgroup]]) {
     if (group>=ids[0]) return;
@@ -121,7 +121,7 @@ kernel void cavities_wide(const device uint *vo [[buffer(0)]], const device uint
                 uint e=ve[i], qi=e;float suffix=checked_product(carry,lane ? temp[lane-1] : 1,state);
                 float same=checked_product(q[qi],suffix,state), z=opposite+(1-opposite)*same;
                 if (!(z>0) || !isfinite(z)) atomic_fetch_or_explicit(&state.error,1u,memory_order_relaxed);
-                else {q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f);if (cfg.observables) norms[qi]=z;}
+                else {q[qi]=clamp((1-opposite)*same/z,0.0f,1.0f);if (cfg.observables && active[ec[e]]) norms[qi]=z;}
             }
             carry=checked_product(carry,temp[255],state);threadgroup_barrier(mem_flags::mem_device|mem_flags::mem_threadgroup);
         }
@@ -203,7 +203,7 @@ kernel void variables(const device char *assignment [[buffer(5)]], const device 
 }
 kernel void clause_observables(const device uint *offsets [[buffer(2)]], const device uint *literals [[buffer(3)]],
     const device char *assignment [[buffer(5)]], const device uint *active [[buffer(6)]],
-    const device float *q [[buffer(10)]], const device float *norms [[buffer(11)]],
+    const device float *q [[buffer(10)]], const device float *norms [[buffer(9)]],
     device float *terms [[buffer(18)]], device Control &s [[buffer(19)]], constant Config &cfg [[buffer(20)]], uint c [[thread_position_in_grid]]) {
     if (c>=cfg.m) return;
     if (!active[c]) { terms[c]=0; return; }

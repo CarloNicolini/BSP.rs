@@ -193,7 +193,7 @@ impl MetalSolver {
             edges * 4,
             edges * 4,
             edges * 4,
-            edges * 4,
+            0, // Normalizers reuse active entries of saved_eta (slot 9).
             edges * 4,
             t.n * 8,
             t.n * 16,
