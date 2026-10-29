@@ -1,0 +1,14 @@
+{
+  "local_main_head": "aec3bed32d49bb1450132594c1df3f16ebc8449a",
+  "remote_main_head": "aec3bed32d49bb1450132594c1df3f16ebc8449a",
+  "remote_check": "git ls-remote origin refs/heads/main matched original commit",
+  "working_copy_status": " M CUDA.md\n M README.md\n?? BENCHMARKS.md\n?? README_COLAB.md\n?? USAGE.md\n?? bench/memory_budget.py\n?? bench/prototypes/measure_memory.py\n?? bench/prototypes/message_storage.rs\n?? bench/results/billion_variables_20261029/\n?? uv.lock\n",
+  "production_sources_match_reference": {
+    "src/solver.rs": true,
+    "src/execution.rs": true,
+    "src/formula.rs": true,
+    "crates/bsp-metal/src/lib.rs": true,
+    "crates/bsp-metal/src/kernels.metal": true
+  },
+  "note": "Additional README/CUDA/documentation and uv.lock changes appeared in main during the campaign. This campaign did not write those files and leaves them untouched."
+}

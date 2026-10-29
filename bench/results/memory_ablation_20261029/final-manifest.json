@@ -1,0 +1,27 @@
+{
+  "production_source_revision": "f2a08268526aeab6ce61ad885991dddf5461798d",
+  "reference": "aec3bed32d49bb1450132594c1df3f16ebc8449a",
+  "branch": "codex/memory-ablation-dev",
+  "source_sha256": {
+    "src/solver.rs": "fb322f74f8c09e76bbbc4bf0eb9885e68c8a7581c17c1ca9714bc98953c606ed",
+    "src/execution.rs": "0fdf5dcace6c14507023ec612353e2feccf9d3c1b5af89320eaf23b4705cbeaa",
+    "crates/bsp-metal/src/lib.rs": "69ec79482f62c946bb0ef3dbb9b5f28db6f09b7460d916cd69f829032dcd46bc",
+    "crates/bsp-metal/src/kernels.metal": "736bfd688ef073f3cfb380d6008483081ac4923b7a9cfabc41e0299102cedccc",
+    "examples/memory_ablation.rs": "f0c96e6eac7c37e8f88062746ca6106c7f0f8cff039a1b407171bf8a302df726",
+    "bench/memory_ablation.py": "4de6711adf9c82f3ab6a3dce12e9ac229ac12a4351a941b3b8204087cfe845ad",
+    "bench/summarize_memory_ablation.py": "bde0ffe7bd492b911a3902b6aef514e70ec3a1ce5685db85f0491515b865cc17",
+    "bench/scaling_limits.py": "80601c32c7eda7dad7475938ae5bda7217e8fcd22e89a492b49008d31d2e2661"
+  },
+  "paired_prefix_checks": 132,
+  "paired_full_timing_checks": 6,
+  "full_sat_runs": 16,
+  "validation": {
+    "rust_debug_tests": 30,
+    "rust_release_tests": 30,
+    "rust_metal_tests": 31,
+    "metal_hardware_tests": 5,
+    "python_tests": 8,
+    "verified_python_example": true
+  },
+  "note": "The retained production sources equal the combined variant. The action-prefix witness export correction changes only the benchmark; separate K4 executable hashes are recorded. Main has unrelated documentation edits, preserved without modification."
+}

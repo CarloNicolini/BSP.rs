@@ -1,0 +1,56 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "macos": "26.5.2",
+  "cpu_count": 8,
+  "load_average": [
+    2.810546875,
+    4.70556640625,
+    5.55810546875
+  ],
+  "memory_gib": 16,
+  "device": "Apple M1 Pro",
+  "power": "AC; 100% battery; no thermal/performance warning reported at sampled check",
+  "inputs": {
+    "n100000_k4_a42_f1.cnf": "8b861a35e53bfd322e3ee59ff7403ddc0945211afa1a6ca97a745f2f85a3bd15",
+    "n1000000_f1.cnf": "414d977c62ff922f422d857a812454f7723e175bfaa6b5dbcb5b6e5c2267a72c",
+    "n100000_k4_a98_f1.cnf": "1d966a73db90521b6d295322e3ff93de9938b1b5b2af2ad5bede79c6b6784227",
+    "n100000_f2.cnf": "111b53340d434ced469db58ce063c2301f66900eb11b84e95e905efb33fa8fa7",
+    "n100000_f3.cnf": "d8ebcd0948f0698a991b7ab76157d06150e22ecbaadceabab7a8cef1f6176393",
+    "n100000_f1.cnf": "afbcda398d11f7c8e870a60a350681f0469bcc73b713610d775011aba6a663f2"
+  },
+  "trials_with_system_swapout_activity": [
+    {
+      "file": "full/combined_f1_r0_cpu-parallel.json",
+      "swapout_pages": 309608
+    },
+    {
+      "file": "full/combined_f1_r0_metal.json",
+      "swapout_pages": 64592
+    },
+    {
+      "file": "full/baseline_f1_r4_metal.json",
+      "swapout_pages": 76388
+    },
+    {
+      "file": "full/baseline_f1_r2_metal.json",
+      "swapout_pages": 56192
+    },
+    {
+      "file": "full/combined_f1_r1_metal.json",
+      "swapout_pages": 66204
+    },
+    {
+      "file": "full/metal-batch_f1_r0_metal.json",
+      "swapout_pages": 77268
+    },
+    {
+      "file": "full/baseline_f1_r5_metal.json",
+      "swapout_pages": 81976
+    }
+  ],
+  "load_average_at_finalization": [
+    8.576171875,
+    7.38232421875,
+    5.48974609375
+  ]
+}

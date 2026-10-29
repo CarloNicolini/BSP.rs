@@ -883,12 +883,18 @@ impl Parallel {
                 Ok(())
             })?;
         if store_norms {
+            let active = &s.active;
+            let assignment = &s.assignment;
             s.q.par_iter_mut()
-                .zip(&mut s.cavity_norm)
+                .zip(&mut s.saved_eta)
                 .enumerate()
                 .for_each(|(e, (q, norm))| {
                     *q = self.q[self.slot[e]];
-                    *norm = self.norm[self.slot[e]];
+                    if active.contains(f.edge_clause[e] as usize)
+                        && assignment[(f.literals[e] >> 1) as usize] < 0
+                    {
+                        *norm = self.norm[self.slot[e]];
+                    }
                 });
         } else {
             s.q.par_iter_mut()
@@ -965,7 +971,7 @@ impl Parallel {
         let f = &s.formula.0;
         self.logs
             .par_iter_mut()
-            .zip(&s.cavity_norm)
+            .zip(&s.saved_eta)
             .for_each(|(log, &norm)| *log = norm.ln());
         s.surveys
             .par_iter_mut()

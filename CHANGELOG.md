@@ -11,6 +11,13 @@ policy in [RELEASING.md](RELEASING.md).
   Apple benchmark and detailed usage into linked guides and add the Colab T4
   setup and GPU verification guide.
 
+### Memory
+
+- Reuse active/free frozen-message slots for CPU and Metal cavity norms, and
+  allocate Metal's generic prefix buffer only for clause widths that need it.
+  Paired experiments report allocation savings with workload-dependent timing
+  costs; these changes do not establish billion-variable capacity or a speedup.
+
 ## [0.1.0]
 
 Initial versioned release. Publication date will be recorded after draft review.

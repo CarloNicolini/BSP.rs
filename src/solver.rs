@@ -167,9 +167,9 @@ pub struct Solver {
     degree: Vec<u32>,
     decisions: DecisionHeap,
     eta: Vec<f64>,
+    // Frozen incidences retain eta; active/free slots can hold observable norms.
     saved_eta: Vec<f64>,
     q: Vec<f64>,
-    cavity_norm: Vec<f64>,
     plus: Vec<f64>,
     minus: Vec<f64>,
     surveys: Vec<[f64; 3]>,
@@ -252,7 +252,6 @@ impl Solver {
             decisions: DecisionHeap::new(n),
             eta,
             q: vec![0.0; edges],
-            cavity_norm: vec![1.0; edges],
             plus: vec![1.0; n],
             minus: vec![1.0; n],
             surveys: vec![[0.0, 0.0, 1.0]; n],
@@ -592,8 +591,10 @@ impl Solver {
                         return Err(Status::NumericalFailure);
                     }
                     self.q[e] = ((1.0 - opposite) * same / norm).clamp(0.0, 1.0);
-                    if store_norms {
-                        self.cavity_norm[e] = norm;
+                    if store_norms && self.active.contains(f.edge_clause[e] as usize) {
+                        // Active/free incidences do not need a frozen value:
+                        // freeze saves their current eta before any restoration.
+                        self.saved_eta[e] = norm;
                     }
                 }
             }
@@ -724,7 +725,7 @@ impl Solver {
                     base: start + 64 * (w - first_word),
                 }) {
                     product *= self.q[e];
-                    clause_term += self.cavity_norm[e].ln();
+                    clause_term += self.saved_eta[e].ln();
                 }
             }
             if product >= 1.0 {

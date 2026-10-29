@@ -181,6 +181,16 @@ impl MetalSolver {
             ids[base] = count as u32;
             buckets.push((name.to_string(), count, base as u32));
         }
+        // Specialized widths keep prefixes in registers. Only the generic
+        // clause kernel indexes the edge-sized prefix scratch.
+        let general_edges = if buckets
+            .iter()
+            .any(|(name, count, _)| name == "clauses_general" && *count > 0)
+        {
+            edges
+        } else {
+            0
+        };
         let lengths = [
             t.var_offsets.len() * 4,
             edges * 4,
@@ -193,8 +203,8 @@ impl MetalSolver {
             edges * 4,
             edges * 4,
             edges * 4,
-            edges * 4,
-            edges * 4,
+            0, // Normalizers reuse active entries of saved_eta (slot 9).
+            general_edges * 4,
             t.n * 8,
             t.n * 16,
             m * 4,

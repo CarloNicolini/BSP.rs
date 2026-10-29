@@ -1,0 +1,63 @@
+{
+  "n": 100000000,
+  "k": 4,
+  "alpha": 9.8,
+  "m": 980000000,
+  "e": 3920000000,
+  "current_u32_accepts": true,
+  "current_layout_components": {
+    "formula": 63520000012,
+    "solver_edge_arrays": 125440000000,
+    "solver_variable_arrays_and_reserved_ids": 6612500000,
+    "solver_clause_arrays": 19722500000
+  },
+  "current_layout_total": 215295000012,
+  "minimal_edge_widening_addition_when_clause_ids_fit": 24320000008,
+  "parallel_scratch_addition_u32_layout": 135680000000,
+  "walksat_peak_addition_u32_layout": 16180000000,
+  "current_gpu_f32_main_buffers_u32_layout": 165281250000,
+  "implicit_proposals": {
+    "32": {
+      "components": {
+        "one_message_payload": 15680000000,
+        "two_f64_variable_aggregates": 1600000000,
+        "two_u8_exact_zero_counts": 200000000,
+        "f32_frozen_decision_scores": 400000000,
+        "packed_variable_state_and_scan_bitset": 50000000,
+        "clause_state_and_scan_bitset": 1102500000,
+        "unary_degree_boundaries_without_rank_select_index": 502500000,
+        "rank_select_and_exception_allowance": 50000000,
+        "bounded_queues_tiles_selection_allowance": 200000000
+      },
+      "total": 19785000000
+    },
+    "16": {
+      "components": {
+        "one_message_payload": 7840000000,
+        "two_f64_variable_aggregates": 1600000000,
+        "two_u8_exact_zero_counts": 200000000,
+        "f32_frozen_decision_scores": 400000000,
+        "packed_variable_state_and_scan_bitset": 50000000,
+        "clause_state_and_scan_bitset": 1102500000,
+        "unary_degree_boundaries_without_rank_select_index": 502500000,
+        "rank_select_and_exception_allowance": 50000000,
+        "bounded_queues_tiles_selection_allowance": 200000000
+      },
+      "total": 11945000000
+    },
+    "8": {
+      "components": {
+        "one_message_payload": 3920000000,
+        "two_f64_variable_aggregates": 1600000000,
+        "two_u8_exact_zero_counts": 200000000,
+        "f32_frozen_decision_scores": 400000000,
+        "packed_variable_state_and_scan_bitset": 50000000,
+        "clause_state_and_scan_bitset": 1102500000,
+        "unary_degree_boundaries_without_rank_select_index": 502500000,
+        "rank_select_and_exception_allowance": 50000000,
+        "bounded_queues_tiles_selection_allowance": 200000000
+      },
+      "total": 8025000000
+    }
+  }
+}

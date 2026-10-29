@@ -1,0 +1,12 @@
+{
+  "codex/memory-ablation-dev": "f2a08268526aeab6ce61ad885991dddf5461798d",
+  "codex/memory-active-logs": "088a6c7ef9f1e16b34e76d58470c6dac64591081",
+  "codex/memory-baseline": "eec0f5f345e3c4f5c6e50bb85adebbf5c0b9c822",
+  "codex/memory-combined-lazy": "9161cc6fae6920dc4ee2059120bb1377a1858ec9",
+  "codex/memory-combined-logs": "6df871f7c7fdcb1dfedf84075d1b755457504e35",
+  "codex/memory-host-norm": "1b88d7caf433747c300581ef14d5337534b1ff6a",
+  "codex/memory-lazy-host": "f7c1e8b07df8ee30e87a9d03b00e7f8dba231161",
+  "codex/memory-metal-batch": "0192a155f1290f4e3c117fd3ea35d26a09946e8c",
+  "codex/memory-metal-norm": "0be073ab86658462f590d722a38f98b34cdeb6c2",
+  "codex/memory-metal-prefix": "d3bcd026d04cf07a2504361eafe9f5351ffd0b9e"
+}
