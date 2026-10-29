@@ -1,0 +1,53 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "rows": [
+    {
+      "command": [
+        "/Users/carlo/workspace/BSP.rs/target/release/bsp-rust",
+        "--backend",
+        "cpu",
+        "--threads",
+        "4",
+        "--generate",
+        "3",
+        "4.2",
+        "10000000",
+        "--sweeps",
+        "1"
+      ],
+      "maximum_rss_bytes": 3372466176,
+      "sampled_maximum_resident_bytes": 3351150592,
+      "sampled_maximum_phys_footprint_bytes": 7359912128,
+      "observed_lifetime_peak_phys_footprint_bytes": 7359912128,
+      "footprint_samples": 420,
+      "vm_stat_before": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                     9706.\nPages active:                                 342077.\nPages inactive:                               323958.\nPages speculative:                             17087.\nPages throttled:                                   0.\nPages wired down:                             178852.\nPages purgeable:                                5052.\n\"Translation faults\":                     1787166148.\nPages copy-on-write:                        42717075.\nPages zero filled:                         673756624.\nPages reactivated:                         739420214.\nPages purged:                               32312423.\nFile-backed pages:                            146964.\nAnonymous pages:                              536158.\nPages stored in compressor:                  1570741.\nPages occupied by compressor:                 137256.\nDecompressions:                            695481301.\nCompressions:                              751630598.\nPageins:                                    70210075.\nPageouts:                                    1284151.\nSwapins:                                     7996572.\nSwapouts:                                   10512065.\n",
+      "vm_stat_after": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                                   338375.\nPages active:                                  87674.\nPages inactive:                               136263.\nPages speculative:                               947.\nPages throttled:                                   0.\nPages wired down:                             171575.\nPages purgeable:                                   2.\n\"Translation faults\":                     1789017555.\nPages copy-on-write:                        42725982.\nPages zero filled:                         674472711.\nPages reactivated:                         740289736.\nPages purged:                               32316790.\nFile-backed pages:                            112143.\nAnonymous pages:                              112741.\nPages stored in compressor:                  1961693.\nPages occupied by compressor:                 274142.\nDecompressions:                            696393575.\nCompressions:                              753250639.\nPageins:                                    70236083.\nPageouts:                                    1284409.\nSwapins:                                     7999243.\nSwapouts:                                   10577893.\n",
+      "solver_report": {
+        "checksum": 31160574.14767629,
+        "edges": 126000000,
+        "execution": {
+          "allocated_bytes": 0,
+          "backend": "cpu",
+          "cuda_sweeps": 0,
+          "device": null,
+          "device_error": null,
+          "fallbacks": [],
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "parallel_sweeps": 0,
+          "phases": {},
+          "precision": "f64",
+          "profile_error": null,
+          "requested_backend": "cpu",
+          "threads": 1
+        },
+        "m": 42000000,
+        "n": 10000000,
+        "ns_per_edge_sweep": 61.3321045,
+        "residual": 0.9999998770802065,
+        "seconds": 7.727845167,
+        "sweeps": 1
+      }
+    }
+  ]
+}

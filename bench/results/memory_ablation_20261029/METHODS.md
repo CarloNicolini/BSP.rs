@@ -36,6 +36,14 @@ using formula seed 1, solver seed 1001 and three repetitions. Allocation on
 first use is inside compute time for lazy scratch; setup and total native time
 are saved separately so this boundary shift is visible.
 
+A further N=1,000,000 check runs 32 BSP actions with baseline and the combined
+memory changes on all three backends. This exercises observables, fixing and
+release at the target size; it remains a prefix, not a verified SAT solve.
+Complete-solve confirmations use N=100,000, formula seed 1 and solver seed 1001.
+Metal controls and candidates use a 300-second cooperative budget; the full
+eight-thread CPU controls use 900 seconds. Earlier million-variable sizing
+pilots were limited to 60 seconds and triggered the requested size fallback.
+
 Every fixed-work comparison checks the ending message-bit hash. BSP-action
 comparisons also require identical complete step records. Full-solve results
 are checked by the native solver and again by an independent Python DIMACS
@@ -45,12 +53,13 @@ runs and never converted into time-to-solution speedups.
 
 Correctness checks include the existing independent scalar/f32 recurrences,
 zero and subnormal cases, mixed widths, arbitrary freeze/restore orders,
-numerical fallback and cancellation. The three hardware-required Metal tests
-are explicitly run with `--ignored`; the normal test command skips them.
+numerical fallback and cancellation. The three existing and two added
+hardware-required Metal tests are explicitly run with `--ignored`; the normal
+test command skips them.
 The added norm-storage test freezes messages, computes observables and
 releases the variable, checking that frozen payloads survive scratch reuse.
 
-Four isolated changes are evaluated:
+Four initial isolated changes are evaluated:
 
 1. **Host norm reuse.** Remove the FP64 cavity-normalization vector. During
    observable evaluation, active/free entries of `saved_eta` hold norms.
@@ -67,6 +76,38 @@ Four isolated changes are evaluated:
 4. **Specialized Metal prefix storage.** Allocate the edge-sized generic prefix
    buffer only if generic-width clauses exist. Widths 3/4/6/12 already keep
    prefixes locally. Mixed/general-width formulas retain their original storage.
+
+Two follow-up speed hypotheses are evaluated independently:
+
+5. **Metal batching.** Raise the GPU-work target per submission from 2 to 8 ms,
+   retaining the 16-sweep cap and the kernel guards that stop at the first fixed
+   point. Cancellation and numerical-fallback tests must still pass. CUDA's
+   scheduling is unchanged.
+6. **Skip unused parallel logarithms.** Compute a cavity log only for an active
+   clause and free variable, matching the later complexity sum's selection.
+   Used terms and their accumulation order remain unchanged. A focused test
+   compares nonparamagnetic scalar/parallel observables after fixing and release.
+
+The combined follow-up also tests deferring q allocation after the norm vector
+has already been removed, to distinguish additive savings from redundant ones,
+and skipping unused parallel logs after norm reuse.
+
+Added K=4 checks use N=100,000, formula seed 1, solver seed 1001, alpha=4.2
+and 9.8, on all three backends. They request 32 BSP actions. Alpha=4.2 ends
+after one action including WalkSAT; those returned witnesses are exported and
+independently verified. Alpha=9.8 completes the prefix without reaching SAT.
+These are one paired trial per workload/backend, not a success-rate estimate.
+An initial prefix harness omitted witness export on early SAT; that attempt was
+discarded and both harness binaries were rebuilt with the same correction.
+All reported K=4 trials use the corrected harness. Its source and binary hashes
+are recorded separately; production solver sources are unchanged by that fix.
+
+Early complete Metal controls ranged from 86.4 to 167.9 seconds despite identical
+64,452 sweeps, step records and witnesses. This is material timing variation;
+it is not attributed to an optimization. Later full-solve speed comparisons
+name their local control explicitly in each job's `reference` field. Raw times
+and their ranges remain visible. Small ratios near one are not treated as a
+reliable speed gain. No comparative result uses the initial scouting timings.
 
 At 3-SAT alpha=4.2, an FP64 edge vector costs 100.8 MB per million variables;
 an FP32 vector costs 50.4 MB. These are payload savings, not predictions of

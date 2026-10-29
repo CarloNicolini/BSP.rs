@@ -1,0 +1,47 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "rows": [
+    {
+      "command": [
+        "/Users/carlo/workspace/BSP.rs/target/release/bsp-rust",
+        "--backend",
+        "cpu",
+        "--threads",
+        "4",
+        "--generate",
+        "3",
+        "4.2",
+        "10000000",
+        "--sweeps",
+        "1"
+      ],
+      "maximum_rss_bytes": 2521284608,
+      "solver_report": {
+        "checksum": 31160574.14767629,
+        "edges": 126000000,
+        "execution": {
+          "allocated_bytes": 0,
+          "backend": "cpu",
+          "cuda_sweeps": 0,
+          "device": null,
+          "device_error": null,
+          "fallbacks": [],
+          "metal_sweeps": 0,
+          "observables_validations": 0,
+          "parallel_sweeps": 0,
+          "phases": {},
+          "precision": "f64",
+          "profile_error": null,
+          "requested_backend": "cpu",
+          "threads": 1
+        },
+        "m": 42000000,
+        "n": 10000000,
+        "ns_per_edge_sweep": 72.72218683333334,
+        "residual": 0.9999998770802065,
+        "seconds": 9.162995541,
+        "sweeps": 1
+      }
+    }
+  ]
+}

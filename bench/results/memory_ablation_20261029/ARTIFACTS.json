@@ -1,0 +1,13 @@
+{
+  "archive_sha256": "3e4f107d7c94e65dcbbf6f60c3c1baea2bf6533814a96e2d7ac99b12bbe7bd5d",
+  "archive_bytes": 6616126,
+  "archive_files": 822,
+  "plain_json_sha256": {
+    "summary.json": "dc236957f61591a9b0b92621a707ce2595ae3ae22b68cdf84ab47886db25d16f",
+    "branch-manifest.json": "d365e32f15b2713fba6adac2b9536e3d3562ccc251193d4eea60a8445bb48863",
+    "final-manifest.json": "9d767c83e10978983e05d8d2a9515fa4935dd9f431b97b7a280c32a0bdc73662",
+    "environment.json": "84d6abb912efea738ceb1d3a4426caebaea04040f7d814e1033a647a1c476565",
+    "main-preservation.json": "2317514231798cfda1d4b89e9e8dc95832b35fe79358220bc37e1273d7a4fcf6",
+    "scaling_limits.json": "81acc72090981f32c4b41c99bafffb857a0fe9dd8700baf0f16378dd4eefd452"
+  }
+}

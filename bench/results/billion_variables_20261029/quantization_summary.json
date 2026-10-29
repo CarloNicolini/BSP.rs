@@ -1,0 +1,522 @@
+[
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "f64",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0,
+    "max_final_error": 0.0,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "f32",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0162554144,
+    "max_final_error": 0.0001786585153,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "bf16",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.9996061805,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "fp16",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.9993664204,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "unorm16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9866641416,
+    "max_final_error": 0.007844188079,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "unorm12",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.99852388,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "unorm8",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.9996061805,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "bf16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9855440338,
+    "max_final_error": 0.02148601607,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "fp16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9648894874,
+    "max_final_error": 0.01414817293,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "unorm16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.7188850342,
+    "max_final_error": 0.009783541725,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "bf16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9153839794,
+    "max_final_error": 0.02334112307,
+    "max_escape_fraction": 0.009484126984
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "fp16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.5099315075,
+    "max_final_error": 0.009093680964,
+    "max_escape_fraction": 0.02999206349
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 3,
+    "format": "unorm16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.1381154175,
+    "max_final_error": 0.001639208782,
+    "max_escape_fraction": 0.1046111111
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "f64",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0,
+    "max_final_error": 0.0,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "f32",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9981371481,
+    "max_final_error": 9.013332713e-06,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "bf16",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.0,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "fp16",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.9999978161,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "unorm16",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.07428060727,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "unorm12",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.9999978161,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "unorm8",
+    "trials": 3,
+    "completed": 0,
+    "max_trajectory_error": 0.0,
+    "max_final_error": null,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "bf16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9995006005,
+    "max_final_error": 0.004473327429,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "fp16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9973291397,
+    "max_final_error": 0.0007134699697,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "unorm16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.966787972,
+    "max_final_error": 7.10875141e-05,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "bf16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9827986934,
+    "max_final_error": 0.00567350232,
+    "max_escape_fraction": 0.01222704082
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "fp16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.9322539546,
+    "max_final_error": 0.0005750944828,
+    "max_escape_fraction": 0.2075382653
+  },
+  {
+    "input": "message_storage.csv",
+    "k": 4,
+    "format": "unorm16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.4734712516,
+    "max_final_error": 6.339048729e-05,
+    "max_escape_fraction": 0.382622449
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "f64",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0,
+    "max_final_error": 0.0,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "f32",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 2.448771063e-07,
+    "max_final_error": 1.995993826e-07,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "bf16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.02147937917,
+    "max_final_error": 0.01244187926,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "fp16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.001986006857,
+    "max_final_error": 0.001394870796,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "unorm16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 8.959859875e-05,
+    "max_final_error": 6.448709665e-05,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "unorm12",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.001802140727,
+    "max_final_error": 0.001175326329,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "unorm8",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.03387982345,
+    "max_final_error": 0.01946882033,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "bf16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.02147937917,
+    "max_final_error": 0.01244187926,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "fp16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.001986006857,
+    "max_final_error": 0.001394870796,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "unorm16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0001011034582,
+    "max_final_error": 7.085334876e-05,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "bf16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.02147937917,
+    "max_final_error": 0.01244187926,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "fp16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.001986006857,
+    "max_final_error": 0.001394870796,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 3,
+    "format": "unorm16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 9.673906051e-05,
+    "max_final_error": 7.521904926e-05,
+    "max_escape_fraction": 0.0002777777778
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "f64",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0,
+    "max_final_error": 0.0,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "f32",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 9.222184078e-08,
+    "max_final_error": 6.929843543e-08,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "bf16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.005854907545,
+    "max_final_error": 0.004904820461,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "fp16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0009403796077,
+    "max_final_error": 0.0005827422888,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "unorm16",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 6.785392062e-05,
+    "max_final_error": 6.137504288e-05,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "unorm12",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.001108497555,
+    "max_final_error": 0.0008619792871,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "unorm8",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0190172607,
+    "max_final_error": 0.01525034031,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "bf16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.005854907545,
+    "max_final_error": 0.004904820461,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "fp16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0009403796077,
+    "max_final_error": 0.0005827422888,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "unorm16_open",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 6.785392062e-05,
+    "max_final_error": 6.137504288e-05,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "bf16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.005854907545,
+    "max_final_error": 0.004904820461,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "fp16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 0.0009403796077,
+    "max_final_error": 0.0005827422888,
+    "max_escape_fraction": 0.0
+  },
+  {
+    "input": "message_storage_warm.csv",
+    "k": 4,
+    "format": "unorm16_escape",
+    "trials": 3,
+    "completed": 3,
+    "max_trajectory_error": 6.785392062e-05,
+    "max_final_error": 6.137504288e-05,
+    "max_escape_fraction": 0.0
+  }
+]
