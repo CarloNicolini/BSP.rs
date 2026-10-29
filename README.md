@@ -20,6 +20,72 @@ for builds, numerical behavior, and benchmark commands.
 BSP is a heuristic. Every returned SAT assignment is checked against the formula.
 A failed run or a contradictory residual does not prove the input UNSAT.
 
+## Speed comparison: Apple M1 Pro
+
+The C++ counterpart is [Carlo Nicolini's pybsp](https://github.com/CarloNicolini/pybsp),
+based on [Raffaele Marino's original BSP code](https://github.com/raffaelemarino/The-Backtracking-Survey-Propagation-Algorithm-code).
+The following Python API measurements were collected on 2026-10-29 using an
+**Apple M1 Pro with 16 GiB unified memory**, macOS 26.5.2, and Python 3.12.12.
+Inputs are random 3-SAT formulas in the easy regime, with **alpha = 4** and
+exactly `4N` clauses. Both CPU implementations run on one thread.
+
+**Every column measures time to one verified solution.** The C++ benchmark uses
+an isolated Release rebuild requesting one WalkSAT completion, with post-solution
+whitening disabled. Its stock API collects ten assignments after a shared BSP
+reduction; dividing that batch time by ten would not measure first-solution
+latency. All 57 C++ calls reproduced the original batch's first assignment and
+BSP sweep count. All 171 calls in the one-solution comparison passed an independent
+clause check; Metal reported no CPU fallback.
+
+| Variables | BSP.rs CPU (s) | BSP.rs Apple GPU / Metal (s) | C++ pybsp, one solution (s) |
+| ---: | ---: | ---: | ---: |
+| 500 | 0.298 | 1.470 | 0.403 |
+| 1,000 | 1.122 | 2.876 | 1.387 |
+| 2,000 | 3.095 | 3.753 | 4.103 |
+| 5,000 | 10.348 | 6.391 | 25.055 |
+| 10,000 | 21.087 | 8.733 | 73.474 |
+| 20,000 | 42.499 | 14.331 | 181.735 |
+
+At 20,000 variables, BSP.rs CPU is **4.28x faster than C++**, and Metal is
+**12.68x faster than C++**, or **2.97x faster than BSP.rs CPU**. BSP.rs CPU is the
+fastest option through 2,000 variables in this sample; Metal is fastest from 5,000 onward.
+
+![Speedup over the one-solution C++ baseline on Apple M1 Pro; Metal becomes faster on larger formulas.](docs/_static/benchmarks/apple-m1-pro-alpha4.svg)
+
+Bars show `C++ seconds / BSP.rs seconds`; values above the dashed 1x reference
+favor BSP.rs. CUDA has no bar because it was not measured in this comparison.
+
+Each row averages the per-formula median times for three shared formulas.
+Small cases have six repetitions per formula at 500 variables and five at
+1,000–2,000; larger cases have one call per formula. Timing includes solver setup,
+search, synchronization, and Python result conversion, excluding formula
+construction and discarded warmups. Rust CPU and Metal were measured in the
+initial campaign; C++ was rebuilt and measured in a later campaign. CPU uses
+`f64`, while Metal uses `f32` and can follow a different search trajectory.
+These results describe this hardware and sample.
+
+See the [benchmark report and correctness audit](bench/results/easy_alpha4_20261029/REPORT.md),
+[plot data](bench/data/apple_m1_pro_alpha4.csv), and
+[SVG generator](bench/plot_easy_regime.py) for the measurements and reproduction details.
+
+### Apple GPU and NVIDIA CUDA
+
+The Apple GPU backend is named **`metal`**. It uses custom Metal compute kernels
+directly, with no MPS framework or PyTorch dependency. Messages and graph topology
+stay in GPU allocations while kernels compute cavity messages, clause updates,
+and observables. Small formulas can spend more time on GPU submission and
+synchronization than they save in computation, as the measurements above show.
+
+On Linux, **`cuda`** provides NVIDIA GPU execution in `f64`, and **`cuda-f32`** uses
+`f32`. CUDA also keeps solver arrays on the GPU and accelerates message updates
+and reductions. BSP decisions, unit propagation, and WalkSAT remain on the CPU
+for both GPU backends. **CUDA performance for this complete-solve comparison is
+not yet measured.** Any CUDA speedup will depend on the NVIDIA device, precision,
+formula size, and the fraction of time spent in CPU work; no CUDA speedup factor
+is claimed here. See the [Metal quick start](#quick-start-apple-silicon-gpu-metalmps),
+[CUDA quick start](#quick-start-nvidia-gpu-cuda-linux), and
+[GPU execution guide](ACCELERATION.md).
+
 ## Python documentation
 
 The Sphinx documentation includes a full Python API reference, parameter and
@@ -391,5 +457,7 @@ products, reversible masks, bounded WalkSAT, and real BSP backtracking.
 ## License and attribution
 
 GPL-2.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE). The algorithm and
-baseline behavior follow Raffaele Marino's original C++ BSP code. Carlo Nicolini
-maintains this repository and the Python interface.
+baseline behavior follow [Raffaele Marino's original C++ BSP code](https://github.com/raffaelemarino/The-Backtracking-Survey-Propagation-Algorithm-code).
+[Carlo Nicolini's pybsp](https://github.com/CarloNicolini/pybsp) provides the C++
+solver and Python bindings used as the benchmark counterpart. Carlo Nicolini
+maintains this repository and its Python interface.
