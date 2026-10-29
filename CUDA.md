@@ -50,15 +50,16 @@ maturin develop --release --features extension-module,cuda
 ```
 
 ```python
-from pybsp_rust import ExecutionOptions, Formula, Options, Solver, solve_many
+from pybsp_rust import Formula, Options, Solver, solve_many
 
 formula = Formula.random(3, 4.2, 100000, seed=7)
-solver = Solver(formula, execution=ExecutionOptions(backend="cuda"))
+solver = Solver(formula=formula, seed=3, backend="cuda")
 print(solver.sweep_many(300), solver.execution_report)
 results = solve_many(
-    [formula] * 4,
-    [Options(seed=s, timeout_seconds=30) for s in range(4)],
-    execution=ExecutionOptions(backend="cuda-f32", threads=4),
+    formulas=[formula] * 4,
+    options=[Options(seed=s, timeout_seconds=30) for s in range(4)],
+    backend="cuda-f32",
+    threads=4,
 )
 ```
 

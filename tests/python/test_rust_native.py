@@ -120,3 +120,67 @@ def test_parallel_execution_batch_order_and_profile(tmp_path):
         ExecutionOptions(threads=1025)
     with pytest.raises(ValueError):
         solve_many(formulas,[Options()])
+
+
+def test_direct_keywords_match_legacy_configuration(tmp_path):
+    formula = Formula.random(k=3, alpha=2.5, n=80, seed=3)
+    algorithm = dict(seed=3, backtrack_ratio=0.5, batch_fraction=0.1,
+                     epsilon=0.02, damping=0.2, max_sweeps=200, max_steps=1000,
+                     max_flips=100_000, walksat_restarts=2, walksat_noise=0.4,
+                     timeout_seconds=None)
+    hardware = dict(backend="cpu-parallel", threads=2, profile=None)
+    direct = Solver(formula=formula, **algorithm, **hardware)
+    legacy = Solver(formula, Options(**algorithm), execution=ExecutionOptions(**hardware))
+    assert direct.options == legacy.options
+    assert direct.execution == legacy.execution
+    assert direct.sweep_many(5) == legacy.sweep_many(5)
+    np.testing.assert_array_equal(direct.messages, legacy.messages)
+    result = solve(formula=formula, **algorithm, **hardware)
+    expected = solve(formula, Options(**algorithm), execution=ExecutionOptions(**hardware))
+    assert result.status == expected.status == "sat"
+    assert result.seed == 3
+    np.testing.assert_array_equal(result.assignment, expected.assignment)
+    assert (result.sp_sweeps, result.flips) == (expected.sp_sweeps, expected.flips)
+    assert formula.is_satisfied(result.assignment)
+    profile = tmp_path / "direct-profile.json"
+    solve(formula=formula, seed=3, profile=profile)
+    assert json.loads(profile.read_text())["execution"]["phases"]["cavities"]["calls"] > 0
+
+
+def test_batch_direct_keywords_and_per_job_options():
+    formulas = [Formula([[1], [-2]], n=2)] * 3
+    results = solve_many(formulas=formulas, seed=7, backend="cpu-parallel", threads=2)
+    assert [r.seed for r in results] == [7, 7, 7]
+    assert all(f.is_satisfied(r.assignment) for f, r in zip(formulas, results))
+    results = solve_many(formulas=formulas, options=[Options(seed=s) for s in range(3)],
+                         backend="cpu", threads=2)
+    assert [r.seed for r in results] == [0, 1, 2]
+    assert solve_many(formulas=[], seed=3, threads=2) == []
+    assert Solver(formula=formulas[0], options=Options(seed=8), backend="cpu").options.seed == 8
+    assert Solver(formula=formulas[0], seed=9, execution=ExecutionOptions()).options.seed == 9
+
+
+@pytest.mark.parametrize("kwargs, error, match", [
+    ({"sead": 3}, TypeError, "unexpected solver keyword"),
+    ({"options": Options(), "seed": 1}, TypeError, "either options"),
+    ({"execution": ExecutionOptions(), "backend": "cpu"}, TypeError, "either execution"),
+    ({"execution": ExecutionOptions(), "profile": None}, TypeError, "either execution"),
+    ({"seed": -1}, ValueError, None),
+    ({"max_sweeps": 0}, ValueError, None),
+    ({"damping": float("nan")}, ValueError, None),
+    ({"timeout_seconds": 0}, ValueError, None),
+    ({"threads": 1025}, ValueError, None),
+    ({"backend": "typo"}, ValueError, None),
+    ({"execution": "cpu"}, TypeError, "execution must be"),
+])
+def test_direct_keywords_reject_invalid_or_ambiguous_configuration(kwargs, error, match):
+    formula = Formula([[1]], n=1)
+    for call, arguments in [(Solver, {"formula": formula}), (solve, {"formula": formula}),
+                            (solve_many, {"formulas": [formula]})]:
+        with pytest.raises(error, match=match):
+            call(**arguments, **kwargs)
+
+
+def test_batch_direct_keywords_reject_shared_profile(tmp_path):
+    with pytest.raises(ValueError, match="profil"):
+        solve_many(formulas=[Formula([[1]], n=1)], profile=tmp_path / "profile.json")

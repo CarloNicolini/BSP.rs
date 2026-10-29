@@ -12,10 +12,10 @@ compute observables from the final messages. The survey columns are ordered
 .. code-block:: python
 
    import numpy as np
-   from pybsp_rust import Formula, Options, Solver
+   from pybsp_rust import Formula, Solver
 
    formula = Formula.random(3, 4.15, 400, seed=3)
-   solver = Solver(formula, Options(seed=3, timeout_seconds=10))
+   solver = Solver(formula=formula, seed=3, timeout_seconds=10)
    report = solver.converge()       # may raise RuntimeError: non_converged, etc.
    free = solver.assignment == -1
    assert np.allclose(solver.surveys[free].sum(axis=1), 1.0)
@@ -59,7 +59,7 @@ One BSP action at a time
 
 .. code-block:: python
 
-   solver = Solver(formula, Options(seed=3, max_steps=1000, timeout_seconds=10))
+   solver = Solver(formula=formula, seed=3, max_steps=1000, timeout_seconds=10)
    while True:
        try:
            step = solver.advance()
@@ -89,7 +89,7 @@ Raw sweeps and message experiments
 
    >>> import numpy as np
    >>> f = Formula([[1, 2], [-1, 3], [-2, -3]], n=3)
-   >>> s = Solver(f, Options(damping=0.2))
+   >>> s = Solver(formula=f, damping=0.2)
    >>> s.set_messages(np.full(f.edges, 0.1))
    >>> residual = s.sweep_many(5)
    >>> bool(np.isfinite(residual) and np.isfinite(s.messages).all())
@@ -111,7 +111,7 @@ Cancellation from another thread
 
    from concurrent.futures import ThreadPoolExecutor
 
-   solver = Solver(formula, Options(timeout_seconds=30))
+   solver = Solver(formula=formula, timeout_seconds=30)
    token = solver.cancellation_token
    with ThreadPoolExecutor(max_workers=1) as pool:
        future = pool.submit(solver.solve)

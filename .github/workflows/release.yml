@@ -9,15 +9,38 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  verify:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          python-version: '3.12'
+      - run: git fetch origin main
+      - name: Validate versions, changelog, annotated tag, and main ancestry
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: uv run --no-project --python 3.12 python tools/check_release.py --tag "$RELEASE_TAG" --require-main
+      - run: uv run --no-project --python 3.12 python -m unittest discover -s tests/release_policy -v
   cpu:
+    needs: verify
     uses: ./.github/workflows/ci.yml
   python:
+    needs: verify
     uses: ./.github/workflows/python.yml
   acceleration:
+    needs: verify
     uses: ./.github/workflows/acceleration.yml
+  docs:
+    needs: verify
+    uses: ./.github/workflows/docs.yml
   release:
     name: Package draft release
-    needs: [cpu, python, acceleration]
+    needs: [cpu, python, acceleration, docs]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -28,16 +51,26 @@ jobs:
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          python-version: '3.12'
+      - name: Read curated release notes
+        run: uv run --no-project --python 3.12 python tools/check_release.py --notes > release-notes.md
       - name: Download validated build artifacts
         run: gh run download "$GITHUB_RUN_ID" --dir artifacts
       - name: Package platform artifacts
         run: |
           mkdir release-assets
           for artifact in artifacts/*; do
+            # Actions artifacts normalize permissions; restore native CLI executability.
+            if [ -f "$artifact/bsp-rust" ]; then
+              chmod +x "$artifact/bsp-rust"
+            fi
             tar -czf "release-assets/$(basename "$artifact").tar.gz" -C "$artifact" .
           done
           (cd release-assets && sha256sum ./*.tar.gz > SHA256SUMS)
       - name: Create draft GitHub release
         run: |
           gh release create "$RELEASE_TAG" release-assets/* \
-            --verify-tag --draft --generate-notes --title "$RELEASE_TAG"
+            --verify-tag --draft --generate-notes --notes-file release-notes.md --title "$RELEASE_TAG"

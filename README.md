@@ -112,9 +112,15 @@ Install Rust 1.88 or newer with [rustup](https://rustup.rs), then clone and buil
 git clone https://github.com/CarloNicolini/BSP.rs.git
 cd BSP.rs
 cargo build --release --locked
-cargo run --release -- examples/3sat.cnf
-cargo run --release -- --generate 3 2.5 128 --seed 3 --timeout 10
+target/release/bsp-rust --version
+target/release/bsp-rust examples/3sat.cnf
+target/release/bsp-rust --generate 3 2.5 128 --seed 3 --timeout 10
 ```
+
+This builds a standalone native executable: Python, NumPy, and maturin are not
+required. Run the release binary directly for command-line workloads. The Python
+API calls the same Rust solver; relative performance depends on input/output and
+state inspection overhead and should be measured for your workload.
 
 The executable is `target/release/bsp-rust` (`bsp-rust.exe` on Windows). Install it
 on your PATH with `cargo install --path . --locked`. Run `bsp-rust --help` for all
@@ -246,13 +252,14 @@ BSP_CUDA_ARCH=61 maturin develop --release --features extension-module,cuda
 Select the compiled backend explicitly in Python:
 
 ```python
-from pybsp_rust import ExecutionOptions, Formula, Options, Solver
+from pybsp_rust import Formula, Solver
 
 formula = Formula.random(3, 2.5, 128, seed=3)
 solver = Solver(
-    formula,
-    Options(seed=3, timeout_seconds=10),
-    execution=ExecutionOptions(backend="metal"),  # Linux: "cuda" or "cuda-f32"
+    formula=formula,
+    seed=3,
+    timeout_seconds=10,
+    backend="metal",  # Linux: "cuda" or "cuda-f32"
 )
 result = solver.solve()
 print(result.status, result.execution)
@@ -325,18 +332,25 @@ CPU architecture.
 
 ```python
 from pathlib import Path
-from pybsp_rust import Formula, Options, solve
+from pybsp_rust import Formula, solve
 
 formula = Formula.from_dimacs(Path("examples/3sat.cnf").read_text())
-result = solve(formula, Options(seed=3, timeout_seconds=10))
+result = solve(formula=formula, seed=3, timeout_seconds=10)
 print(result.status)
 if result.assignment is not None:
     assert formula.is_satisfied(result.assignment)
     print(result.assignment)
 
 random_formula = Formula.random(k=3, alpha=2.5, n=128, seed=3)
-random_result = solve(random_formula)
+random_result = solve(formula=random_formula, seed=3)
 ```
+
+Pass algorithm settings (`seed`, `damping`, `max_sweeps`, `timeout_seconds`, and
+others) and hardware settings (`backend`, `threads`, `profile`) directly as
+keywords to `solve`, `Solver`, or `solve_many`. The [parameter guide](docs/guide/parameters.rst)
+lists every setting and default. Existing `Options` and `ExecutionOptions` calls
+remain supported for reusable configurations; mixing a configuration object with
+direct keywords for the same group raises `TypeError`.
 
 Each result includes an owned `int8` NumPy assignment, partial assignment, status,
 SP/WalkSAT counters, and step history. Python and Rust run the same native core.
@@ -402,6 +416,14 @@ complexity, numerical failure, step/flip limits, cancellation, and timeout.
 Extreme degrees and incompatible hard warnings can produce zero normalizers.
 Reproducibility requires the same formula, options, dependency lock, compiler,
 CPU target, and operation order.
+
+## Versions and contribution workflow
+
+The initial release is **0.1.0**. Use tagged versions for reproducible installs
+and experiments. See [release policy](RELEASING.md), [changelog](CHANGELOG.md), and
+[contributor/agent workflow](AGENTS.md). Changes go through issues and PRs on
+topic branches. Version tags trigger validated, checksummed draft releases;
+publication is a separate maintainer decision.
 
 ## Development and CI
 

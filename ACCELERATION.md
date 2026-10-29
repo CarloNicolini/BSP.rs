@@ -33,18 +33,19 @@ python -m venv .venv
 ```
 
 ```python
-from pybsp_rust import Formula, Options, ExecutionOptions, Solver, solve_many
+from pybsp_rust import Formula, Options, Solver, solve_many
 
 formula = Formula.random(3, 4.2, 100000, seed=7)
-solver = Solver(formula, execution=ExecutionOptions(backend="metal"))
+solver = Solver(formula=formula, seed=3, backend="metal")
 result = solver.solve()
 print(result.execution)
 
 # Independent seeds share immutable topology. Results preserve input order.
 results = solve_many(
-    [formula] * 8,
-    [Options(seed=seed, timeout_seconds=30) for seed in range(8)],
-    execution=ExecutionOptions(backend="cpu-parallel", threads=8),
+    formulas=[formula] * 8,
+    options=[Options(seed=seed, timeout_seconds=30) for seed in range(8)],
+    backend="cpu-parallel",
+    threads=8,
 )
 ```
 
