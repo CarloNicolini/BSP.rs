@@ -42,12 +42,17 @@ CUDA support is optional and currently Linux-only. Selecting a CUDA backend in a
 unsupported build returns an explicit error. Portable CPU builds and Apple Metal
 builds do not invoke `nvcc` or link the CUDA runtime.
 
-For Python, build the native extension in an activated virtual environment:
+For Python, follow the [uv installation guide](README.md#nvidia-cuda-on-linux).
+After installing the toolkit and setting `CUDA_HOME` and `BSP_CUDA_ARCH`, build
+from the repository root:
 
 ```sh
-python -m pip install maturin numpy pytest patchelf
-maturin develop --release --features extension-module,cuda
+uv sync --python 3.12 --reinstall-package pybsp-rust \
+  --config-settings 'build-args=--features extension-module,cuda'
 ```
+
+Run scripts with `uv run --no-sync python script.py` to preserve the CUDA build.
+For a quick hardware check, see [the Colab T4 guide](README_COLAB.md).
 
 ```python
 from pybsp_rust import Formula, Options, Solver, solve_many
