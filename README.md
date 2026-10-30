@@ -46,6 +46,8 @@ backend; select it at runtime as described above. Run `make help` for all
 targets; `make docs-serve PORT=8001` selects another port.
 After a GPU Python build, use `uv run --no-sync ...` to retain the installed
 extension; a plain `uv run` may resync it with the default CPU build settings.
+GitHub Actions exercises the Makefile builds on Linux, macOS and Windows;
+its hosted CUDA build uses an explicit override because it has no GPU device.
 
 ## 1. Install the build tools
 

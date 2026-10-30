@@ -24,7 +24,7 @@ jobs:
       - run: cargo test --features metal --locked
       - run: cargo test --release --features metal --locked
       - run: cargo test --doc --features metal --locked
-      - run: cargo build --release --features metal --locked --bin bsp-rust
+      - run: make rust BACKEND=metal
       - name: CPU smoke test of Metal-enabled binary
         run: target/release/bsp-rust --backend cpu examples/3sat.cnf
       - uses: actions/upload-artifact@v7
@@ -61,7 +61,7 @@ jobs:
       - run: cargo test --features cuda --locked
       - run: cargo test --release --features cuda --locked
       - run: cargo test --doc --features cuda --locked
-      - run: cargo build --release --features cuda --locked --bin bsp-rust
+      - run: make rust BACKEND=cuda
       - name: CPU smoke test of CUDA-enabled binary
         run: target/release/bsp-rust --backend cpu examples/3sat.cnf
       - uses: actions/upload-artifact@v7
