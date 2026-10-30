@@ -1,4 +1,4 @@
-.PHONY: help rust rust-cpu rust-metal rust-cuda python python-cpu python-metal python-cuda docs docs-serve
+.PHONY: help rust rust-cpu rust-metal rust-cuda python python-cpu python-metal python-cuda docs docs-serve clean
 
 PORT ?= 8000
 BACKEND ?= $(shell sh tools/detect_backend.sh)
@@ -11,7 +11,8 @@ help:
 	  'make rust-cpu|rust-metal|rust-cuda   Build for a specific backend' \
 	  'make python-cpu|python-metal|python-cuda  Install for a specific backend' \
 	  'make docs                            Build the Sphinx HTML documentation' \
-	  'make docs-serve [PORT=8000]          Build and serve the documentation'
+	  'make docs-serve [PORT=8000]          Build and serve the documentation' \
+	  'make clean                           Remove build and documentation artifacts'
 
 rust:
 	@echo 'Selected build backend: $(BACKEND)'
@@ -45,3 +46,7 @@ docs:
 
 docs-serve: docs
 	uv run --no-sync python -m http.server $(PORT) --directory docs/_build/html
+
+clean:
+	cargo clean
+	rm -rf docs/_build dist
