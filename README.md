@@ -37,6 +37,11 @@ then select `--backend metal`, `cuda`, or `cuda-f32`.
 Both interfaces run the same Rust solver. Any speed difference depends on setup,
 serialization, and state inspection; measure your workload.
 
+The root Makefile also provides `make rust`, `make python`, and
+`make docs-serve`. Use `make rust-metal` or `make rust-cuda` and
+`make python-metal` or `make python-cuda` for the optional GPU builds. Run
+`make help` for all targets; `make docs-serve PORT=8001` selects another port.
+
 ## 1. Install the build tools
 
 The Python package builds a native extension from source. Install the tools for
