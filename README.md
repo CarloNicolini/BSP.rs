@@ -37,6 +37,18 @@ then select `--backend metal`, `cuda`, or `cuda-f32`.
 Both interfaces run the same Rust solver. Any speed difference depends on setup,
 serialization, and state inspection; measure your workload.
 
+The root Makefile provides `make rust`, `make python`, and `make docs-serve`.
+The build targets select Metal on Apple silicon with Xcode tools, CUDA on Linux
+when an NVIDIA GPU and `nvcc` are available, and CPU otherwise. Override detection
+with `BACKEND=cpu`, `metal`, or `cuda` (for example, `make rust BACKEND=cpu`),
+or use a specific target such as `make python-cuda`. Build selection enables the
+backend; select it at runtime as described above. Run `make help` for all
+targets; `make docs-serve PORT=8001` selects another port.
+After a GPU Python build, use `uv run --no-sync ...` to retain the installed
+extension; a plain `uv run` may resync it with the default CPU build settings.
+GitHub Actions exercises the Makefile builds on Linux, macOS and Windows;
+its hosted CUDA build uses an explicit override because it has no GPU device.
+
 ## 1. Install the build tools
 
 The Python package builds a native extension from source. Install the tools for

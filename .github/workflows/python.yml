@@ -29,6 +29,12 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.2
         with:
           python-version: ${{ matrix.python }}
+      - if: runner.os == 'Windows'
+        run: choco install make -y --no-progress
+      - run: make python
+        env:
+          UV_PYTHON: ${{ matrix.python }}
+      - run: uv run --no-sync python -c 'import pybsp_rust; print(pybsp_rust.__version__)'
       - run: uv sync --extra test --python ${{ matrix.python }}
       - run: uv run maturin build --release --locked --out dist
       - run: uv run maturin sdist --out dist

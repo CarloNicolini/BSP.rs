@@ -6,6 +6,11 @@ Strict HTML and executable examples
 
 Install the real native extension and the docs extra from the repository root:
 
+The root Makefile builds and serves the HTML site with ``make docs-serve``.
+Use ``PORT=8001`` to change the port, and ``BACKEND=cpu``, ``metal``, or
+``cuda`` to override automatic build detection. ``make docs`` builds without
+starting a server. The commands below also run the example and doctest checks.
+
 .. code-block:: sh
 
    python -m venv .venv-docs
