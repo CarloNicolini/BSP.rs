@@ -5,6 +5,13 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Metal
+
+- Pack edge messages into source-ordered buffers so that the SP sweep reads
+  them with local gathers. A sweep at N=10^6, alpha=4 takes 8.6 ms instead of
+  52 ms on an M1 Pro, with bit-identical messages. Device memory grows by
+  about 190 MB at that size.
+
 ## [0.2.0]
 
 Draft release; publication awaits maintainer review.
