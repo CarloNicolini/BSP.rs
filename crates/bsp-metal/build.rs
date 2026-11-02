@@ -22,5 +22,5 @@ fn main() {
         println!("cargo:rustc-link-lib=framework={framework}");
     }
     println!("cargo:rerun-if-changed=src/bridge.m");
-    println!("cargo:rerun-if-changed=src/kernels.metal");
+    println!("cargo:rerun-if-changed=src/kernels_packed.metal");
 }

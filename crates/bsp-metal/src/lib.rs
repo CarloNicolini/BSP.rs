@@ -15,6 +15,10 @@ extern "C" {
     fn bsp_metal_dispatch(ctx: *mut c_void, kernel: *const c_char, count: usize, base: u32);
     fn bsp_metal_end(ctx: *mut c_void, seconds: *mut f64, error: *mut c_char, size: usize) -> bool;
 }
+// Edges per source window. A gathered window (2 MiB of eta) stays in the
+// system-level cache; scattered q needs a smaller window (256 KiB).
+const ETA_WINDOW: usize = 1 << 19;
+const Q_WINDOW: usize = 1 << 16;
 pub struct Topology<'a> {
     pub n: usize,
     pub offsets: &'a [u32],
@@ -92,7 +96,7 @@ pub fn safe_conversion(values: &[f64]) -> bool {
     })
 }
 pub fn device_budget() -> Result<u64, String> {
-    let source = CString::new(include_str!("kernels.metal")).unwrap();
+    let source = CString::new(include_str!("kernels_packed.metal")).unwrap();
     let mut error = [0i8; 4096];
     let p = unsafe { bsp_metal_new(source.as_ptr(), error.as_mut_ptr(), error.len()) };
     if p.is_null() {
@@ -191,19 +195,25 @@ impl MetalSolver {
         } else {
             0
         };
+        // Only medium and wide cavities keep unpacked q as per-variable scratch.
+        let scratch_q = if medium.len() > 1 || wide.len() > 1 {
+            edges
+        } else {
+            0
+        };
         let lengths = [
             t.var_offsets.len() * 4,
-            edges * 4,
+            edges * 8, // Packed q; observables pair each q with its normalizer.
             t.offsets.len() * 4,
-            edges * 4,
+            0, // Clause kernels read free incidences from packed q, not literals.
             edges * 4,
             t.n,
             m * 4,
             t.n * 4,
             edges * 4,
+            edges * 4, // Normalizers reuse active entries of saved_eta (slot 9).
+            scratch_q * 4,
             edges * 4,
-            edges * 4,
-            0, // Normalizers reuse active entries of saved_eta (slot 9).
             general_edges * 4,
             t.n * 8,
             t.n * 16,
@@ -218,8 +228,13 @@ impl MetalSolver {
             t.n.max(m).div_ceil(256).max(1) * 16,
             wide.len() * 4,
             ids.len() * 4,
+            0, // Dispatch parameters are bound to slot 26 with setBytes.
+            edges * 4,
+            edges * 4,
+            edges * 4,
+            edges * 4,
         ];
-        let source = CString::new(include_str!("kernels.metal")).unwrap();
+        let source = CString::new(include_str!("kernels_packed.metal")).unwrap();
         let mut error = [0i8; 4096];
         let context = NonNull::new(unsafe {
             bsp_metal_new(source.as_ptr(), error.as_mut_ptr(), error.len())
@@ -261,10 +276,9 @@ impl MetalSolver {
             });
         }
         s.write(0, t.var_offsets);
-        s.write(1, t.var_edges);
         s.write(2, t.offsets);
-        s.write(3, t.literals);
         s.write(4, t.edge_clause);
+        s.pack_layout(t.var_edges);
         s.write(5, &vec![-1i8; t.n]);
         s.write(6, &vec![1u32; m]);
         s.write(24, &wide);
@@ -294,6 +308,40 @@ impl MetalSolver {
     }
     fn write<T: Copy>(&mut self, slot: usize, values: &[T]) {
         self.slice_mut::<T>(slot)[..values.len()].copy_from_slice(values);
+    }
+    /// Random accesses outside the system-level cache dominate a sweep, so
+    /// each order change is confined to aligned windows. Packed slot k lies in
+    /// the bucket of its source window and follows the consumer's order there.
+    fn pack_layout(&mut self, var_edges: &[u32]) {
+        let mut position = vec![0u32; self.edges];
+        let mut eta_at = vec![0u32; self.edges];
+        let mut eta_source = vec![0u32; self.edges];
+        let mut next: Vec<u32> = (0..self.edges)
+            .step_by(ETA_WINDOW)
+            .map(|k| k as u32)
+            .collect();
+        for (p, &e) in var_edges.iter().enumerate() {
+            position[e as usize] = p as u32;
+            let k = &mut next[e as usize / ETA_WINDOW];
+            eta_at[p] = *k;
+            eta_source[*k as usize] = e;
+            *k += 1;
+        }
+        self.write(11, &eta_source);
+        self.write(27, &eta_at);
+        let (mut q_slot, mut q_at) = (eta_source, eta_at);
+        next = (0..self.edges)
+            .step_by(Q_WINDOW)
+            .map(|k| k as u32)
+            .collect();
+        for (e, &p) in position.iter().enumerate() {
+            let k = &mut next[p as usize / Q_WINDOW];
+            q_slot[p as usize] = *k;
+            q_at[e] = *k;
+            *k += 1;
+        }
+        self.write(28, &q_slot);
+        self.write(29, &q_at);
     }
     pub fn set_assignment(&mut self, v: usize, value: i8) {
         assert!(v < self.n);
@@ -438,6 +486,7 @@ impl MetalSolver {
         self.reset(epsilon, damping);
         self.begin(checkpoint);
         for _ in 0..count {
+            self.dispatch("pack_eta", self.edges.div_ceil(4), self.edges as u32)?;
             self.dispatch("cavities", self.medium_variables, 0)?;
             self.dispatch("cavities_simd", self.n * 32, 0)?;
             self.dispatch("cavities_wide", self.wide_variables * 256, 0)?;
@@ -456,6 +505,7 @@ impl MetalSolver {
         self.reset(0.0, 0.0);
         self.slice_mut::<Config>(20)[0].observables = 1;
         self.begin(false);
+        self.dispatch("pack_eta", self.edges.div_ceil(4), self.edges as u32)?;
         self.dispatch("cavities", self.medium_variables, 0)?;
         self.dispatch("cavities_simd", self.n * 32, 0)?;
         self.dispatch("cavities_wide", self.wide_variables * 256, 0)?;
