@@ -549,13 +549,29 @@ impl PySolver {
     }
     /// Continue search until a terminal condition.
     ///
+    /// Parameters
+    /// ----------
+    /// assignment : bool, optional
+    ///     Include assignment and partial_assignment in the JSON result (default).
+    ///
     /// Returns
     /// -------
     /// str
     ///     JSON result; only status sat contains a verified complete assignment.
     ///     Operational failures are status records, not UNSAT proofs.
-    fn solve(&mut self, py: Python<'_>) -> PyResult<String> {
-        json(&py.allow_threads(|| self.inner.solve()))
+    #[pyo3(signature = (assignment=true))]
+    fn solve(&mut self, py: Python<'_>, assignment: bool) -> PyResult<String> {
+        let result = py.allow_threads(|| self.inner.solve());
+        if assignment {
+            return json(&result);
+        }
+        let mut report = serde_json::to_value(&result).map_err(runtime_error)?;
+        let fields = report
+            .as_object_mut()
+            .expect("SolveResult is a JSON object");
+        fields.remove("assignment");
+        fields.remove("partial_assignment");
+        json(&report)
     }
     /// Extract clauses remaining under the current partial assignment.
     ///

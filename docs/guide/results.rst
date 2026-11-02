@@ -13,6 +13,11 @@ free variables without fixing the BSP representation.
 All other statuses have ``assignment is None``. ``partial_assignment`` is
 diagnostic state and must not be mistaken for a complete satisfying assignment.
 
+``solve(..., assignment=False)`` and ``Solver.solve(assignment=False)`` set both
+``assignment`` and ``partial_assignment`` to None, even on ``sat``. Use
+``status`` to read the outcome. The command-line flag ``--no-assignment`` omits
+both keys from the JSON result.
+
 .. list-table::
    :header-rows: 1
    :widths: 25 75

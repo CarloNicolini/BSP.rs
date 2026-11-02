@@ -31,6 +31,21 @@ fn cli_solves_the_shipped_dimacs_example() {
 }
 
 #[test]
+fn cli_no_assignment_omits_only_the_assignment_arrays() {
+    let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
+        .args(["--no-assignment", "--seed", "3"])
+        .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"))
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["status"], "sat");
+    assert!(result.get("assignment").is_none());
+    assert!(result.get("partial_assignment").is_none());
+    assert!(result["wall_seconds"].is_f64() && result["steps"].is_array());
+}
+
+#[test]
 fn cli_documents_options_and_rejects_invalid_input() {
     let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
         .arg("--help")

@@ -23,6 +23,7 @@ bsp-rust [OPTIONS] --generate K ALPHA N
   --sweeps N           Benchmark exactly N sweeps, excluding graph construction
   --messages PATH      Load a flat JSON array of starting messages
   --dump-messages      Include ending messages in benchmark JSON
+  --no-assignment      Omit assignment and partial_assignment from the result
   --write-formula PATH Export generated/normalized DIMACS without solving
 
 Outputs JSON. SAT exits 0; heuristic limits/failures exit 1; input errors exit 2.
@@ -38,6 +39,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let mut sweeps = None;
     let mut messages = None;
     let mut dump_messages = false;
+    let mut assignment = true;
     let mut export = None;
     let mut i = 0;
     while i < args.len() {
@@ -52,6 +54,11 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         }
         if flag == "--dump-messages" {
             dump_messages = true;
+            i += 1;
+            continue;
+        }
+        if flag == "--no-assignment" {
+            assignment = false;
             i += 1;
             continue;
         }
@@ -147,7 +154,17 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     }
     let result = solver.solve();
     solver.write_profile()?;
-    println!("{}", serde_json::to_string(&result)?);
+    if assignment {
+        println!("{}", serde_json::to_string(&result)?);
+    } else {
+        let mut report = serde_json::to_value(&result)?;
+        let fields = report
+            .as_object_mut()
+            .expect("SolveResult is a JSON object");
+        fields.remove("assignment");
+        fields.remove("partial_assignment");
+        println!("{report}");
+    }
     Ok(if result.status == Status::Sat {
         ExitCode::SUCCESS
     } else {

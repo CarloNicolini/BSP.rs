@@ -89,3 +89,13 @@ def test_per_job_seeds_reject_invalid_or_ambiguous_inputs(settings, error):
 def test_empty_batches_still_validate_shared_settings(settings):
     with pytest.raises(ValueError):
         solve_many(formulas=[], **settings)
+
+
+def test_assignment_false_omits_only_the_assignment_arrays():
+    formula = Formula.random(k=3, alpha=2.5, n=80, seed=3)
+    full = solve(formula=formula, seed=3)
+    for result in (solve(formula=formula, seed=3, assignment=False),
+                   Solver(formula=formula, seed=3).solve(assignment=False)):
+        assert result.status == full.status == "sat"
+        assert result.assignment is None and result.partial_assignment is None
+        assert (result.sp_sweeps, result.flips, result.steps) == (full.sp_sweeps, full.flips, full.steps)

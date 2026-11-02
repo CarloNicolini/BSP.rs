@@ -202,10 +202,12 @@ class SolveResult:
         ``timeout``. Only ``sat`` certifies a solution; none is an UNSAT proof.
     assignment : numpy.ndarray or None
         Verified complete assignment of shape ``(n,)`` and dtype ``int8`` on
-        success, containing only 0/1. None for every other outcome.
-    partial_assignment : numpy.ndarray
+        success, containing only 0/1. None for every other outcome, and None
+        when the solve call used ``assignment=False``.
+    partial_assignment : numpy.ndarray or None
         BSP state of shape ``(n,)``, dtype ``int8``, using -1/0/1. WalkSAT may
         complete free variables without fixing them in this partial state.
+        None when the solve call used ``assignment=False``.
     seed : int
         Solver seed, independent of the formula-generation seed.
     wall_seconds : float
@@ -237,8 +239,9 @@ class SolveResult:
             action history, and execution metadata.
         """
         self.__dict__.update(data)
-        self.assignment = None if data["assignment"] is None else np.asarray(data["assignment"], dtype=np.int8)
-        self.partial_assignment = np.asarray(data["partial_assignment"], dtype=np.int8)
+        assignment, partial = data.get("assignment"), data.get("partial_assignment")
+        self.assignment = None if assignment is None else np.asarray(assignment, dtype=np.int8)
+        self.partial_assignment = None if partial is None else np.asarray(partial, dtype=np.int8)
 
     def __repr__(self):
         """Return a concise status and work-counter representation."""
@@ -722,8 +725,15 @@ class Solver:
         """
         return self._native.residual_formula()
 
-    def solve(self):
+    def solve(self, *, assignment=True):
         """Continue the current search until a terminal condition.
+
+        Parameters
+        ----------
+        assignment : bool, optional
+            Report ``assignment`` and ``partial_assignment``. If False, both are
+            None, which avoids transferring two arrays of n integers. Status and
+            verification are unchanged. The default is True.
 
         Returns
         -------
@@ -738,7 +748,7 @@ class Solver:
         RuntimeError. A profile-write error is recorded in execution metadata without
         replacing an otherwise valid result.
         """
-        return SolveResult(json.loads(self._native.solve()))
+        return SolveResult(json.loads(self._native.solve(assignment)))
 
 
 def solve(
@@ -759,6 +769,7 @@ def solve(
     backend=_DEFAULT,
     threads=_DEFAULT,
     profile=_DEFAULT,
+    assignment=True,
 ):
     """Construct a fresh solver and return one terminal result.
 
@@ -822,6 +833,9 @@ def solve(
         JSON profile destination written by ``Solver.solve()``. Enables phase
         timers and GPU timestamps; GPU instrumentation changes submission costs.
         Batch solving rejects profiling: profile individual solvers instead.
+    assignment : bool, optional
+        Report ``assignment`` and ``partial_assignment``. If False, both are None;
+        status and verification are unchanged. The default is True.
 
     Returns
     -------
@@ -847,7 +861,7 @@ def solve(
     ('sat', [1, 0])
     """
     return Solver(formula=formula, options=options, execution=execution,
-                  **_direct_settings(locals())).solve()
+                  **_direct_settings(locals())).solve(assignment=assignment)
 
 
 def solve_many(

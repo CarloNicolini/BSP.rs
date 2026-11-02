@@ -5,6 +5,13 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- CLI `--no-assignment` omits `assignment` and `partial_assignment` from the
+  JSON result. Python `solve(..., assignment=False)` and
+  `Solver.solve(assignment=False)` return both as None. Status, counters, and
+  CPU verification are unchanged.
+
 ### Metal
 
 - Pack edge messages into source-ordered buffers so that the SP sweep reads

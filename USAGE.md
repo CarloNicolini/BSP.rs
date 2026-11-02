@@ -36,6 +36,12 @@ and step history. Assignments are ordered by variable, with 0=false and 1=true.
 Partial assignments use -1 for free variables. Exit codes are 0 for SAT, 1 for a
 heuristic failure or a limit, and 2 for invalid input.
 
+For large formulas, `--no-assignment` omits `assignment` and `partial_assignment`
+from the JSON result. The solver still verifies a SAT assignment on the CPU.
+`wall_seconds` starts at solver construction, so it excludes formula parsing or
+generation and the JSON output. The Python equivalent is
+`solve(formula=formula, seed=3, assignment=False)`.
+
 Generate an instance for later use:
 
 ```sh
