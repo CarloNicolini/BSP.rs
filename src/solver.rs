@@ -192,6 +192,7 @@ pub struct Solver {
     steps: Vec<Step>,
     terminal: Option<Status>,
     solution: Option<Vec<i8>>,
+    walksat_hook: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl Solver {
@@ -274,7 +275,18 @@ impl Solver {
             steps: Vec::new(),
             terminal: None,
             solution: None,
+            walksat_hook: None,
         })
+    }
+    /// Register a CPU callback for the start of WalkSAT.
+    /// Device sweeps do not call it.
+    pub fn on_walksat(&mut self, hook: Arc<dyn Fn() + Send + Sync>) {
+        self.walksat_hook = Some(hook);
+    }
+    pub(crate) fn mark_walksat(&self) {
+        if let Some(hook) = &self.walksat_hook {
+            hook();
+        }
     }
     pub fn formula(&self) -> &Formula {
         &self.formula

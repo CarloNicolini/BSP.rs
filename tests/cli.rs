@@ -1,4 +1,34 @@
+use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn temp_dir(label: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("bsp-cli-{label}-{nanos}"));
+    fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn run(dir: &PathBuf, args: &[&str]) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .unwrap()
+}
+
+fn stdout(output: &std::process::Output) -> String {
+    String::from_utf8(output.stdout.clone()).unwrap()
+}
+
+fn summary(output: &std::process::Output) -> serde_json::Value {
+    let text = stdout(output);
+    serde_json::from_str(text.lines().last().unwrap()).unwrap()
+}
 
 #[test]
 fn version_matches_package_without_a_formula() {
@@ -18,16 +48,88 @@ fn version_matches_package_without_a_formula() {
 
 #[test]
 fn cli_solves_the_shipped_dimacs_example() {
-    let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
-        .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"))
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(result["status"], "sat");
+    let dir = temp_dir("solve");
+    let output = run(
+        &dir,
+        &[
+            "--no-progress",
+            "--output",
+            "result.json",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"),
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let brief = summary(&output);
+    assert_eq!(brief["status"], "sat");
+    assert_eq!(brief["output"], "result.json");
+    assert!(brief.get("assignment").is_none());
+    assert!(brief.get("steps").is_none());
+    let result: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["status"], brief["status"]);
     let assignment: Vec<i8> = serde_json::from_value(result["assignment"].clone()).unwrap();
     let formula = bsp_rust::Formula::from_dimacs(include_str!("../examples/3sat.cnf")).unwrap();
     assert!(formula.is_satisfied(&assignment));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn cli_default_output_name_contains_the_run_variables() {
+    let dir = temp_dir("name");
+    let output = run(
+        &dir,
+        &[
+            "--no-progress",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"),
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let name = summary(&output)["output"].as_str().unwrap().to_string();
+    assert!(name.starts_with("output_3sat_seed1_r0.9_cpu_"));
+    assert!(name.ends_with("Z.json"));
+    let result: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join(name)).unwrap()).unwrap();
+    assert_eq!(result["status"], "sat");
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn cli_progress_line_names_the_three_phases() {
+    let dir = temp_dir("progress");
+    let output = run(
+        &dir,
+        &[
+            "--progress",
+            "--output",
+            "result.json",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"),
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = stdout(&output);
+    assert!(text.contains("formula"));
+    assert!(text.contains("bsp"));
+    assert!(text.contains("walksat"));
+    let brief = summary(&output);
+    assert_eq!(brief["status"], "sat");
+    assert_eq!(brief["output"], "result.json");
+    assert!(brief.get("assignment").is_none());
+    let result: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["status"], "sat");
+    let _ = fs::remove_dir_all(dir);
 }
 
 #[test]
@@ -37,9 +139,13 @@ fn cli_documents_options_and_rejects_invalid_input() {
         .output()
         .unwrap();
     assert!(output.status.success());
-    assert!(String::from_utf8(output.stdout)
-        .unwrap()
-        .contains("--generate K ALPHA N"));
+    let help = String::from_utf8(output.stdout).unwrap();
+    assert!(help.contains("--generate K ALPHA N"));
+    assert!(help.contains("Default: 0.9."));
+    assert!(help.contains("Default: 0.01."));
+    assert!(help.contains("--output PATH"));
+    assert!(help.contains("--progress"));
+    assert!(help.contains("--no-progress"));
     let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
         .arg("--invalid")
         .arg("1")
