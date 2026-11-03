@@ -7,10 +7,12 @@ mod decision_heap;
 mod formula;
 #[cfg(feature = "python")]
 mod python;
+mod run_clock;
 mod solver;
 mod walksat;
 
 pub use formula::Formula;
+pub use run_clock::{RunClock, RunPhase, RunSnapshot};
 pub use solver::{
     solve_many, Backend, CancellationToken, ExecutionOptions, ExecutionReport, Options, SolveJob,
     SolveResult, Solver, SpReport, Status, Step,

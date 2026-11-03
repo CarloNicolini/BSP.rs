@@ -14,11 +14,18 @@ import subprocess
 import tempfile
 
 
-def result(command):
-    process = subprocess.run(list(map(str,command)),capture_output=True,text=True,timeout=120)
+def result(command, cwd):
+    process = subprocess.run(list(map(str,command)),cwd=cwd,capture_output=True,text=True,timeout=120)
     if process.returncode not in (0,1):
         raise RuntimeError(process.stderr)
-    return json.loads(process.stdout)
+    text = process.stdout.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        path = Path(text)
+        if not path.is_absolute():
+            path = Path(cwd)/path
+        return json.loads(path.read_text())
 
 
 def main():
@@ -39,7 +46,7 @@ def main():
             for trial in range(args.repeats+1):
                 for key in (["before","after"] if trial%2 else ["after","before"]):
                     binary=args.before if key=="before" else args.after
-                    output=result([binary,"--seed",seed,"--max-flips",100000,formula])
+                    output=result([binary,"--seed",str(seed),"--max-flips",100000,formula], tmp)
                     elapsed=output.pop("wall_seconds")
                     # Execution metadata is not part of the SAT trajectory.
                     output.pop("execution",None)

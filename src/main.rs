@@ -1,33 +1,9 @@
-use bsp_rust::{Backend, ExecutionOptions, Formula, Options, Solver, Status};
-use serde_json::json;
-use std::{env, fs, process::ExitCode, time::Instant};
+mod cli;
 
-const HELP: &str = "bsp-rust [OPTIONS] formula.cnf
-bsp-rust [OPTIONS] --generate K ALPHA N
-
-  --version, -V        Print the package version
-  --seed N             RNG seed (default 1)
-  --r R                Backtracking ratio in [0,1)
-  --frac F             Decimation batch fraction in (0,1]
-  --eps E              SP undamped residual tolerance
-  --damping D          Weight of the old message in [0,1)
-  --max-sweeps N       SP sweep limit per fixed point
-  --max-steps N        BSP action limit
-  --max-flips N        Total WalkSAT flip budget across restarts
-  --restarts N         WalkSAT restarts
-  --timeout SECONDS    Cooperative time limit, including solver construction
-  --backend NAME       cpu, cpu-parallel, metal (f32), cuda (f64), cuda-f32
-  --threads N          CPU worker limit; 0 uses available CPUs
-  --profile PATH       Write phase timings and execution metadata as JSON
-  --options PATH       Read Options JSON before subsequent overrides
-  --sweeps N           Benchmark exactly N sweeps, excluding graph construction
-  --messages PATH      Load a flat JSON array of starting messages
-  --dump-messages      Include ending messages in benchmark JSON
-  --write-formula PATH Export generated/normalized DIMACS without solving
-
-Outputs JSON. SAT exits 0; heuristic limits/failures exit 1; input errors exit 2.
-Assignments are 0/1, and partial assignments use -1 for free variables.
-";
+use bsp_rust::{ExecutionOptions, Formula, Options, RunClock, RunPhase, Solver, Status};
+use std::io::{IsTerminal, Write};
+use std::path::{Path, PathBuf};
+use std::{env, fs, process::ExitCode};
 
 fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -39,11 +15,13 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let mut messages = None;
     let mut dump_messages = false;
     let mut export = None;
+    let mut output = None;
+    let mut progress = None;
     let mut i = 0;
     while i < args.len() {
         let flag = &args[i];
         if flag == "--help" || flag == "-h" {
-            print!("{HELP}");
+            print!("{}", cli::help::text(std::io::stdout().is_terminal()));
             return Ok(ExitCode::SUCCESS);
         }
         if flag == "--version" || flag == "-V" {
@@ -52,6 +30,15 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         }
         if flag == "--dump-messages" {
             dump_messages = true;
+            i += 1;
+            continue;
+        }
+        if flag == "--progress" || flag == "--no-progress" {
+            let enabled = flag == "--progress";
+            if progress.is_some_and(|current| current != enabled) {
+                return Err("use only one of --progress and --no-progress".into());
+            }
+            progress = Some(enabled);
             i += 1;
             continue;
         }
@@ -68,11 +55,11 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         match flag.as_str() {
             "--backend" => {
                 execution.backend = match value.as_str() {
-                    "cpu" => Backend::Cpu,
-                    "cpu-parallel" => Backend::CpuParallel,
-                    "metal" => Backend::Metal,
-                    "cuda" => Backend::Cuda,
-                    "cuda-f32" => Backend::CudaF32,
+                    "cpu" => bsp_rust::Backend::Cpu,
+                    "cpu-parallel" => bsp_rust::Backend::CpuParallel,
+                    "metal" => bsp_rust::Backend::Metal,
+                    "cuda" => bsp_rust::Backend::Cuda,
+                    "cuda-f32" => bsp_rust::Backend::CudaF32,
                     _ => {
                         return Err(
                             "backend must be cpu, cpu-parallel, metal, cuda, or cuda-f32".into(),
@@ -96,6 +83,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
             "--messages" => messages = Some(value.clone()),
             "--sweeps" => sweeps = Some(value.parse::<usize>()?),
             "--write-formula" => export = Some(value.clone()),
+            "--output" => output = Some(value.clone()),
             "--generate" => {
                 let alpha = args
                     .get(i + 2)
@@ -113,46 +101,101 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         i += 2;
     }
     options.validate()?;
-    let formula = match (source, generate) {
-        (Some(path), None) => Formula::from_dimacs(&fs::read_to_string(path)?)?,
-        (None, Some((k, alpha, n))) => Formula::random(k, alpha, n, options.seed)?,
+    let show_progress = progress.unwrap_or_else(|| std::io::stdout().is_terminal());
+    let clock = show_progress.then(RunClock::new);
+    let mut live = clock.clone().map(cli::progress::LiveLine::start);
+    let (formula_name, formula) = match (source, generate) {
+        (Some(path), None) => (
+            cli::output::formula_token(&path),
+            Formula::from_dimacs(&fs::read_to_string(&path)?)?,
+        ),
+        (None, Some((k, alpha, n))) => (
+            cli::output::generated_token(k, alpha, n),
+            Formula::random(k, alpha, n, options.seed)?,
+        ),
         _ => return Err("provide a DIMACS path or --generate K ALPHA N".into()),
     };
     if let Some(path) = export {
+        if let Some(line) = live.as_mut() {
+            line.stop();
+        }
         fs::write(path, formula.to_dimacs())?;
         return Ok(ExitCode::SUCCESS);
     }
-    let mut solver = Solver::with_execution(formula.clone(), options, execution)?;
+    let mut solver = Solver::with_execution(formula.clone(), options.clone(), execution.clone())?;
+    if let Some(clock) = &clock {
+        solver.attach_run_clock(clock.clone());
+        clock.enter(RunPhase::Bsp);
+    }
     if let Some(path) = messages {
         solver.set_messages(&serde_json::from_str::<Vec<f64>>(&fs::read_to_string(
             path,
         )?)?)?;
     }
+    let report_path = output.map(PathBuf::from).unwrap_or_else(|| {
+        cli::output::default_path(
+            &formula_name,
+            options.seed,
+            options.backtrack_ratio,
+            execution.backend,
+        )
+    });
     if let Some(sweeps) = sweeps {
         if sweeps == 0 {
             return Err("--sweeps must be positive".into());
         }
-        let started = Instant::now();
-        let residual = solver.sweep_many(sweeps).map_err(|s| s.to_string())?;
+        let started = std::time::Instant::now();
+        let residual = solver
+            .sweep_many(sweeps)
+            .map_err(|status| status.to_string())?;
         let seconds = started.elapsed().as_secs_f64();
         solver.write_profile()?;
-        let mut report = json!({"n":formula.n(),"m":formula.m(),"edges":formula.edges(),"sweeps":sweeps,
-            "seconds":seconds,"ns_per_edge_sweep":seconds*1e9/(sweeps as f64*formula.edges().max(1) as f64),
-            "residual":residual,"checksum":solver.messages().iter().sum::<f64>(),"execution":solver.execution_report()});
+        let mut report = serde_json::json!({
+            "n": formula.n(),
+            "m": formula.m(),
+            "edges": formula.edges(),
+            "sweeps": sweeps,
+            "seconds": seconds,
+            "ns_per_edge_sweep": seconds * 1e9 / (sweeps as f64 * formula.edges().max(1) as f64),
+            "residual": residual,
+            "checksum": solver.messages().iter().sum::<f64>(),
+            "execution": solver.execution_report()
+        });
         if dump_messages {
-            report["messages"] = json!(solver.messages());
+            report["messages"] = serde_json::json!(solver.messages());
         }
-        println!("{report}");
+        finish(live, clock, &report_path, &report)?;
         return Ok(ExitCode::SUCCESS);
     }
     let result = solver.solve();
     solver.write_profile()?;
-    println!("{}", serde_json::to_string(&result)?);
-    Ok(if result.status == Status::Sat {
+    let code = if result.status == Status::Sat {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
-    })
+    };
+    finish(live, clock, &report_path, &serde_json::to_value(&result)?)?;
+    Ok(code)
+}
+
+fn finish(
+    mut live: Option<cli::progress::LiveLine>,
+    clock: Option<RunClock>,
+    path: &Path,
+    report: &serde_json::Value,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(line) = live.as_mut() {
+        line.stop();
+    }
+    let snap = clock.as_ref().map(RunClock::snapshot);
+    cli::output::write_json(path, report)?;
+    if let Some(snap) = snap {
+        println!("{}", cli::progress::final_line(&snap, path));
+    } else {
+        println!("{}", path.display());
+    }
+    std::io::stdout().flush()?;
+    Ok(())
 }
 
 fn main() -> ExitCode {

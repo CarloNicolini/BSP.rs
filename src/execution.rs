@@ -568,6 +568,7 @@ impl Solver {
                     count += report.sweeps;
                     self.sp_sweeps += report.sweeps as u64;
                     self.execution.report.metal_sweeps += report.sweeps as u64;
+                    self.publish_progress();
                     if report.numerical_error {
                         fallback = Some("Metal cavity arithmetic underflowed or became non-finite");
                         return Err(Status::NumericalFailure);
@@ -685,6 +686,7 @@ impl Solver {
                     count += report.sweeps;
                     self.sp_sweeps += report.sweeps as u64;
                     self.execution.report.cuda_sweeps += report.sweeps as u64;
+                    self.publish_progress();
                     if report.numerical_error {
                         fallback = Some("CUDA cavity arithmetic underflowed or became non-finite");
                         return Err(Status::NumericalFailure);

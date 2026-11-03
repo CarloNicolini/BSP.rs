@@ -39,8 +39,9 @@ def main():
             edges = int(alpha*n)*k
             messages = Path(directory)/"messages.json"
             messages.write_text(json.dumps([.05+.25*((e*37)%997)/997 for e in range(edges)]))
+            sweep = Path(directory)/"sweep.json"
             commands = {
-                "rust": [args.rust, "--sweeps", args.sweeps, "--damping", .2, "--messages", messages, "--dump-messages", cnf],
+                "rust": [args.rust, "--no-progress", "--output", sweep, "--sweeps", args.sweeps, "--damping", .2, "--messages", messages, "--dump-messages", cnf],
                 "cpp": [args.cpp, cnf, args.sweeps, .2],
             }
             times = {key: [] for key in commands}
@@ -48,7 +49,12 @@ def main():
             for repeat in range(args.repeats+1):
                 # Alternate order, and discard the first round as warmup.
                 for key in (["cpp","rust"] if repeat%2 else ["rust","cpp"]):
-                    result = output(commands[key]); answers[key] = result
+                    if key == "rust":
+                        subprocess.run(list(map(str, commands[key])), check=True)
+                        result = json.loads(sweep.read_text())
+                    else:
+                        result = output(commands[key])
+                    answers[key] = result
                     if repeat: times[key].append(result["seconds"])
             error = max(abs(a-b) for a,b in zip(answers["rust"]["messages"],answers["cpp"]["messages"],strict=True))
             finite = all(math.isfinite(v) for answer in answers.values() for v in answer["messages"])
