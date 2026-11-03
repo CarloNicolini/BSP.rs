@@ -1,4 +1,5 @@
 //! Bounds-checked synchronous CUDA boundary. Device memory stays private.
+mod layout;
 use std::{
     ffi::{c_char, c_void, CStr},
     ptr::NonNull,
@@ -113,6 +114,7 @@ pub struct CudaSolver {
     fp32: bool,
     medium: usize,
     wide: usize,
+    simd_lanes: usize,
     buckets: Vec<(usize, usize, u32)>,
     assignments: Vec<i8>,
     patches: Vec<Patch>,
@@ -230,37 +232,46 @@ impl CudaSolver {
             ids[base] = count as u32;
             buckets.push((kind, count, base as u32));
         }
+        let packed = layout::pack(t.var_offsets, t.var_edges, t.offsets, &ids, buckets, fp32);
         let real = if fp32 { 4 } else { 8 };
-        let lengths = [
-            t.var_offsets.len() * 4,
-            edges * 4,
-            t.offsets.len() * 4,
-            edges * 4,
-            edges * 4,
-            t.n,
-            m * 4,
-            t.n * 4,
-            edges * real,
-            edges * real,
-            edges * real,
-            edges * real,
-            edges * real,
-            t.n * 2 * real,
-            t.n * 4 * real,
-            m * real,
-            t.n * 4,
-            t.n * real,
-            m * real,
-            32,
-            4,
-            medium.len() * 4,
-            edges * real,
-            t.n.max(m).div_ceil(256).max(1) * 4 * real,
-            wide.len() * 4,
-            ids.len() * 4,
-            4,
-            1024 * 12,
-        ];
+        let scratch = if medium.len() > 1 || wide.len() > 1 {
+            edges * real
+        } else {
+            0
+        };
+        let mut lengths = vec![0; 36];
+        lengths[0] = t.var_offsets.len() * 4;
+        lengths[1] = edges * 2 * real;
+        lengths[2] = t.offsets.len() * 4;
+        lengths[4] = edges * 4;
+        lengths[5] = t.n;
+        lengths[6] = m * 4;
+        lengths[7] = t.n * 4;
+        lengths[8] = edges * real;
+        lengths[9] = edges * real;
+        lengths[10] = scratch;
+        lengths[12] = edges * real;
+        lengths[13] = t.n * 2 * real;
+        lengths[14] = t.n * 4 * real;
+        lengths[16] = t.n * 4;
+        lengths[17] = t.n * real;
+        lengths[18] = m * real;
+        lengths[19] = 32;
+        lengths[20] = 8;
+        lengths[21] = medium.len() * 4;
+        lengths[22] = edges * real;
+        lengths[23] = t.n.max(m).div_ceil(256).max(1) * 4 * real;
+        lengths[24] = wide.len() * 4;
+        lengths[25] = packed.clause_ids.len() * 4;
+        lengths[26] = 4;
+        lengths[27] = 1024 * 12;
+        lengths[28] = edges * 4;
+        lengths[29] = edges * 4;
+        lengths[30] = edges * 4;
+        lengths[31] = edges * 4;
+        lengths[32] = edges * real;
+        lengths[33] = packed.quads.len() * 4;
+        lengths[35] = packed.positions.len() * 4;
         let mut error = [0i8; 2048];
         let context = NonNull::new(unsafe { bsp_cuda_new(fp32, error.as_mut_ptr(), error.len()) })
             .ok_or_else(|| {
@@ -277,7 +288,8 @@ impl CudaSolver {
             fp32,
             medium: medium.len() - 1,
             wide: wide.len() - 1,
-            buckets,
+            simd_lanes: packed.simd_lanes,
+            buckets: packed.buckets,
             assignments: vec![-1; t.n],
             patches: Vec::new(),
             profile,
@@ -302,15 +314,21 @@ impl CudaSolver {
             s.lengths.push(bytes);
         }
         s.write(0, t.var_offsets)?;
-        s.write(1, t.var_edges)?;
         s.write(2, t.offsets)?;
-        s.write(3, t.literals)?;
         s.write(4, t.edge_clause)?;
         s.write(5, &vec![-1i8; t.n])?;
         s.write(6, &vec![1u32; m])?;
         s.write(21, &medium)?;
         s.write(24, &wide)?;
-        s.write(25, &ids)?;
+        s.write(25, &packed.clause_ids)?;
+        s.write(28, &packed.src)?;
+        s.write(29, &packed.eta_at)?;
+        s.write(30, &packed.q_slot)?;
+        s.write(31, &packed.q_at)?;
+        if fp32 {
+            s.write(33, &packed.quads)?;
+            s.write(35, &packed.positions)?;
+        }
         s.upload(eta, eta)?;
         Ok(s)
     }
@@ -473,6 +491,7 @@ impl CudaSolver {
             "observable_blocks",
             "observable_final",
             "apply_patches",
+            "pack_eta",
         ];
         assert!(count <= u32::MAX as usize && kind < names.len());
         checked(|e, z| unsafe {
@@ -546,9 +565,10 @@ impl CudaSolver {
         Ok(())
     }
     fn cavity_dispatches(&mut self) -> Result<(), String> {
+        self.dispatch(15, self.edges, 0)?;
         self.dispatch(0, self.medium, 0)?;
         if self.fp32 {
-            self.dispatch(1, self.n * 32, 0)?;
+            self.dispatch(1, self.simd_lanes, 0)?;
             self.dispatch(2, self.wide * 256, 0)?;
         }
         Ok(())
@@ -584,7 +604,6 @@ impl CudaSolver {
                 let (kind, count, base) = self.buckets[i];
                 self.dispatch(kind, count, base)?;
             }
-            self.dispatch(8, self.m, 0)?;
             self.dispatch(9, 256, 0)?;
         }
         self.finish()?;
