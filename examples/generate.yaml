@@ -1,0 +1,9 @@
+# Random instance from a config file:
+#   bsp-rust --config examples/generate.yaml
+generate:
+  k: 3
+  alpha: 2.5
+  n: 128
+seed: 3
+timeout_seconds: 10
+progress: false
