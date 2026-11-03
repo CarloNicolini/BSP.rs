@@ -29,8 +29,15 @@ target/release/bsp-rust --generate 3 2.5 128 --seed 3 --timeout 10
 ```
 
 Install on PATH with `cargo install --path . --locked`, then use
-`bsp-rust --help`. Output is JSON: exit 0 means a verified SAT assignment, 1 means
-a heuristic failure or limit, and 2 means invalid input. For GPU execution, build
+`bsp-rust --help`. The program writes the JSON result to a file.
+The default file name contains the main run variables and the UTC time.
+`--output PATH` selects another file.
+`--progress` prints one stdout line with timers for formula setup, BSP, and WalkSAT.
+Stdout then prints one JSON summary with `status` and `output`.
+The full result, including the assignment and the step list, stays in the file.
+Exit code 0 means a verified SAT assignment.
+Exit code 1 means a heuristic failure or a limit.
+Exit code 2 means invalid input. For GPU execution, build
 with `--features metal` on Apple silicon or `--features cuda` on NVIDIA/Linux,
 then select `--backend metal`, `cuda`, or `cuda-f32`.
 

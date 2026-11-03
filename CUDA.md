@@ -24,7 +24,8 @@ target/release/bsp-rust --backend cuda-f32 --generate 3 4.2 100000 \
   --seed 7 --damping 0.2 --sweeps 300
 ```
 
-Compare the JSON `seconds` values. These commands measure raw sweeps including
+Compare the `seconds` field in each JSON file. The program writes that file in
+the current directory. These commands measure raw sweeps including
 public snapshot refresh, excluding graph construction and CUDA initialization.
 Remove `--sweeps 300` and add a timeout to compare complete solves. Different
 single-precision trajectories can perform different amounts of search work.

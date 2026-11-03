@@ -5,6 +5,19 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### CLI
+
+- The CLI writes the JSON result to a file. Stdout then prints one JSON
+  object with `status` and the main counters, plus `output` for the file path.
+  The default name contains the main run variables and a UTC timestamp, for
+  example `output_k3_alpha2.5_n128_seed1_r0.9_cpu_20261103T142033Z.json`.
+  `--output PATH` selects the file. Assignments and the step list stay in the file.
+- `--progress` shows one stdout line with timers for formula setup, BSP, and
+  WalkSAT. The timer does not run inside a device sweep. `--no-progress` hides
+  that line. The default is on when stdout is a terminal, and off otherwise.
+- `--help` prints the default value of each option. The JSON field `residual`
+  remains the largest undamped message change in the last sweep.
+
 ### Metal
 
 - Pack edge messages into source-ordered buffers so that the SP sweep reads

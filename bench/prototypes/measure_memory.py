@@ -43,12 +43,13 @@ rows = []
 cases = ([(int(sys.argv[3]), "cpu")] if len(sys.argv) > 3 else
          [(100_000, "cpu"), (1_000_000, "cpu"), (1_000_000, "cpu-parallel")])
 for n, backend in cases:
-    command = [str(binary), "--backend", backend, "--threads", "4",
+    command = [str(binary), "--no-progress", "--backend", backend, "--threads", "4",
                "--generate", "3", "4.2", str(n), "--sweeps", "1"]
+    directory = Path(tempfile.mkdtemp(prefix="bsp-memory-"))
     with tempfile.TemporaryFile(mode="w+") as stdout, tempfile.TemporaryFile(mode="w+") as stderr:
         vm_before = vm_state()
         sampled_rss = sampled_footprint = lifetime_footprint = samples = 0
-        process = subprocess.Popen(command, stdout=stdout, stderr=stderr)
+        process = subprocess.Popen(command, cwd=directory, stdout=stdout, stderr=stderr)
         while True:
             if libproc is not None:
                 info = DarwinUsage()
@@ -66,7 +67,11 @@ for n, backend in cases:
         stderr.seek(0)
         if process.returncode:
             raise RuntimeError(stderr.read())
-        result = json.load(stdout)
+        summary = json.loads(stdout.read().strip().splitlines()[-1])
+        report_path = Path(summary["output"])
+        if not report_path.is_absolute():
+            report_path = directory / report_path
+        result = json.loads(report_path.read_text())
         vm_after = vm_state()
     rows.append({
         "command": command,
