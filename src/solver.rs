@@ -1,6 +1,5 @@
 use crate::bitset::{BitSet, Ones};
 use crate::decision_heap::DecisionHeap;
-use crate::run_clock::{RunClock, RunPhase};
 use crate::{Error, Formula, Result};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -193,7 +192,7 @@ pub struct Solver {
     steps: Vec<Step>,
     terminal: Option<Status>,
     solution: Option<Vec<i8>>,
-    progress: Option<RunClock>,
+    walksat_hook: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl Solver {
@@ -276,15 +275,17 @@ impl Solver {
             steps: Vec::new(),
             terminal: None,
             solution: None,
-            progress: None,
+            walksat_hook: None,
         })
     }
-    pub fn attach_run_clock(&mut self, clock: RunClock) {
-        self.progress = Some(clock);
+    /// Register a CPU callback for the start of WalkSAT.
+    /// Device sweeps do not call it.
+    pub fn on_walksat(&mut self, hook: Arc<dyn Fn() + Send + Sync>) {
+        self.walksat_hook = Some(hook);
     }
-    pub(crate) fn enter_progress(&self, phase: RunPhase) {
-        if let Some(clock) = &self.progress {
-            clock.enter(phase);
+    pub(crate) fn mark_walksat(&self) {
+        if let Some(hook) = &self.walksat_hook {
+            hook();
         }
     }
     pub fn formula(&self) -> &Formula {
@@ -647,19 +648,17 @@ impl Solver {
     }
     fn sweep_inner(&mut self) -> std::result::Result<f64, Status> {
         self.check_stop()?;
-        let result = if let Some(result) = self.gpu_converge(true) {
-            result.map(|r| r.residual)
-        } else if let Some(result) = self.parallel_sweep() {
-            result
-        } else {
-            self.cavities(false)?;
-            let result = self.timed("clauses", Self::scalar_clauses);
-            if result.is_ok() {
-                self.sp_sweeps += 1;
-            }
-            result
-        };
-        self.publish_progress();
+        if let Some(result) = self.gpu_converge(true) {
+            return result.map(|r| r.residual);
+        }
+        if let Some(result) = self.parallel_sweep() {
+            return result;
+        }
+        self.cavities(false)?;
+        let result = self.timed("clauses", Self::scalar_clauses);
+        if result.is_ok() {
+            self.sp_sweeps += 1;
+        }
         result
     }
     fn scalar_clauses(&mut self) -> std::result::Result<f64, Status> {
@@ -887,7 +886,6 @@ impl Solver {
         if report.paramagnetic || self.active.len() == 0 {
             step.action = "walksat".into();
             self.steps.push(step.clone());
-            self.publish_progress();
             let assignment = self.timed("walksat", Self::walksat)?;
             self.solution = Some(assignment);
             self.terminal = Some(Status::Sat);
@@ -906,7 +904,6 @@ impl Solver {
             step.changed = self.timed("decimation", Self::decimate_inner);
         }
         self.steps.push(step.clone());
-        self.publish_progress();
         Ok(step)
     }
     pub fn solve(&mut self) -> SolveResult {
@@ -959,19 +956,6 @@ impl Solver {
     }
     pub(crate) fn record_flip(&mut self) {
         self.flips += 1;
-        if self.flips & 255 == 0 {
-            self.publish_progress();
-        }
-    }
-    fn publish_progress(&self) {
-        if let Some(clock) = &self.progress {
-            clock.set_counts(
-                self.sp_sweeps,
-                self.flips,
-                self.steps.len() as u64,
-                self.free.len() as u64,
-            );
-        }
     }
 }
 

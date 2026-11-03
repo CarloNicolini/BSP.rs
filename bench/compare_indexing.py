@@ -20,12 +20,18 @@ def result(command, cwd):
         raise RuntimeError(process.stderr)
     text = process.stdout.strip()
     try:
-        return json.loads(text)
+        data = json.loads(text.splitlines()[-1])
     except json.JSONDecodeError:
         path = Path(text)
         if not path.is_absolute():
             path = Path(cwd)/path
         return json.loads(path.read_text())
+    if "assignment" not in data and "output" in data:
+        path = Path(data["output"])
+        if not path.is_absolute():
+            path = Path(cwd)/path
+        return json.loads(path.read_text())
+    return data
 
 
 def main():

@@ -5,160 +5,140 @@ pub fn text(color: bool) -> String {
     let options = Options::default();
     let execution = ExecutionOptions::default();
     let rows = [
-        row("--version, -V", "Print the package version.", None),
-        row("--help, -h", "Print this help.", None),
-        row(
+        line("--version, -V", "Print the package version.", ""),
+        line("--help, -h", "Print this help.", ""),
+        line(
             "--seed N",
-            "Seed for the messages, WalkSAT, and a generated formula.",
-            Some(options.seed.to_string()),
+            "Seed for messages, WalkSAT, and formula generation.",
+            &options.seed.to_string(),
         ),
-        row(
+        line(
             "--r R",
-            "Backtracking ratio in [0, 1). The solver backtracks while backtracking actions divided by decimation actions stay below this value. Both counters start at 1.",
-            Some(options.backtrack_ratio.to_string()),
+            "Backtracking ratio in [0, 1). Both action counters start at 1.",
+            &options.backtrack_ratio.to_string(),
         ),
-        row(
+        line(
             "--frac F",
-            "Fraction of the free variables fixed by one decimation, in (0, 1].",
-            Some(options.batch_fraction.to_string()),
+            "Fraction of free variables fixed by one decimation, in (0, 1].",
+            &options.batch_fraction.to_string(),
         ),
-        row(
+        line(
             "--eps E",
-            "Stop a fixed point when the largest undamped message change is at most this value.",
-            Some(options.epsilon.to_string()),
+            "Largest undamped message change allowed at a fixed point.",
+            &options.epsilon.to_string(),
         ),
-        row(
+        line(
             "--damping D",
-            "Weight of the previous message, in [0, 1). The convergence test uses the change before damping.",
-            Some(options.damping.to_string()),
+            "Weight of the previous message, in [0, 1). Convergence uses the undamped change.",
+            &options.damping.to_string(),
         ),
-        row(
+        line(
             "--max-sweeps N",
             "Sweep limit for one fixed point.",
-            Some(options.max_sweeps.to_string()),
+            &options.max_sweeps.to_string(),
         ),
-        row(
+        line(
             "--max-steps N",
-            "Limit on recorded BSP actions. The WalkSAT handoff counts as one action.",
-            Some(options.max_steps.to_string()),
+            "Limit on recorded BSP actions.",
+            &options.max_steps.to_string(),
         ),
-        row(
+        line(
             "--max-flips N",
             "WalkSAT flip budget across all restarts.",
-            Some(options.max_flips.to_string()),
+            &options.max_flips.to_string(),
         ),
-        row(
+        line(
             "--restarts N",
             "Number of WalkSAT restarts.",
-            Some(options.walksat_restarts.to_string()),
+            &options.walksat_restarts.to_string(),
         ),
-        row(
+        line(
             "--timeout SECONDS",
-            "Stop after this many seconds. The limit includes solver setup.",
-            Some("none".to_string()),
+            "Stop after this many seconds, including solver setup.",
+            "none",
         ),
-        row(
+        line(
             "--backend NAME",
-            "One of cpu, cpu-parallel, metal, cuda, or cuda-f32.",
-            Some(backend_name(execution.backend).to_string()),
+            "cpu, cpu-parallel, metal, cuda, or cuda-f32.",
+            backend_name(execution.backend),
         ),
-        row(
+        line(
             "--threads N",
             "Worker limit for cpu-parallel. Zero uses the available CPUs.",
-            Some(execution.threads.to_string()),
+            &execution.threads.to_string(),
         ),
-        row(
+        line(
             "--progress",
-            "Show formula setup, BSP, and WalkSAT timers on one stdout line.",
-            Some("on when stdout is a terminal".to_string()),
+            "Show formula, BSP, and WalkSAT timers on one stdout line.",
+            "on when stdout is a terminal",
         ),
-        row(
+        line(
             "--no-progress",
-            "Hide the timer line. Stdout then contains only the JSON file path.",
-            None,
+            "Hide the timer line. Stdout is then one JSON summary.",
+            "",
         ),
-        row(
+        line(
             "--output PATH",
-            "Write the JSON result to this path.",
-            Some("output_<run>_<UTC time>.json".to_string()),
+            "Write the full JSON result to this path.",
+            "output_<run>_<UTC time>.json",
         ),
-        row(
+        line(
             "--profile PATH",
             "Write phase timings and execution metadata as JSON.",
-            Some("none".to_string()),
+            "none",
         ),
-        row(
+        line(
             "--options PATH",
-            "Read an Options JSON object. Flags after this one replace those values.",
-            None,
+            "Read Options JSON. Later flags replace those values.",
+            "",
         ),
-        row(
+        line(
             "--sweeps N",
-            "Run this many survey-propagation sweeps and skip the BSP search.",
-            None,
+            "Run this many survey-propagation sweeps and skip BSP search.",
+            "",
         ),
-        row(
+        line(
             "--messages PATH",
             "Load a flat JSON array of starting messages.",
-            None,
+            "",
         ),
-        row(
+        line(
             "--dump-messages",
             "Add the ending messages to a sweep report.",
-            None,
+            "",
         ),
-        row(
+        line(
             "--write-formula PATH",
-            "Write the generated or normalized formula as DIMACS and do not solve.",
-            None,
+            "Write the formula as DIMACS and do not solve.",
+            "",
         ),
-        row(
+        line(
             "--generate K ALPHA N",
-            "Build a random formula with floor(alpha*N) clauses of width K.",
-            None,
+            "Build a random formula with floor(alpha*N) clauses.",
+            "",
         ),
     ];
     let width = rows.iter().map(|(flag, _)| flag.len()).max().unwrap_or(0);
-    let mut out = String::from(
-        "\
-bsp-rust [OPTIONS] formula.cnf
-bsp-rust [OPTIONS] --generate K ALPHA N
-
-",
-    );
+    let mut out =
+        String::from("bsp-rust [OPTIONS] formula.cnf\nbsp-rust [OPTIONS] --generate K ALPHA N\n\n");
     for (flag, detail) in rows {
-        let painted = paint(color, "36", &flag);
         let pad = " ".repeat(width - flag.len() + 2);
-        out.push_str(&format!("  {painted}{pad}{detail}\n"));
+        let label = if color {
+            format!("\x1b[36m{flag}\x1b[0m")
+        } else {
+            flag
+        };
+        out.push_str(&format!("  {label}{pad}{detail}\n"));
     }
-    out.push_str(
-        "
-The formula timer covers reading or generating the formula and building the solver.
-The BSP timer covers survey propagation, decimation, and backtracking.
-The WalkSAT timer starts when local search starts.
-The program writes the JSON result to a file and prints that path on stdout.
-The JSON field residual is the largest undamped message change in the last sweep.
-Exit code 0 means a verified SAT assignment.
-Exit code 1 means a heuristic failure or a limit.
-Exit code 2 means invalid input.
-Assignments use 0 and 1. A partial assignment uses -1 for a free variable.
-",
-    );
+    out.push_str("\nThe formula timer covers reading or generating the formula and building the solver.\nThe BSP timer covers survey propagation, decimation, and backtracking.\nThe WalkSAT timer starts when local search starts. A device sweep does not call it.\nThe full JSON result goes to a file.\nStdout then prints one JSON object with the status and the main counters.\nThe JSON field residual is the largest undamped message change in the last sweep.\nExit code 0 means a verified SAT assignment.\nExit code 1 means a heuristic failure or a limit.\nExit code 2 means invalid input.\nAssignments use 0 and 1. A partial assignment uses -1 for a free variable.\n");
     out
 }
 
-fn row(flag: &str, detail: &str, default: Option<String>) -> (String, String) {
-    let detail = match default {
-        Some(value) => format!("{detail} Default: {value}."),
-        None => detail.to_string(),
+fn line(flag: &str, detail: &str, default: &str) -> (String, String) {
+    let detail = if default.is_empty() {
+        detail.to_string()
+    } else {
+        format!("{detail} Default: {default}.")
     };
     (flag.to_string(), detail)
-}
-
-fn paint(color: bool, code: &str, text: &str) -> String {
-    if color {
-        format!("\x1b[{code}m{text}\x1b[0m")
-    } else {
-        text.to_string()
-    }
 }

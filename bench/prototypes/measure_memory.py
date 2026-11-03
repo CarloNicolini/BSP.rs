@@ -67,7 +67,11 @@ for n, backend in cases:
         stderr.seek(0)
         if process.returncode:
             raise RuntimeError(stderr.read())
-        result = json.loads((directory / stdout.read().strip()).read_text())
+        summary = json.loads(stdout.read().strip().splitlines()[-1])
+        report_path = Path(summary["output"])
+        if not report_path.is_absolute():
+            report_path = directory / report_path
+        result = json.loads(report_path.read_text())
         vm_after = vm_state()
     rows.append({
         "command": command,

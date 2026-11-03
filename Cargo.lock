@@ -22,7 +22,6 @@ version = "0.2.0"
 dependencies = [
  "bsp-cuda",
  "bsp-metal",
- "console",
  "indicatif",
  "numpy",
  "pyo3",

@@ -34,8 +34,10 @@ p cnf 3 4
 The program writes a JSON result to a file. The file has `status`, `assignment`,
 `sp_sweeps`, `flips`, and the step history. The default file name contains the
 main run variables and the UTC time. `--output PATH` selects another file.
-Stdout prints that path. With `--progress`, stdout also prints one line with
-timers for formula setup, BSP, and WalkSAT. `--no-progress` hides that line.
+Stdout then prints one JSON summary. Its `status` matches the file, and its
+`output` field is the file path. The summary omits the assignment and the step
+list. With `--progress`, stdout also prints one line with timers for formula
+setup, BSP, and WalkSAT. `--no-progress` hides that line.
 Assignments are ordered by variable, with 0=false and 1=true.
 Partial assignments use -1 for free variables. Exit codes are 0 for SAT, 1 for a
 heuristic failure or a limit, and 2 for invalid input.

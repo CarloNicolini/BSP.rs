@@ -1,4 +1,3 @@
-use crate::run_clock::RunPhase;
 use crate::{Solver, Status};
 use rand::Rng;
 
@@ -32,7 +31,7 @@ impl Unsatisfied {
 
 impl Solver {
     pub(crate) fn walksat(&mut self) -> std::result::Result<Vec<i8>, Status> {
-        self.enter_progress(RunPhase::Walksat);
+        self.mark_walksat();
         // Arc clone lets the flip loop mutate the solver's counters and RNG.
         let formula = self.formula.clone();
         let f = &formula.0;

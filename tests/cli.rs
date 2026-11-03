@@ -25,6 +25,11 @@ fn stdout(output: &std::process::Output) -> String {
     String::from_utf8(output.stdout.clone()).unwrap()
 }
 
+fn summary(output: &std::process::Output) -> serde_json::Value {
+    let text = stdout(output);
+    serde_json::from_str(text.lines().last().unwrap()).unwrap()
+}
+
 #[test]
 fn version_matches_package_without_a_formula() {
     for flag in ["--version", "-V"] {
@@ -58,10 +63,14 @@ fn cli_solves_the_shipped_dimacs_example() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(stdout(&output), "result.json\n");
+    let brief = summary(&output);
+    assert_eq!(brief["status"], "sat");
+    assert_eq!(brief["output"], "result.json");
+    assert!(brief.get("assignment").is_none());
+    assert!(brief.get("steps").is_none());
     let result: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(dir.join("result.json")).unwrap()).unwrap();
-    assert_eq!(result["status"], "sat");
+    assert_eq!(result["status"], brief["status"]);
     let assignment: Vec<i8> = serde_json::from_value(result["assignment"].clone()).unwrap();
     let formula = bsp_rust::Formula::from_dimacs(include_str!("../examples/3sat.cnf")).unwrap();
     assert!(formula.is_satisfied(&assignment));
@@ -83,8 +92,7 @@ fn cli_default_output_name_contains_the_run_variables() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let name = stdout(&output);
-    let name = name.trim();
+    let name = summary(&output)["output"].as_str().unwrap().to_string();
     assert!(name.starts_with("output_3sat_seed1_r0.9_cpu_"));
     assert!(name.ends_with("Z.json"));
     let result: serde_json::Value =
@@ -114,7 +122,10 @@ fn cli_progress_line_names_the_three_phases() {
     assert!(text.contains("formula"));
     assert!(text.contains("bsp"));
     assert!(text.contains("walksat"));
-    assert!(text.contains("result.json"));
+    let brief = summary(&output);
+    assert_eq!(brief["status"], "sat");
+    assert_eq!(brief["output"], "result.json");
+    assert!(brief.get("assignment").is_none());
     let result: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(dir.join("result.json")).unwrap()).unwrap();
     assert_eq!(result["status"], "sat");

@@ -1,8 +1,10 @@
 mod cli;
 
-use bsp_rust::{ExecutionOptions, Formula, Options, RunClock, RunPhase, Solver, Status};
+use crate::cli::progress::{PhaseClock, BSP, WALKSAT};
+use bsp_rust::{ExecutionOptions, Formula, Options, Solver, Status};
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::{env, fs, process::ExitCode};
 
 fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
@@ -101,9 +103,10 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         i += 2;
     }
     options.validate()?;
-    let show_progress = progress.unwrap_or_else(|| std::io::stdout().is_terminal());
-    let clock = show_progress.then(RunClock::new);
-    let mut live = clock.clone().map(cli::progress::LiveLine::start);
+    let terminal = std::io::stdout().is_terminal();
+    let show_progress = progress.unwrap_or(terminal) && terminal;
+    let clock = PhaseClock::new();
+    let mut live = show_progress.then(|| cli::progress::LiveLine::start(clock.clone()));
     let (formula_name, formula) = match (source, generate) {
         (Some(path), None) => (
             cli::output::formula_token(&path),
@@ -123,10 +126,9 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         return Ok(ExitCode::SUCCESS);
     }
     let mut solver = Solver::with_execution(formula.clone(), options.clone(), execution.clone())?;
-    if let Some(clock) = &clock {
-        solver.attach_run_clock(clock.clone());
-        clock.enter(RunPhase::Bsp);
-    }
+    let watched = clock.clone();
+    solver.on_walksat(Arc::new(move || watched.enter(WALKSAT)));
+    clock.enter(BSP);
     if let Some(path) = messages {
         solver.set_messages(&serde_json::from_str::<Vec<f64>>(&fs::read_to_string(
             path,
@@ -164,7 +166,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
         if dump_messages {
             report["messages"] = serde_json::json!(solver.messages());
         }
-        finish(live, clock, &report_path, &report)?;
+        finish(live, &clock, &report_path, &report)?;
         return Ok(ExitCode::SUCCESS);
     }
     let result = solver.solve();
@@ -174,26 +176,23 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     } else {
         ExitCode::FAILURE
     };
-    finish(live, clock, &report_path, &serde_json::to_value(&result)?)?;
+    finish(live, &clock, &report_path, &serde_json::to_value(&result)?)?;
     Ok(code)
 }
 
 fn finish(
     mut live: Option<cli::progress::LiveLine>,
-    clock: Option<RunClock>,
+    clock: &PhaseClock,
     path: &Path,
     report: &serde_json::Value,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let times = clock.seconds();
     if let Some(line) = live.as_mut() {
         line.stop();
+        println!();
     }
-    let snap = clock.as_ref().map(RunClock::snapshot);
     cli::output::write_json(path, report)?;
-    if let Some(snap) = snap {
-        println!("{}", cli::progress::final_line(&snap, path));
-    } else {
-        println!("{}", path.display());
-    }
+    println!("{}", cli::output::summary(path, report, times));
     std::io::stdout().flush()?;
     Ok(())
 }

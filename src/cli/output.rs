@@ -88,6 +88,38 @@ pub fn write_json(
     Ok(())
 }
 
+const SUMMARY_KEYS: &[&str] = &[
+    "status",
+    "seed",
+    "wall_seconds",
+    "sp_sweeps",
+    "flips",
+    "decimations",
+    "releases",
+    "unit_assignments",
+    "n",
+    "m",
+    "edges",
+    "sweeps",
+    "seconds",
+    "residual",
+];
+
+pub fn summary(path: &Path, report: &serde_json::Value, times: [f64; 3]) -> serde_json::Value {
+    let mut out = serde_json::json!({
+        "output": path.display().to_string(),
+        "formula_seconds": times[0],
+        "bsp_seconds": times[1],
+        "walksat_seconds": times[2],
+    });
+    for key in SUMMARY_KEYS {
+        if let Some(value) = report.get(*key) {
+            out[*key] = value.clone();
+        }
+    }
+    out
+}
+
 pub fn default_path(formula: &str, seed: u64, ratio: f64, backend: Backend) -> PathBuf {
     PathBuf::from(output_name(
         formula,
