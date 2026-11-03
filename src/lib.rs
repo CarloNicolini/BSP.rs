@@ -25,8 +25,3 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
-
-// Benchmark-only experiment: keep its invariants tested without using it in solves.
-#[cfg(test)]
-#[path = "../bench/prototypes/sparse_bitset.rs"]
-mod sparse_bitset_prototype;
