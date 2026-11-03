@@ -44,6 +44,35 @@ Exit code 2 means invalid input. For GPU execution, build
 with `--features metal` on Apple silicon or `--features cuda` on NVIDIA/Linux,
 then select `--backend metal`, `cuda`, or `cuda-f32`.
 
+To use the crate from another Rust project, add the Git dependency. This package
+is not yet published on crates.io:
+
+```toml
+[dependencies]
+bsp-rust = { git = "https://github.com/CarloNicolini/BSP.rs.git" }
+```
+
+```rust
+use bsp_rust::{Formula, Options, Solver, Status};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let formula = Formula::random(3, 2.5, 128, 3)?;
+    let mut solver = Solver::new(formula.clone(), Options::default())?;
+    let result = solver.solve();
+    if result.status == Status::Sat {
+        let assignment = result.assignment.as_ref().unwrap();
+        assert!(formula.is_satisfied(assignment));
+        println!("{assignment:?}");
+    } else {
+        println!("Solver stopped: {}", result.status);
+    }
+    Ok(())
+}
+```
+
+Use `Formula::from_dimacs(&text)` to load a CNF file. `cargo doc --open` builds
+API documentation. Pin a Git revision in your dependency for reproducible runs.
+
 Both interfaces run the same Rust solver. Any speed difference depends on setup,
 serialization, and state inspection; measure your workload.
 
@@ -202,7 +231,6 @@ Blackwell compilation support starts with [CUDA 12.8](https://docs.nvidia.com/cu
 Use a toolkit supported by your installed driver. Always set the architecture:
 the project's legacy default is `61`, which CUDA 13 cannot compile.
 If your `nvidia-smi` lacks `compute_cap`, look up the model in the linked table.
-For Colab's T4, follow the [Colab quick test](README_COLAB.md).
 
 ### Select and check the backend
 
@@ -282,9 +310,7 @@ can be much faster on GPUs with limited double-precision throughput, but it can
 also change convergence and the search trajectory. Numerical recovery is
 reported in the execution metadata.
 
-The [Apple comparison](BENCHMARKS.md) measures complete verified solves;
-[CUDA measurements](PERFORMANCE.md) also include isolated sweep workloads.
-Their speedups describe specific hardware, inputs, precision, and baselines.
+Grounded speedups describe specific hardware, inputs, precision, and baselines.
 They should not be treated as a fixed multiplier for every SAT problem.
 
 ## Versions and contribution workflow
@@ -297,12 +323,9 @@ validated, checksummed draft releases for separate publication review.
 
 ## Where to go next
 
-- [Colab T4: install, build, and verify CUDA execution](README_COLAB.md)
-- [CLI, Rust API, solver inspection, and development](USAGE.md)
 - [Python API and algorithm documentation](docs/index.rst)
-- [GPU execution and numerical behavior](ACCELERATION.md), [CUDA details](CUDA.md)
-- [Apple M1 Pro comparison](BENCHMARKS.md), [performance measurements](PERFORMANCE.md)
 - [Contributing and validation](CONTRIBUTING.md)
+- [Release policy](RELEASING.md)
 
 Build the Python documentation locally:
 

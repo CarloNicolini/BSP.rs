@@ -1,4 +1,0 @@
-# Keep raw compiler records and unified-diff context lines verbatim.
-benchmark.patch -whitespace
-CMakeCache.txt -whitespace
-flags.make -whitespace
