@@ -97,12 +97,15 @@ class Options:
         Positive sweep limit for each SP fixed-point attempt.
     max_steps : int, default=100000
         Positive limit on recorded BSP actions. A step can contain many sweeps.
-    max_flips : int, default=10000000
+    max_flips : int, default=0
         Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
-        Zero permits checking an initial completion but permits no flips.
+        Zero selects ``walksat_restarts * max(10000, 100 * residual_variables)``,
+        counting free variables in active clauses at WalkSAT entry.
+        Positive values override the automatic budget.
     walksat_restarts : int, default=4
         Positive maximum number of randomized completions. Each restart has a
-        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+        quota of ``ceil(resolved_budget / walksat_restarts)``; the total cap
+        still holds.
     walksat_noise : float, default=0.5
         Probability in ``[0,1]`` of a uniformly random free variable in a sampled
         unsatisfied clause when every candidate has positive break count.
@@ -130,7 +133,7 @@ class Options:
     damping: float = 0.0
     max_sweeps: int = 1024
     max_steps: int = 100_000
-    max_flips: int = 10_000_000
+    max_flips: int = 0
     walksat_restarts: int = 4
     walksat_noise: float = 0.5
     timeout_seconds: float | None = None
@@ -281,12 +284,15 @@ class Solver:
         Positive sweep limit for each SP fixed-point attempt.
     max_steps : int, default=100000
         Positive limit on recorded BSP actions. A step can contain many sweeps.
-    max_flips : int, default=10000000
+    max_flips : int, default=0
         Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
-        Zero permits checking an initial completion but permits no flips.
+        Zero selects ``walksat_restarts * max(10000, 100 * residual_variables)``,
+        counting free variables in active clauses at WalkSAT entry.
+        Positive values override the automatic budget.
     walksat_restarts : int, default=4
         Positive maximum number of randomized completions. Each restart has a
-        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+        quota of ``ceil(resolved_budget / walksat_restarts)``; the total cap
+        still holds.
     walksat_noise : float, default=0.5
         Probability in ``[0,1]`` of a uniformly random free variable in a sampled
         unsatisfied clause when every candidate has positive break count.
@@ -794,12 +800,15 @@ def solve(
         Positive sweep limit for each SP fixed-point attempt.
     max_steps : int, default=100000
         Positive limit on recorded BSP actions. A step can contain many sweeps.
-    max_flips : int, default=10000000
+    max_flips : int, default=0
         Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
-        Zero permits checking an initial completion but permits no flips.
+        Zero selects ``walksat_restarts * max(10000, 100 * residual_variables)``,
+        counting free variables in active clauses at WalkSAT entry.
+        Positive values override the automatic budget.
     walksat_restarts : int, default=4
         Positive maximum number of randomized completions. Each restart has a
-        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+        quota of ``ceil(resolved_budget / walksat_restarts)``; the total cap
+        still holds.
     walksat_noise : float, default=0.5
         Probability in ``[0,1]`` of a uniformly random free variable in a sampled
         unsatisfied clause when every candidate has positive break count.
@@ -906,12 +915,15 @@ def solve_many(
         Positive sweep limit for each SP fixed-point attempt.
     max_steps : int, default=100000
         Positive limit on recorded BSP actions. A step can contain many sweeps.
-    max_flips : int, default=10000000
+    max_flips : int, default=0
         Nonnegative unsigned 64-bit WalkSAT flip budget across all restarts.
-        Zero permits checking an initial completion but permits no flips.
+        Zero selects ``walksat_restarts * max(10000, 100 * residual_variables)``,
+        counting free variables in active clauses at WalkSAT entry.
+        Positive values override the automatic budget.
     walksat_restarts : int, default=4
         Positive maximum number of randomized completions. Each restart has a
-        quota of ``ceil(max_flips / walksat_restarts)``; the total cap still holds.
+        quota of ``ceil(resolved_budget / walksat_restarts)``; the total cap
+        still holds.
     walksat_noise : float, default=0.5
         Probability in ``[0,1]`` of a uniformly random free variable in a sampled
         unsatisfied clause when every candidate has positive break count.
