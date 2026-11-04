@@ -5,6 +5,8 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.4.1]
+
 ### CUDA
 
 - Construct packed transport windows with linear bucket counters instead of
@@ -16,8 +18,15 @@ policy in [RELEASING.md](RELEASING.md).
   partial prefetch groups.
 - Run packed-layout regression tests on CPU-only CI, including randomized
   multi-window permutations, inverse mappings, degree boundaries, and sparse
-  clause headers. T4 setup measurements and kernel experiments are retained in
-  `experiments/cuda_layout_20261104/`.
+  clause headers.
+
+### Compatibility and limits
+
+- Compatible internal optimizations with no public API, default, output, device
+  buffer, or numerical summation-order changes.
+- Performance measurements use a Colab Xeon host and Tesla T4 at alpha=4.2.
+  They cover layout setup and observable passes, rather than complete solves;
+  no other GPU architecture or f64 performance improvement is claimed.
 
 ## [0.4.0] - 2026-11-04
 

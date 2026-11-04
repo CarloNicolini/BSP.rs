@@ -1,6 +1,0 @@
-timestamp, name, temperature.gpu, power.draw [W], clocks.current.sm [MHz], clocks.current.memory [MHz], pstate, utilization.gpu [%]
-2026/11/04 11:45:20.867, Tesla T4, 70, 59.86 W, 930 MHz, 5000 MHz, P0, 84 %
-timestamp, name, temperature.gpu, power.draw [W], clocks.current.sm [MHz], clocks.current.memory [MHz], pstate, utilization.gpu [%]
-2026/11/04 11:47:40.585, Tesla T4, 74, 66.81 W, 1350 MHz, 5000 MHz, P0, 66 %
-timestamp, name, temperature.gpu, power.draw [W], clocks.current.sm [MHz], clocks.current.memory [MHz], pstate, utilization.gpu [%]
-2026/11/04 11:51:59.570, Tesla T4, 52, 12.14 W, 300 MHz, 405 MHz, P8, 0 %
