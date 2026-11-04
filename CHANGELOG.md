@@ -10,6 +10,10 @@ policy in [RELEASING.md](RELEASING.md).
 - Construct packed transport windows with linear bucket counters instead of
   stable sorts, preserving all mapping entries and stable tie ordering. Reuse
   the temporary inverse permutation for q slots to reduce peak host allocation.
+- Prefetch eight observable block records before consuming them in the original
+  serial Kahan order. T4 paired trials show a modest improvement to the complete
+  observable pass; the exact-order regression covers f32/f64 cancellation and
+  partial prefetch groups.
 - Run packed-layout regression tests on CPU-only CI, including randomized
   multi-window permutations, inverse mappings, degree boundaries, and sparse
   clause headers. T4 setup measurements and kernel experiments are retained in
