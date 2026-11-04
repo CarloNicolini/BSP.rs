@@ -1,8 +1,6 @@
 # BSP.rs
 
 [![Build and test](https://github.com/CarloNicolini/BSP.rs/actions/workflows/ci.yml/badge.svg)](https://github.com/CarloNicolini/BSP.rs/actions/workflows/ci.yml)
-[![Python tests and wheels](https://github.com/CarloNicolini/BSP.rs/actions/workflows/python.yml/badge.svg)](https://github.com/CarloNicolini/BSP.rs/actions/workflows/python.yml)
-[![CUDA and Metal builds](https://github.com/CarloNicolini/BSP.rs/actions/workflows/acceleration.yml/badge.svg)](https://github.com/CarloNicolini/BSP.rs/actions/workflows/acceleration.yml)
 [![License: GPL v2 or later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 [![Rust 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange.svg)](Cargo.toml)
 
