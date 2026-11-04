@@ -621,3 +621,78 @@ impl CudaSolver {
         self.report(started)
     }
 }
+
+#[cfg(test)]
+mod observable_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires an NVIDIA GPU"]
+    #[allow(clippy::unnecessary_cast)] // The same fixture exercises both real types.
+    fn observable_final_preserves_serial_kahan_order_and_tail_records() {
+        for fp32 in [true, false] {
+            for count in [1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17, 255, 257] {
+                let n = count * 256 - 17;
+                let var_offsets = vec![0u32; 2 * n + 1];
+                let mut device = CudaSolver::new(
+                    Topology {
+                        n,
+                        offsets: &[0],
+                        literals: &[],
+                        edge_clause: &[],
+                        var_offsets: &var_offsets,
+                        var_edges: &[],
+                    },
+                    &[],
+                    fp32,
+                    false,
+                )
+                .unwrap();
+                // Deliberate cancellation distinguishes serial Kahan order from
+                // a tree reduction, including incomplete prefetch groups.
+                macro_rules! check {
+                    ($real:ty) => {{
+                        let records: Vec<[$real; 4]> = (0..count)
+                            .map(|i| {
+                                [
+                                    [1.0e8, 1.0, -1.0e8, 0.25][i % 4] as $real,
+                                    [1.0e8, -1.0e8, 0.5, 0.25][i % 4] as $real,
+                                    if i + 1 == count { 0.0 } else { 1.0 },
+                                    0.0,
+                                ]
+                            })
+                            .collect();
+                        let (mut vs, mut cs, mut vc, mut cc) =
+                            (0.0 as $real, 0.0 as $real, 0.0 as $real, 0.0 as $real);
+                        for a in &records {
+                            let y = a[0] - vc;
+                            let t = vs + y;
+                            vc = (t - vs) - y;
+                            vs = t;
+                            let y = a[1] - cc;
+                            let t = cs + y;
+                            cc = (t - cs) - y;
+                            cs = t;
+                        }
+                        device.prepare(0.0, 0.0, true, false).unwrap();
+                        device.write(23, &records).unwrap();
+                        device.dispatch(13, 1, 0).unwrap();
+                        device.finish().unwrap();
+                        let report = device.report(Instant::now()).unwrap();
+                        assert!(!report.numerical_error && !report.paramagnetic);
+                        assert_eq!(
+                            report.complexity.to_bits(),
+                            ((cs - vs) as f64).to_bits(),
+                            "fp32={fp32}, records={count}"
+                        );
+                    }};
+                }
+                if fp32 {
+                    check!(f32);
+                } else {
+                    check!(f64);
+                }
+            }
+        }
+    }
+}
