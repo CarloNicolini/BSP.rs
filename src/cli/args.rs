@@ -89,7 +89,7 @@ pub struct Cli {
     #[arg(long, value_name = "N")]
     pub max_steps: Option<usize>,
 
-    /// WalkSAT flip budget across all restarts [default: 10000000]
+    /// WalkSAT total flip budget; 0 = restarts * max(10000, 100 * residual variables) [default: 0]
     #[arg(long, value_name = "N")]
     pub max_flips: Option<u64>,
 

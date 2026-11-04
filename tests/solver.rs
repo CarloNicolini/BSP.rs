@@ -340,7 +340,7 @@ fn walksat_respects_the_total_budget_across_restarts() {
         s.set_messages(&vec![0.0; f.edges()]).unwrap();
         let result = s.solve();
         assert_eq!(result.status, Status::FlipLimit);
-        assert_eq!(result.flips, budget);
+        assert_eq!(result.flips, if budget == 0 { 40_000 } else { budget });
         assert!(result.assignment.is_none());
     }
 }
