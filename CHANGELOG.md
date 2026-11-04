@@ -5,6 +5,16 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+### CUDA
+
+- Construct packed transport windows with linear bucket counters instead of
+  stable sorts, preserving all mapping entries and stable tie ordering. Reuse
+  the temporary inverse permutation for q slots to reduce peak host allocation.
+- Run packed-layout regression tests on CPU-only CI, including randomized
+  multi-window permutations, inverse mappings, degree boundaries, and sparse
+  clause headers. T4 setup measurements and kernel experiments are retained in
+  `experiments/cuda_layout_20261104/`.
+
 ## [0.4.0] - 2026-11-04
 
 ### CLI

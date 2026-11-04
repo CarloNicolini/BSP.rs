@@ -48,28 +48,39 @@ pub fn pack(
     }
 }
 
-fn windows(var_edges: &[u32]) -> (Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>) {
+pub(crate) fn windows(var_edges: &[u32]) -> (Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>) {
     let edges = var_edges.len();
-    let mut order: Vec<u32> = (0..edges as u32).collect();
-    order.sort_by_key(|&p| var_edges[p as usize] / ETA_WINDOW);
     let mut src = vec![0u32; edges];
     let mut eta_at = vec![0u32; edges];
-    for (k, &p) in order.iter().enumerate() {
-        src[k] = var_edges[p as usize];
-        eta_at[p as usize] = k as u32;
-    }
     let mut position = vec![0u32; edges];
+    // Each complete permutation has exactly WINDOW members in each full
+    // bucket. Visit in consumer order to reproduce stable-sort tie ordering.
+    let mut next: Vec<u32> = (0..edges)
+        .step_by(ETA_WINDOW as usize)
+        .map(|p| p as u32)
+        .collect();
     for (p, &e) in var_edges.iter().enumerate() {
         position[e as usize] = p as u32;
+        let slot = &mut next[e as usize / ETA_WINDOW as usize];
+        src[*slot as usize] = e;
+        eta_at[p] = *slot;
+        *slot += 1;
     }
-    order.clear();
-    order.extend(0..edges as u32);
-    order.sort_by_key(|&e| position[e as usize] / Q_WINDOW);
     let mut q_at = vec![0u32; edges];
-    for (k, &e) in order.iter().enumerate() {
-        q_at[e as usize] = k as u32;
+    next = (0..edges)
+        .step_by(Q_WINDOW as usize)
+        .map(|p| p as u32)
+        .collect();
+    for (e, &p) in position.iter().enumerate() {
+        let slot = &mut next[p as usize / Q_WINDOW as usize];
+        q_at[e] = *slot;
+        *slot += 1;
     }
-    let q_slot = var_edges.iter().map(|&e| q_at[e as usize]).collect();
+    // Reuse the inverse permutation allocation once the q mapping is complete.
+    let mut q_slot = position;
+    for (slot, &e) in q_slot.iter_mut().zip(var_edges) {
+        *slot = q_at[e as usize];
+    }
     (src, eta_at, q_slot, q_at)
 }
 
@@ -273,8 +284,8 @@ mod tests {
             }
             let (quads, positions) = warp_plan(&offsets);
             let mut visited = vec![false; degrees.len()];
-            for (record, &position) in quads.chunks_exact(4).zip(&positions) {
-                let [first, starts, edges, positives] = <[u32; 4]>::try_from(record).unwrap();
+            for (record, &position) in quads.as_chunks::<4>().0.iter().zip(&positions) {
+                let &[first, starts, edges, positives] = record;
                 assert_eq!(position, offsets[2 * first as usize]);
                 let mut variable = first as usize;
                 let mut occupied = 0u32;
@@ -286,7 +297,7 @@ mod tests {
                     visited[variable] = true;
                     let degree = offsets[2 * variable + 2] - offsets[2 * variable];
                     let plus = offsets[2 * variable + 1] - offsets[2 * variable];
-                    let width = if degree > 32 || degree < 2 {
+                    let width = if !(2..=32).contains(&degree) {
                         1
                     } else {
                         degree.next_power_of_two()
