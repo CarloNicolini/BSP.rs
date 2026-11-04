@@ -112,9 +112,11 @@ WalkSAT completion
      - Default / domain
      - Exact role
    * - ``max_flips``
-     - 10,000,000; uint64
-     - Total flip cap across restarts. Zero allows checking an initial completion
-       but no flips. The last permitted flip is followed by a satisfaction check.
+     - 0; uint64
+     - Total flip cap across restarts. Zero selects automatic mode:
+       restarts times max(10,000, 100 times free variables in active clauses).
+       Positive values override this budget. The last permitted flip is
+       followed by a satisfaction check.
    * - ``walksat_restarts``
      - 4; positive
      - Maximum fresh randomized completions. Per-restart quota is

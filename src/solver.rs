@@ -24,6 +24,7 @@ pub struct Options {
     pub damping: f64,
     pub max_sweeps: usize,
     pub max_steps: usize,
+    /// Total WalkSAT flips; zero selects a budget scaled to the residual size.
     pub max_flips: u64,
     pub walksat_restarts: usize,
     pub walksat_noise: f64,
@@ -39,7 +40,7 @@ impl Default for Options {
             damping: 0.0,
             max_sweeps: 1024,
             max_steps: 100_000,
-            max_flips: 10_000_000,
+            max_flips: 0,
             walksat_restarts: 4,
             walksat_noise: 0.5,
             timeout_seconds: None,
@@ -905,6 +906,9 @@ impl Solver {
         }
         self.steps.push(step.clone());
         Ok(step)
+    }
+    pub(crate) fn residual_variable_count(&self) -> usize {
+        self.free.ones().filter(|&v| self.degree[v] > 0).count()
     }
     pub fn solve(&mut self) -> SolveResult {
         while self.terminal.is_none() {

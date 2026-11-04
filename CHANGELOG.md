@@ -5,6 +5,10 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Breaking: the default WalkSAT budget now scales with residual variables and
+  restarts. `max_flips=0` selects automatic mode instead of forbidding flips;
+  positive explicit budgets retain their meaning.
+
 ## [0.4.1]
 
 ### CUDA

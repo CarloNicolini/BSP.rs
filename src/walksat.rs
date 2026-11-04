@@ -48,10 +48,14 @@ impl Solver {
             .unwrap_or(0);
         let mut choices = Vec::with_capacity(width);
         let mut best = Vec::with_capacity(width);
-        let per_restart = self
-            .options
-            .max_flips
-            .div_ceil(self.options.walksat_restarts as u64);
+        // Only free variables occurring in active clauses can be flipped.
+        let residual_variables = self.residual_variable_count();
+        let max_flips = flip_budget(
+            self.options.max_flips,
+            self.options.walksat_restarts,
+            residual_variables,
+        );
+        let per_restart = max_flips.div_ceil(self.options.walksat_restarts as u64);
         let mut total_flips = 0u64;
         for _ in 0..self.options.walksat_restarts {
             let initialization_started = self
@@ -97,7 +101,7 @@ impl Solver {
                     }
                     return Ok(values);
                 }
-                if total_flips >= self.options.max_flips {
+                if total_flips >= max_flips {
                     return Err(Status::FlipLimit);
                 }
                 if total_flips & 255 == 0 {
@@ -171,5 +175,27 @@ impl Solver {
             }
         }
         Err(Status::FlipLimit)
+    }
+}
+
+fn flip_budget(explicit: u64, restarts: usize, variables: usize) -> u64 {
+    if explicit > 0 {
+        return explicit;
+    }
+    (variables as u64)
+        .saturating_mul(100)
+        .max(10_000)
+        .saturating_mul(restarts as u64)
+}
+
+#[cfg(test)]
+mod budget_tests {
+    use super::flip_budget;
+    #[test]
+    fn scales_with_residual_and_restarts_and_preserves_overrides() {
+        assert_eq!(flip_budget(0, 4, 470_226), 188_090_400);
+        assert_eq!(flip_budget(0, 2, 1), 20_000);
+        assert_eq!(flip_budget(17, 4, 470_226), 17);
+        assert_eq!(flip_budget(0, usize::MAX, usize::MAX), u64::MAX);
     }
 }

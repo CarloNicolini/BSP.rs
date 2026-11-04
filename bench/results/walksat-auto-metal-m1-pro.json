@@ -1,0 +1,253 @@
+{
+  "decimations": 4683814,
+  "execution": {
+    "allocated_bytes": 734062616,
+    "backend": "metal",
+    "cuda_sweeps": 0,
+    "device": "Apple M1 Pro",
+    "device_error": null,
+    "fallbacks": [],
+    "metal_sweeps": 76145,
+    "observables_validations": 1,
+    "parallel_sweeps": 0,
+    "phases": {
+      "backend_setup": {
+        "calls": 1,
+        "seconds": 1.028231625
+      },
+      "backtracking": {
+        "calls": 4800,
+        "seconds": 15.866046605999946
+      },
+      "cavities": {
+        "calls": 86281,
+        "seconds": 1.6739694182984126
+      },
+      "cavities_simd": {
+        "calls": 86280,
+        "seconds": 275.27442887506913
+      },
+      "clause_observables": {
+        "calls": 10135,
+        "seconds": 48.464171874540625
+      },
+      "clauses3": {
+        "calls": 76145,
+        "seconds": 141.1799243320129
+      },
+      "decimation": {
+        "calls": 5334,
+        "seconds": 27.554441627999957
+      },
+      "gpu": {
+        "calls": 86280,
+        "seconds": 714.8881382547261
+      },
+      "gpu_submission_and_wait": {
+        "calls": 76145,
+        "seconds": 668.4932119480076
+      },
+      "graph_mutations": {
+        "calls": 8970584,
+        "seconds": 30.84209002305257
+      },
+      "observable_blocks": {
+        "calls": 10135,
+        "seconds": 3.1343788327358197
+      },
+      "observable_final": {
+        "calls": 10135,
+        "seconds": 21.912680126115447
+      },
+      "observables_f64_validation": {
+        "calls": 1,
+        "seconds": 0.255455958
+      },
+      "pack_eta": {
+        "calls": 86280,
+        "seconds": 203.17003329307772
+      },
+      "propagation": {
+        "calls": 10135,
+        "seconds": 0.07787636799999965
+      },
+      "ranking": {
+        "calls": 5334,
+        "seconds": 11.413876598
+      },
+      "residual_blocks": {
+        "calls": 76145,
+        "seconds": 16.39017992070876
+      },
+      "residual_final": {
+        "calls": 76145,
+        "seconds": 1.9397825433989055
+      },
+      "snapshots": {
+        "calls": 2,
+        "seconds": 0.049009791
+      },
+      "variables": {
+        "calls": 10135,
+        "seconds": 1.9662387496500742
+      },
+      "verification": {
+        "calls": 1,
+        "seconds": 0.034467583
+      },
+      "walksat": {
+        "calls": 1,
+        "seconds": 16.073400875
+      },
+      "walksat_initialization": {
+        "calls": 1,
+        "seconds": 0.0408405
+      }
+    },
+    "precision": "f32",
+    "profile_error": null,
+    "requested_backend": "metal",
+    "threads": 1
+  },
+  "flips": 29575151,
+  "releases": 4220405,
+  "seed": 1,
+  "sp_sweeps": 76145,
+  "status": "sat",
+  "unit_assignments": 66365,
+  "wall_seconds": 949.834305375,
+  "parameters": {
+    "k": 3,
+    "alpha": 4.2,
+    "n": 1000000,
+    "seed": 1,
+    "r": 0.9,
+    "max_flips": 0,
+    "walksat_restarts": 4
+  },
+  "independent_verified_clauses": 4200000,
+  "phase_profile": {
+    "arch": "aarch64",
+    "build_profile": "release",
+    "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+    "edges": 12600000,
+    "execution": {
+      "allocated_bytes": 734062616,
+      "backend": "metal",
+      "cuda_sweeps": 0,
+      "device": "Apple M1 Pro",
+      "device_error": null,
+      "fallbacks": [],
+      "metal_sweeps": 76145,
+      "observables_validations": 1,
+      "parallel_sweeps": 0,
+      "phases": {
+        "backend_setup": {
+          "calls": 1,
+          "seconds": 1.028231625
+        },
+        "backtracking": {
+          "calls": 4800,
+          "seconds": 15.866046605999946
+        },
+        "cavities": {
+          "calls": 86281,
+          "seconds": 1.6739694182984126
+        },
+        "cavities_simd": {
+          "calls": 86280,
+          "seconds": 275.27442887506913
+        },
+        "clause_observables": {
+          "calls": 10135,
+          "seconds": 48.464171874540625
+        },
+        "clauses3": {
+          "calls": 76145,
+          "seconds": 141.1799243320129
+        },
+        "decimation": {
+          "calls": 5334,
+          "seconds": 27.554441627999957
+        },
+        "gpu": {
+          "calls": 86280,
+          "seconds": 714.8881382547261
+        },
+        "gpu_submission_and_wait": {
+          "calls": 76145,
+          "seconds": 668.4932119480076
+        },
+        "graph_mutations": {
+          "calls": 8970584,
+          "seconds": 30.84209002305257
+        },
+        "observable_blocks": {
+          "calls": 10135,
+          "seconds": 3.1343788327358197
+        },
+        "observable_final": {
+          "calls": 10135,
+          "seconds": 21.912680126115447
+        },
+        "observables_f64_validation": {
+          "calls": 1,
+          "seconds": 0.255455958
+        },
+        "pack_eta": {
+          "calls": 86280,
+          "seconds": 203.17003329307772
+        },
+        "propagation": {
+          "calls": 10135,
+          "seconds": 0.07787636799999965
+        },
+        "ranking": {
+          "calls": 5334,
+          "seconds": 11.413876598
+        },
+        "residual_blocks": {
+          "calls": 76145,
+          "seconds": 16.39017992070876
+        },
+        "residual_final": {
+          "calls": 76145,
+          "seconds": 1.9397825433989055
+        },
+        "snapshots": {
+          "calls": 2,
+          "seconds": 0.049009791
+        },
+        "variables": {
+          "calls": 10135,
+          "seconds": 1.9662387496500742
+        },
+        "verification": {
+          "calls": 1,
+          "seconds": 0.034467583
+        },
+        "walksat": {
+          "calls": 1,
+          "seconds": 16.073400875
+        },
+        "walksat_initialization": {
+          "calls": 1,
+          "seconds": 0.0408405
+        }
+      },
+      "precision": "f32",
+      "profile_error": null,
+      "requested_backend": "metal",
+      "threads": 1
+    },
+    "flips": 29575151,
+    "m": 4200000,
+    "n": 1000000,
+    "os": "macos",
+    "package_version": "0.4.1",
+    "rustflags": "",
+    "seed": 1,
+    "sp_sweeps": 76145,
+    "wall_seconds": 949.834945625
+  }
+}
