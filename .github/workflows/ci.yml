@@ -1,55 +1,66 @@
 name: Build and test
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  rust:
-    name: Rust / ${{ matrix.os }}
+  build:
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
+    container: ${{ matrix.container }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            binary: bsp-rust
-          - os: macos-latest
-            binary: bsp-rust
-          - os: windows-latest
-            binary: bsp-rust.exe
+          - name: Linux CPU
+            os: ubuntu-latest
+            backend: cpu
+          - name: macOS CPU
+            os: macos-15
+            backend: cpu
+          - name: macOS Metal
+            os: macos-15
+            backend: metal
+          - name: Linux CUDA
+            os: ubuntu-22.04
+            backend: cuda
+            container: nvidia/cuda:12.6.3-devel-ubuntu22.04
+    env:
+      UV_PYTHON: '3.12'
+      BSP_CUDA_ARCH: '61'
     steps:
+      - name: Install CUDA container prerequisites
+        if: matrix.backend == 'cuda'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends curl ca-certificates git build-essential pkg-config libssl-dev
+          echo /usr/local/cuda/bin >> "$GITHUB_PATH"
+          echo CUDA_HOME=/usr/local/cuda >> "$GITHUB_ENV"
+          echo LD_LIBRARY_PATH=/usr/local/cuda/lib64 >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
-          components: rustfmt, clippy
-      - if: runner.os == 'Windows'
-        run: choco install make -y --no-progress
-      - run: cargo fmt --check
-      - run: cargo fmt --manifest-path crates/bsp-cuda/Cargo.toml --check
-      - run: cargo fmt --manifest-path crates/bsp-metal/Cargo.toml --check
-      - run: cargo clippy --all-targets --locked -- -D warnings
-      - run: cargo test --locked
-      - run: cargo test --release --locked
-      - run: cargo test --doc --locked
-      - run: cargo run --release --example solve_ksat -- examples/3sat.cnf
-      - run: make rust BACKEND=cpu
+          python-version: '3.12'
+          enable-cache: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.backend }}
+      - run: make ci BACKEND=${{ matrix.backend }}
       - uses: actions/upload-artifact@v7
         with:
-          name: bsp-rust-${{ runner.os }}-${{ runner.arch }}
+          name: bsp-${{ runner.os }}-${{ matrix.backend }}
           path: |
-            target/release/${{ matrix.binary }}
+            target/release/bsp-rust
+            dist/*.whl
             LICENSE
             NOTICE
-            README.md
           if-no-files-found: error

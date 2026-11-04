@@ -59,7 +59,8 @@
   a commit prefix alone. Python `__version__` comes from the native crate.
 - Create an annotated `vMAJOR.MINOR.PATCH` tag only on the tested, merged release
   commit after explicit authorization. Push that exact tag, never `--tags`.
-- The release workflow validates versions and ancestry, builds/tests all
-  platforms and docs, and creates a checksummed **draft** GitHub release.
+- The release workflow validates versions and ancestry, builds/tests Linux and
+  macOS CPU and accelerated Rust/Python variants, and creates a checksummed
+  **draft** GitHub release.
   Verify its assets and notes with `gh`. Publishing the draft or uploading to a
   package registry requires separate explicit user authorization.

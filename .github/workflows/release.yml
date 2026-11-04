@@ -24,23 +24,13 @@ jobs:
       - name: Validate versions, changelog, annotated tag, and main ancestry
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: uv run --no-project --python 3.12 python tools/check_release.py --tag "$RELEASE_TAG" --require-main
-      - run: uv run --no-project --python 3.12 python -m unittest discover -s tests/release_policy -v
-  cpu:
+        run: make release-check RELEASE_ARGS="--tag $RELEASE_TAG --require-main"
+  builds:
     needs: verify
     uses: ./.github/workflows/ci.yml
-  python:
-    needs: verify
-    uses: ./.github/workflows/python.yml
-  acceleration:
-    needs: verify
-    uses: ./.github/workflows/acceleration.yml
-  docs:
-    needs: verify
-    uses: ./.github/workflows/docs.yml
   release:
     name: Package draft release
-    needs: [cpu, python, acceleration, docs]
+    needs: builds
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
