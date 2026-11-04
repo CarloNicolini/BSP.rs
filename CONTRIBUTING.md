@@ -5,8 +5,8 @@ Develop on a topic branch and submit a PR; `main` is protected. Describe public
 API compatibility and link the relevant issue in every PR. Version selection,
 release PRs, annotated tags, and draft review follow [RELEASING.md](RELEASING.md).
 
-Use Rust 1.88 or newer. CI uses Python 3.12 and four jobs: Linux CPU,
-Linux CUDA, macOS CPU, and macOS Metal. Each runs the same Makefile entry point:
+Use Rust 1.88 or newer. CI uses Python 3.12 and three jobs: Linux CPU,
+Linux CUDA, and macOS CPU. Each runs the same Makefile entry point:
 
 ```sh
 make ci BACKEND=cpu

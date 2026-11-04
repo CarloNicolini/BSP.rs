@@ -68,7 +68,7 @@ gh run list --workflow release.yml
 
 The tag workflow independently rejects malformed, lightweight, off-main,
 out-of-order, or version-mismatched tags. It runs Rust/CLI, installed Python
-wheels on Python 3.12, with CPU and CUDA/Metal build variants before
+wheels on Python 3.12, with Linux/macOS CPU and Linux CUDA build variants before
 creating a draft. Hosted CUDA checks compile and link; they do not certify
 execution on an NVIDIA device. Keep that limitation in release notes.
 
@@ -95,7 +95,7 @@ its state and obtain explicit approval before any asset mutation.
 ## GitHub protections
 
 `main` requires a PR, an up-to-date branch, resolved conversations, and successful
-Linux/macOS CPU and acceleration checks using Python 3.12. The rules apply to
+Linux/macOS CPU and Linux CUDA checks using Python 3.12. The rules apply to
 administrators;
 force pushes and deletion are disabled. Zero reviewer approvals are required
 to support a solo maintainer. This is CI enforcement, not independent review.
@@ -104,7 +104,7 @@ Changes to protection settings require an explicit, documented maintenance
 decision; future sessions must not weaken them to complete a task.
 
 CI simplification maintenance decision: replace the former 13 required checks
-with `Linux CPU`, `Linux CUDA`, `macOS CPU`, and `macOS Metal` when this workflow
+with `Linux CPU`, `Linux CUDA`, and `macOS CPU` when this workflow
 change is adopted. Preserve strict up-to-date checks, PR requirements, admin
 coverage, conversation resolution, and immutable tags. This is a change to the
 supported CI matrix; it does not authorize bypassing failing checks or merging.
