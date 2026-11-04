@@ -46,6 +46,9 @@ jobs:
           echo CUDA_HOME=/usr/local/cuda >> "$GITHUB_ENV"
           echo LD_LIBRARY_PATH=/usr/local/cuda/lib64 >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
+      - name: Trust the container checkout for tests
+        if: matrix.backend == 'cuda'
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: dtolnay/rust-toolchain@stable
       - uses: astral-sh/setup-uv@v10.3.2
         with:
