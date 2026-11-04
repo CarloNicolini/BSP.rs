@@ -1,0 +1,7 @@
+__pycache__/
+setup
+*-bench
+results/latest.json
+results/profile_run.json
+results/exploratory_*
+*.ncu-repz

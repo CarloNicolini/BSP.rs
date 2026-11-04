@@ -1,0 +1,3 @@
+# Preserve Nsight's fixed-width exports byte-for-byte, including column padding.
+results/ncu_*.txt -whitespace
+results/* linguist-generated=true

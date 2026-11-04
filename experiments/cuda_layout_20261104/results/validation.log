@@ -1,0 +1,182 @@
+    Checking serde_core v1.0.229
+    Checking crossbeam-utils v0.8.23
+    Checking equivalent v1.0.3
+    Checking hashbrown v0.17.1
+    Checking utf8parse v0.2.2
+    Checking anstyle-parse v1.0.0
+    Checking indexmap v2.14.2
+    Checking crossbeam-epoch v0.9.21
+    Checking is_terminal_polyfill v1.70.2
+    Checking colorchoice v1.0.5
+    Checking anstyle-query v1.1.5
+    Checking anstyle v1.0.14
+    Checking anstream v1.0.0
+    Checking serde v1.0.229
+    Checking crossbeam-deque v0.8.8
+    Checking libc v0.2.191
+    Checking toml_datetime v0.6.11
+    Checking serde_spanned v0.6.9
+    Checking once_cell v1.21.4
+    Checking itoa v1.0.18
+    Checking strsim v0.11.1
+    Checking clap_lex v1.1.1
+    Checking unicode-width v0.2.3
+    Checking winnow v0.7.15
+    Checking toml_write v0.1.2
+   Compiling bsp-cuda v0.4.0 (/content/bsp-review-20261104/crates/bsp-cuda)
+    Checking toml_edit v0.22.27
+    Checking console v0.15.11
+    Checking clap_builder v4.6.7
+    Checking rayon-core v1.13.0
+    Checking zmij v1.0.23
+    Checking portable-atomic v1.15.0
+    Checking ryu v1.0.23
+    Checking either v1.19.0
+    Checking number_prefix v0.4.0
+    Checking memchr v2.8.3
+    Checking unsafe-libyaml v0.2.11
+   Compiling bsp-rust v0.4.0 (/content/bsp-review-20261104)
+    Checking rand_core v0.9.5
+    Checking rand v0.9.5
+    Checking serde_yaml v0.9.34+deprecated
+    Checking serde_json v1.0.154
+    Checking indicatif v0.17.11
+    Checking rayon v1.12.0
+    Checking clap v4.6.7
+    Checking toml v0.8.23
+    Finished `release` profile [optimized] target(s) in 18.44s
+   Compiling bsp-cuda v0.4.0 (/content/bsp-review-20261104/crates/bsp-cuda)
+   Compiling bsp-rust v0.4.0 (/content/bsp-review-20261104)
+    Finished `release` profile [optimized] target(s) in 2m 36s
+     Running unittests src/lib.rs (target/release/deps/bsp_rust-604277f5b88ce8d2)
+
+running 3 tests
+test decision_heap::tests::indexed_heap_matches_scan_after_arbitrary_removal_and_reinsertion ... ok
+test solver::index_tests::cached_indexes_match_full_recounts_through_mixed_mutations ... ok
+test solver::index_tests::heap_backtracking_matches_sorted_frozen_scores_for_batches ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running unittests src/main.rs (target/release/deps/bsp_rust-87d7602ae56a2c95)
+
+running 4 tests
+test cli::config::tests::toml_and_yaml_override_selected_fields ... ok
+test cli::config::tests::unknown_fields_and_extensions_are_rejected ... ok
+test cli::output::tests::names_keep_bash_field_separators ... ok
+test cli::output::tests::utc_stamps_match_known_instants ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/acceleration.rs (target/release/deps/acceleration-5fb97c8975df780e)
+
+running 5 tests
+test execution_validation_and_profile_output ... ok
+test parallel_full_solver_trajectory_and_batch_order_match_reference ... ok
+test parallel_sweeps_and_mutations_match_every_f64_bit ... ok
+test parallel_zero_factors_and_subnormals_match_scalar ... ok
+test unavailable_metal_is_an_explicit_error ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.41s
+
+     Running tests/cli.rs (target/release/deps/cli-a192045f182a3921)
+
+running 7 tests
+test cli_default_output_name_contains_the_run_variables ... ok
+test cli_documents_options_and_rejects_invalid_input ... ok
+test cli_flags_override_yaml_config ... ok
+test cli_loads_parameters_from_toml_config ... ok
+test cli_progress_line_names_the_three_phases ... ok
+test cli_solves_the_shipped_dimacs_example ... ok
+test version_matches_package_without_a_formula ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/cuda.rs (target/release/deps/cuda-576c9474e44bfe4c)
+
+running 6 tests
+test cuda_batch_stops_after_the_first_failed_sweep ... ok
+test cuda_cooperative_cancellation_and_timeout ... ok
+test cuda_full_solves_and_batches_are_verified ... ok
+test cuda_limits_zero_factors_and_precision_recovery ... ok
+test cuda_sweeps_and_graph_mutations_match_cpu ... ok
+test invalid_cuda_topology_is_rejected_without_device_access ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 47.16s
+
+     Running tests/cuda_layout.rs (target/release/deps/cuda_layout-6775eeb5eff344f2)
+
+running 6 tests
+test layout::tests::clause_headers_preserve_sparse_and_generic_members ... ok
+test layout::tests::contiguous_clauses_use_a_header ... ok
+test layout::tests::one_window_keeps_variable_order ... ok
+test layout::tests::warp_records_cover_degree_boundaries_without_overlap ... ok
+test layout::tests::warp_records_match_the_packed_schedule ... ok
+test layout::tests::window_permutations_match_stable_reference_across_boundaries ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/norm_storage.rs (target/release/deps/norm_storage-44e6eaf6b61c287d)
+
+running 1 test
+test observable_scratch_does_not_overwrite_frozen_messages ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/parallel_observables.rs (target/release/deps/parallel_observables-10ecb69e3f069427)
+
+running 1 test
+test masked_parallel_observables_match_scalar_before_and_after_release ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/solver.rs (target/release/deps/solver-66c6efdaaef78374)
+
+running 16 tests
+test bsp_decimates_and_releases_before_a_verified_solution ... ok
+test concurrent_solvers_have_independent_state ... ok
+test damping_does_not_hide_large_fixed_point_residuals ... ok
+test dimacs_normalization_and_validation ... ok
+test empty_formulas_and_unused_variables ... ok
+test explicit_failures_and_option_validation ... ok
+test fix_release_restores_masks_and_frozen_messages_in_any_order ... ok
+test long_clauses_and_word_boundaries ... ok
+test mixed_width_sweeps_and_complexity_match_direct_products ... ok
+test residual_sweep_matches_scalar_after_fix_and_release ... ok
+test solves_easy_random_instances_and_is_reproducible ... ok
+test subnormal_products_preserve_the_excluded_group ... ok
+test sweeps_match_scalar_definition ... ok
+test unit_propagation_and_contradictions_never_claim_sat ... ok
+test walksat_respects_the_total_budget_across_restarts ... ok
+test zero_and_unit_messages_use_exclusion_products ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+
+   Doc-tests bsp_rust
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling bsp-cuda v0.4.0 (/content/bsp-review-20261104/crates/bsp-cuda)
+    Finished `release` profile [optimized] target(s) in 7.07s
+     Running unittests src/lib.rs (crates/bsp-cuda/target/release/deps/bsp_cuda-cd7bed5d23021b9b)
+
+running 7 tests
+test layout::tests::clause_headers_preserve_sparse_and_generic_members ... ok
+test layout::tests::contiguous_clauses_use_a_header ... ok
+test layout::tests::one_window_keeps_variable_order ... ok
+test layout::tests::warp_records_cover_degree_boundaries_without_overlap ... ok
+test layout::tests::warp_records_match_the_packed_schedule ... ok
+test layout::tests::window_permutations_match_stable_reference_across_boundaries ... ok
+test observable_tests::observable_final_preserves_serial_kahan_order_and_tail_records ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+
+   Doc-tests bsp_cuda
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling bsp-cuda v0.4.0 (/content/bsp-review-20261104/crates/bsp-cuda)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.30s

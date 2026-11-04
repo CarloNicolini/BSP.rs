@@ -1,0 +1,8 @@
+   Compiling bsp-cuda v0.4.0 (/content/bsp-review-20261104/crates/bsp-cuda)
+   Compiling bsp-rust v0.4.0 (/content/bsp-review-20261104)
+    Finished `release` profile [optimized] target(s) in 14.62s
+==PROF== Connected to process 20194 (/content/bsp-review-20261104/experiments/cuda_layout_20261104/warp32-bench)
+==PROF== Profiling "observable_final": 0%....50%....100% - 9 passes
+{"complexity":13428.5,"hash":"e84d8203c0310525","n":1000000,"paramagnetic":false,"seed":3}
+==PROF== Disconnected from process 20194
+==PROF== Report: /content/bsp-review-20261104/experiments/cuda_layout_20261104/results/reduction_warp32.ncu-repz
