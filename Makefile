@@ -1,12 +1,14 @@
 .PHONY: help rust rust-cpu rust-metal rust-cuda python python-cpu python-metal python-cuda docs docs-serve clean
 
+.DEFAULT_GOAL := rust
+
 PORT ?= 8000
 BACKEND ?= $(shell sh tools/detect_backend.sh)
 DOC_FEATURES = extension-module$(if $(filter metal cuda,$(BACKEND)),$(comma)$(BACKEND))
 comma := ,
 
 help:
-	@printf '%s\n' 'make rust                            Build the release executable (auto backend)' \
+	@printf '%s\n' 'make / make rust                     Build the release executable (auto backend)' \
 	  'make python                          Install the Python API (auto backend)' \
 	  'make rust-cpu|rust-metal|rust-cuda   Build for a specific backend' \
 	  'make python-cpu|python-metal|python-cuda  Install for a specific backend' \

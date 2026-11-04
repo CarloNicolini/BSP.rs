@@ -6,46 +6,59 @@
 [![License: GPL v2 or later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 [![Rust 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange.svg)](Cargo.toml)
 
-BSP.rs is a Rust SAT solver with a Python API. Generate random k-SAT formulas
-or load DIMACS files, solve them, and inspect the solver state through NumPy.
-CPU execution works on macOS and Linux; optional GPU backends support Apple
-silicon (Metal) and NVIDIA GPUs on Linux (CUDA).
+BSP.rs ships the `bsp-rust` executable for Backtracking Survey Propagation on
+CNF SAT. Generate random k-SAT formulas or load DIMACS files, then write a JSON
+result. An optional Python API shares the same Rust core. CPU execution works on
+macOS and Linux; optional GPU backends support Apple silicon (Metal) and NVIDIA
+GPUs on Linux (CUDA).
 
 BSP is a heuristic: returned SAT assignments are verified, but an unsuccessful
 run does not prove UNSAT.
 
-## Quick start: standalone CLI
+## Quick start: `bsp-rust`
 
-The CLI requires Rust 1.88+ and platform compiler tools. Build and run it directly;
-Python, NumPy, uv, and maturin are not needed:
+You need Rust 1.88+ and the usual platform compiler tools. Python is not required
+for the executable. From a clone, `make` builds the release binary (same as
+`make rust`). The Makefile picks Metal on Apple silicon with Xcode tools, CUDA
+on Linux when an NVIDIA GPU and `nvcc` are present, and CPU otherwise:
 
 ```sh
 git clone https://github.com/CarloNicolini/BSP.rs.git
 cd BSP.rs
-cargo build --release --locked
+make
 target/release/bsp-rust --version
 target/release/bsp-rust examples/3sat.cnf
 target/release/bsp-rust --generate 3 2.5 128 --seed 3 --timeout 10
 target/release/bsp-rust --config examples/solve.toml
 ```
 
-Install on PATH with `cargo install --path . --locked`, then use
-`bsp-rust --help`. Pass shared parameters with `--config PATH` (`.toml`,
-`.yaml`, `.yml`, or `.json`); explicit flags override the file.
-The program writes the JSON result to a file.
-The default file name contains the main run variables and the UTC time.
-`--output PATH` selects another file.
-`--progress` prints one stdout line with timers for formula setup, BSP, and WalkSAT.
-Stdout then prints one JSON summary with `status` and `output`.
-The full result, including the assignment and the step list, stays in the file.
-Exit code 0 means a verified SAT assignment.
-Exit code 1 means a heuristic failure or a limit.
-Exit code 2 means invalid input. For GPU execution, build
-with `--features metal` on Apple silicon or `--features cuda` on NVIDIA/Linux,
-then select `--backend metal`, `cuda`, or `cuda-f32`.
+Override detection with `BACKEND=cpu`, `metal`, or `cuda` (for example
+`make BACKEND=cpu`), or call `make rust-metal` / `make rust-cuda`. Run
+`make help` for every target. `make clean` removes Cargo build outputs,
+`docs/_build`, and `dist`.
 
-To use the crate from another Rust project, add the Git dependency. This package
-is not yet published on crates.io:
+Install on PATH with `cargo install --path . --locked`, then use `bsp-rust --help`.
+Pass shared parameters with `--config PATH` (`.toml`, `.yaml`, `.yml`, or
+`.json`); explicit flags override the file. The program writes the full JSON
+result to a file. The default file name contains the main run variables and the
+UTC time. `--output PATH` selects another file. `--progress` prints one stdout
+line with timers for formula setup, BSP, and WalkSAT. Stdout then prints one
+JSON summary with `status` and `output`. Exit code 0 means a verified SAT
+assignment. Exit code 1 means a heuristic failure or a limit. Exit code 2 means
+invalid input. After a GPU-capable `make` build, select `--backend metal`,
+`cuda`, or `cuda-f32` at run time.
+
+Other Makefile targets: `make python` installs the Python package with the same
+backend detection, `make docs` builds Sphinx HTML, and `make docs-serve` serves
+it (`PORT=8001` changes the port). After a GPU Python build, use
+`uv run --no-sync ...` so a plain `uv run` does not rebuild with CPU defaults.
+GitHub Actions exercises the Makefile builds on Linux, macOS, and Windows; the
+hosted CUDA job uses an explicit override because that runner has no GPU.
+
+## Use the Rust crate
+
+To use the library from another Rust project, add the Git dependency. This
+package is not yet published on crates.io:
 
 ```toml
 [dependencies]
@@ -72,26 +85,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Use `Formula::from_dimacs(&text)` to load a CNF file. `cargo doc --open` builds
 API documentation. Pin a Git revision in your dependency for reproducible runs.
+The executable and the Python API run the same Rust solver.
 
-Both interfaces run the same Rust solver. Any speed difference depends on setup,
-serialization, and state inspection; measure your workload.
+## Python SDK: install the build tools
 
-The root Makefile provides `make rust`, `make python`, and `make docs-serve`.
-The build targets select Metal on Apple silicon with Xcode tools, CUDA on Linux
-when an NVIDIA GPU and `nvcc` are available, and CPU otherwise. Override detection
-with `BACKEND=cpu`, `metal`, or `cuda` (for example, `make rust BACKEND=cpu`),
-or use a specific target such as `make python-cuda`. Build selection enables the
-backend; select it at runtime as described above. Run `make help` for all
-targets; `make docs-serve PORT=8001` selects another port.
-After a GPU Python build, use `uv run --no-sync ...` to retain the installed
-extension; a plain `uv run` may resync it with the default CPU build settings.
-GitHub Actions exercises the Makefile builds on Linux, macOS and Windows;
-its hosted CUDA build uses an explicit override because it has no GPU device.
-
-## 1. Install the build tools
-
-The Python package builds a native extension from source. Install the tools for
-your platform once; no separate Python, NumPy, or maturin installation is needed.
+After the `bsp-rust` executable works, you can install the optional Python API.
+The package builds a native extension from source. Install the tools for your
+platform once; no separate Python, NumPy, or maturin installation is needed.
 
 **macOS / Apple silicon** — install Apple's compiler tools, then wait for the
 installer to finish before continuing:
@@ -122,7 +122,7 @@ rustc --version
 Rust must be **1.88 or newer**. If an existing installation is older, run
 `rustup update stable`. On macOS, Git is included in the Command Line Tools.
 
-## 2. Clone and sync
+## Python SDK: clone and sync
 
 ```sh
 git clone https://github.com/CarloNicolini/BSP.rs.git
@@ -134,7 +134,7 @@ This downloads Python 3.12 if needed, creates `.venv`, installs NumPy, and build
 `pybsp-rust` in release mode. The import name is `pybsp_rust`.
 Run commands with `uv run`; activating the environment is unnecessary.
 
-## 3. Solve your first formula
+## Python SDK: solve a formula
 
 ```sh
 uv run python examples/solve.py examples/3sat.cnf
@@ -166,7 +166,7 @@ Save this as `quickstart.py` and run `uv run python quickstart.py`.
 To load a file, use `Formula.from_dimacs(Path("instance.cnf").read_text())`
 with `from pathlib import Path`.
 
-## 4. Enable your GPU (optional)
+## Python SDK: enable your GPU (optional)
 
 ### Apple silicon: Metal
 
@@ -315,7 +315,7 @@ They should not be treated as a fixed multiplier for every SAT problem.
 
 ## Versions and contribution workflow
 
-The current version is **0.2.0**; **0.1.0** remains the initial tagged baseline.
+The current version is **0.4.0**; **0.1.0** remains the initial tagged baseline.
 See the [changelog](CHANGELOG.md),
 [release policy](RELEASING.md), and [contributor/agent workflow](AGENTS.md).
 Changes go through issues and PRs on topic branches. Version tags produce

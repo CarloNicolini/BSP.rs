@@ -5,6 +5,8 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
 ### CLI
 
 - Parse flags with Clap instead of a handmade argv loop. Existing flag names,
@@ -25,6 +27,13 @@ policy in [RELEASING.md](RELEASING.md).
 - `--help` prints the default value of each option. The JSON field `residual`
   remains the largest undamped message change in the last sweep.
 
+### Build and documentation
+
+- Plain `make` builds the release `bsp-rust` executable (same as `make rust`).
+  `make clean` removes Cargo outputs, Sphinx `docs/_build`, and `dist`.
+  The README leads with the executable and Makefile workflow; the Python SDK
+  follows.
+
 ### Metal
 
 - Pack edge messages into source-ordered buffers so that the SP sweep reads
@@ -40,6 +49,16 @@ policy in [RELEASING.md](RELEASING.md).
   bit-identical with the previous kernel. Device buffers grow by 118 MB at
   that size. The f64 path packs messages but does not use the warp kernel.
   The window size and the two-record warp are tuned on the T4.
+
+### Compatibility and limits
+
+- Clap changes help formatting only; flag names, exit codes, and JSON stdout/file
+  behavior stay the same. `--options` JSON loading remains supported.
+- Version jumps from `0.2.0` to `0.4.0` by maintainer choice; there is no
+  published `0.3.0` tag.
+- Hosted CUDA CI builds and links the backend; NVIDIA hardware execution for the
+  packed f32 kernel was measured on a Tesla T4. Metal timings are from an M1 Pro.
+
 
 ## [0.2.0]
 
