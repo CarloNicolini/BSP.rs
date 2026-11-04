@@ -26,10 +26,13 @@ cargo build --release --locked
 target/release/bsp-rust --version
 target/release/bsp-rust examples/3sat.cnf
 target/release/bsp-rust --generate 3 2.5 128 --seed 3 --timeout 10
+target/release/bsp-rust --config examples/solve.toml
 ```
 
 Install on PATH with `cargo install --path . --locked`, then use
-`bsp-rust --help`. The program writes the JSON result to a file.
+`bsp-rust --help`. Pass shared parameters with `--config PATH` (`.toml`,
+`.yaml`, `.yml`, or `.json`); explicit flags override the file.
+The program writes the JSON result to a file.
 The default file name contains the main run variables and the UTC time.
 `--output PATH` selects another file.
 `--progress` prints one stdout line with timers for formula setup, BSP, and WalkSAT.

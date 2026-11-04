@@ -1,0 +1,6 @@
+# Short solve driven by a config file:
+#   bsp-rust --config examples/solve.toml
+formula = "examples/3sat.cnf"
+seed = 3
+progress = false
+output = "result.json"

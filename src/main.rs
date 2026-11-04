@@ -1,107 +1,111 @@
 mod cli;
 
+use crate::cli::args::Cli;
+use crate::cli::config::{FileConfig, Resolved};
 use crate::cli::progress::{PhaseClock, BSP, WALKSAT};
-use bsp_rust::{ExecutionOptions, Formula, Options, Solver, Status};
+use bsp_rust::{Formula, Solver, Status};
+use clap::Parser;
 use std::io::{IsTerminal, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
-use std::{env, fs, process::ExitCode};
+use std::{fs, process::ExitCode};
 
-fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().skip(1).collect();
-    let mut options = Options::default();
-    let mut execution = ExecutionOptions::default();
-    let mut source = None;
-    let mut generate = None;
-    let mut sweeps = None;
-    let mut messages = None;
-    let mut dump_messages = false;
-    let mut export = None;
-    let mut output = None;
-    let mut progress = None;
-    let mut i = 0;
-    while i < args.len() {
-        let flag = &args[i];
-        if flag == "--help" || flag == "-h" {
-            print!("{}", cli::help::text(std::io::stdout().is_terminal()));
-            return Ok(ExitCode::SUCCESS);
-        }
-        if flag == "--version" || flag == "-V" {
-            println!("bsp-rust {}", env!("CARGO_PKG_VERSION"));
-            return Ok(ExitCode::SUCCESS);
-        }
-        if flag == "--dump-messages" {
-            dump_messages = true;
-            i += 1;
-            continue;
-        }
-        if flag == "--progress" || flag == "--no-progress" {
-            let enabled = flag == "--progress";
-            if progress.is_some_and(|current| current != enabled) {
-                return Err("use only one of --progress and --no-progress".into());
-            }
-            progress = Some(enabled);
-            i += 1;
-            continue;
-        }
-        if !flag.starts_with('-') {
-            if source.replace(flag.clone()).is_some() {
-                return Err("one formula path is allowed".into());
-            }
-            i += 1;
-            continue;
-        }
-        let value = args
-            .get(i + 1)
-            .ok_or_else(|| format!("missing value for {flag}"))?;
-        match flag.as_str() {
-            "--backend" => {
-                execution.backend = match value.as_str() {
-                    "cpu" => bsp_rust::Backend::Cpu,
-                    "cpu-parallel" => bsp_rust::Backend::CpuParallel,
-                    "metal" => bsp_rust::Backend::Metal,
-                    "cuda" => bsp_rust::Backend::Cuda,
-                    "cuda-f32" => bsp_rust::Backend::CudaF32,
-                    _ => {
-                        return Err(
-                            "backend must be cpu, cpu-parallel, metal, cuda, or cuda-f32".into(),
-                        )
-                    }
-                }
-            }
-            "--threads" => execution.threads = value.parse()?,
-            "--profile" => execution.profile = Some(value.into()),
-            "--seed" => options.seed = value.parse()?,
-            "--r" => options.backtrack_ratio = value.parse()?,
-            "--frac" => options.batch_fraction = value.parse()?,
-            "--eps" => options.epsilon = value.parse()?,
-            "--damping" => options.damping = value.parse()?,
-            "--max-sweeps" => options.max_sweeps = value.parse()?,
-            "--max-steps" => options.max_steps = value.parse()?,
-            "--max-flips" => options.max_flips = value.parse()?,
-            "--restarts" => options.walksat_restarts = value.parse()?,
-            "--timeout" => options.timeout_seconds = Some(value.parse()?),
-            "--options" => options = serde_json::from_str(&fs::read_to_string(value)?)?,
-            "--messages" => messages = Some(value.clone()),
-            "--sweeps" => sweeps = Some(value.parse::<usize>()?),
-            "--write-formula" => export = Some(value.clone()),
-            "--output" => output = Some(value.clone()),
-            "--generate" => {
-                let alpha = args
-                    .get(i + 2)
-                    .ok_or("--generate needs K ALPHA N")?
-                    .parse::<f64>()?;
-                let n = args
-                    .get(i + 3)
-                    .ok_or("--generate needs K ALPHA N")?
-                    .parse::<usize>()?;
-                generate = Some((value.parse::<usize>()?, alpha, n));
-                i += 2;
-            }
-            _ => return Err(format!("unknown option {flag}").into()),
-        }
-        i += 2;
+fn parse_generate(values: &[String]) -> Result<(usize, f64, usize), Box<dyn std::error::Error>> {
+    if values.len() != 3 {
+        return Err("--generate needs K ALPHA N".into());
     }
+    Ok((values[0].parse()?, values[1].parse()?, values[2].parse()?))
+}
+
+fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
+    let mut resolved = Resolved::default();
+    if let Some(path) = &cli.config {
+        FileConfig::load(path)?.apply(&mut resolved);
+    }
+    if let Some(path) = &cli.options {
+        resolved.options = serde_json::from_str(&fs::read_to_string(path)?)?;
+    }
+    if let Some(path) = cli.formula {
+        resolved.formula = Some(path);
+    }
+    if let Some(values) = &cli.generate {
+        resolved.generate = Some(parse_generate(values)?);
+    }
+    if let Some(value) = cli.seed {
+        resolved.options.seed = value;
+    }
+    if let Some(value) = cli.backtrack_ratio {
+        resolved.options.backtrack_ratio = value;
+    }
+    if let Some(value) = cli.batch_fraction {
+        resolved.options.batch_fraction = value;
+    }
+    if let Some(value) = cli.epsilon {
+        resolved.options.epsilon = value;
+    }
+    if let Some(value) = cli.damping {
+        resolved.options.damping = value;
+    }
+    if let Some(value) = cli.max_sweeps {
+        resolved.options.max_sweeps = value;
+    }
+    if let Some(value) = cli.max_steps {
+        resolved.options.max_steps = value;
+    }
+    if let Some(value) = cli.max_flips {
+        resolved.options.max_flips = value;
+    }
+    if let Some(value) = cli.restarts {
+        resolved.options.walksat_restarts = value;
+    }
+    if let Some(value) = cli.timeout {
+        resolved.options.timeout_seconds = Some(value);
+    }
+    if let Some(value) = cli.backend {
+        resolved.execution.backend = value.into();
+    }
+    if let Some(value) = cli.threads {
+        resolved.execution.threads = value;
+    }
+    if let Some(path) = cli.profile {
+        resolved.execution.profile = Some(path);
+    }
+    if cli.progress {
+        resolved.progress = Some(true);
+    } else if cli.no_progress {
+        resolved.progress = Some(false);
+    }
+    if let Some(path) = cli.output {
+        resolved.output = Some(path);
+    }
+    if let Some(value) = cli.sweeps {
+        resolved.sweeps = Some(value);
+    }
+    if let Some(path) = cli.messages {
+        resolved.messages = Some(path);
+    }
+    if cli.dump_messages {
+        resolved.dump_messages = true;
+    }
+    if let Some(path) = cli.write_formula {
+        resolved.write_formula = Some(path);
+    }
+    Ok(resolved)
+}
+
+fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
+    let Resolved {
+        formula: source,
+        generate,
+        options,
+        execution,
+        sweeps,
+        messages,
+        dump_messages,
+        write_formula: export,
+        output,
+        progress,
+    } = resolved;
     options.validate()?;
     let terminal = std::io::stdout().is_terminal();
     let show_progress = progress.unwrap_or(terminal) && terminal;
@@ -109,7 +113,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let mut live = show_progress.then(|| cli::progress::LiveLine::start(clock.clone()));
     let (formula_name, formula) = match (source, generate) {
         (Some(path), None) => (
-            cli::output::formula_token(&path),
+            cli::output::formula_token(&path.to_string_lossy()),
             Formula::from_dimacs(&fs::read_to_string(&path)?)?,
         ),
         (None, Some((k, alpha, n))) => (
@@ -134,7 +138,7 @@ fn run() -> Result<ExitCode, Box<dyn std::error::Error>> {
             path,
         )?)?)?;
     }
-    let report_path = output.map(PathBuf::from).unwrap_or_else(|| {
+    let report_path = output.unwrap_or_else(|| {
         cli::output::default_path(
             &formula_name,
             options.seed,
@@ -198,7 +202,19 @@ fn finish(
 }
 
 fn main() -> ExitCode {
-    match run() {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(error) => {
+            let code = if error.use_stderr() {
+                ExitCode::from(2)
+            } else {
+                ExitCode::SUCCESS
+            };
+            let _ = error.print();
+            return code;
+        }
+    };
+    match resolve(cli).and_then(run) {
         Ok(code) => code,
         Err(error) => {
             eprintln!("bsp-rust: {error}");

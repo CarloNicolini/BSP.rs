@@ -7,6 +7,13 @@ policy in [RELEASING.md](RELEASING.md).
 
 ### CLI
 
+- Parse flags with Clap instead of a handmade argv loop. Existing flag names,
+  positional formula path, exit codes, and JSON stdout/file behavior stay the
+  same. Help text now follows Clap formatting.
+- Add `--config PATH` to load run parameters from TOML, YAML, or JSON via serde.
+  Absent fields keep the previous layer. Merge order is defaults, then
+  `--config`, then `--options` (Options JSON), then explicit CLI flags.
+  Examples: `examples/solve.toml`, `examples/generate.yaml`.
 - The CLI writes the JSON result to a file. Stdout then prints one JSON
   object with `status` and the main counters, plus `output` for the file path.
   The default name contains the main run variables and a UTC timestamp, for

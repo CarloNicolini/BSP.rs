@@ -140,10 +140,12 @@ fn cli_documents_options_and_rejects_invalid_input() {
         .unwrap();
     assert!(output.status.success());
     let help = String::from_utf8(output.stdout).unwrap();
-    assert!(help.contains("--generate K ALPHA N"));
-    assert!(help.contains("Default: 0.9."));
-    assert!(help.contains("Default: 0.01."));
-    assert!(help.contains("--output PATH"));
+    assert!(help.contains("--generate"));
+    assert!(help.contains("<K> <ALPHA> <N>"));
+    assert!(help.contains("[default: 0.9]"));
+    assert!(help.contains("[default: 0.01]"));
+    assert!(help.contains("--output"));
+    assert!(help.contains("--config"));
     assert!(help.contains("--progress"));
     assert!(help.contains("--no-progress"));
     let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
@@ -152,4 +154,64 @@ fn cli_documents_options_and_rejects_invalid_input() {
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
+fn cli_loads_parameters_from_toml_config() {
+    let dir = temp_dir("toml");
+    let config = dir.join("run.toml");
+    fs::write(
+        &config,
+        format!(
+            "formula = {:?}\nseed = 3\nprogress = false\noutput = \"result.json\"\n",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf")
+        ),
+    )
+    .unwrap();
+    let output = run(&dir, &["--config", config.to_str().unwrap()]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let brief = summary(&output);
+    assert_eq!(brief["status"], "sat");
+    assert_eq!(brief["output"], "result.json");
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn cli_flags_override_yaml_config() {
+    let dir = temp_dir("yaml");
+    let config = dir.join("run.yaml");
+    fs::write(
+        &config,
+        format!(
+            "formula: {}\nseed: 1\nprogress: false\noutput: from-config.json\n",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf")
+        ),
+    )
+    .unwrap();
+    let output = run(
+        &dir,
+        &[
+            "--config",
+            config.to_str().unwrap(),
+            "--seed",
+            "9",
+            "--output",
+            "from-cli.json",
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let brief = summary(&output);
+    assert_eq!(brief["output"], "from-cli.json");
+    let result: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join("from-cli.json")).unwrap()).unwrap();
+    assert_eq!(result["seed"], 9);
+    let _ = fs::remove_dir_all(dir);
 }
