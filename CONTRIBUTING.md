@@ -1,7 +1,7 @@
 # Contributing
 
 Start with [AGENTS.md](AGENTS.md) for branch, issue, commit, and PR rules.
-Develop on a topic branch and submit a PR; `main` is protected. Describe public
+Develop on a topic branch and submit a PR; `main` is not branch-protected. Describe public
 API compatibility and link the relevant issue in every PR. Version selection,
 release PRs, annotated tags, and draft review follow [RELEASING.md](RELEASING.md).
 

@@ -6,8 +6,8 @@
 - Inspect `git status --short --branch`, remotes, recent commits, and relevant
   GitHub issues/PRs with `gh`. Preserve unrelated local work; use an isolated
   worktree when necessary. Never commit someone else's edits incidentally.
-- Never develop on `main`. Fetch `origin` and create a `codex/<short-purpose>`
-  branch from current `origin/main`, or continue the matching existing branch.
+- Fetch `origin` before starting changes. Topic branches and pull requests
+  remain the standard review workflow; `main` has no branch-protection rule.
 - Use `gh` for GitHub issues, PRs, check inspection, merges, and releases. Do not
   claim a remote action succeeded without checking its result.
 

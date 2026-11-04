@@ -94,17 +94,9 @@ its state and obtain explicit approval before any asset mutation.
 
 ## GitHub protections
 
-`main` requires a PR, an up-to-date branch, resolved conversations, and successful
-Linux/macOS CPU and Linux CUDA checks using Python 3.12. The rules apply to
-administrators;
-force pushes and deletion are disabled. Zero reviewer approvals are required
-to support a solo maintainer. This is CI enforcement, not independent review.
-Version-tag rules prohibit tag updates and deletion, with no bypass actor.
-Changes to protection settings require an explicit, documented maintenance
-decision; future sessions must not weaken them to complete a task.
+The `main` branch has no GitHub branch-protection rule or applicable branch
+ruleset. This was explicitly requested by the repository owner. The repository
+workflow still uses topic branches and pull requests, and merging or releasing
+continues to require the authorizations described above.
 
-CI simplification maintenance decision: replace the former 13 required checks
-with `Linux CPU`, `Linux CUDA`, and `macOS CPU` when this workflow
-change is adopted. Preserve strict up-to-date checks, PR requirements, admin
-coverage, conversation resolution, and immutable tags. This is a change to the
-supported CI matrix; it does not authorize bypassing failing checks or merging.
+Version-tag rules prohibit tag updates and deletion, with no bypass actor.
