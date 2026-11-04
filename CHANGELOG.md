@@ -5,6 +5,29 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+## [0.4.1]
+
+### CUDA
+
+- Construct packed transport windows with linear bucket counters instead of
+  stable sorts, preserving all mapping entries and stable tie ordering. Reuse
+  the temporary inverse permutation for q slots to reduce peak host allocation.
+- Prefetch eight observable block records before consuming them in the original
+  serial Kahan order. T4 paired trials show a modest improvement to the complete
+  observable pass; the exact-order regression covers f32/f64 cancellation and
+  partial prefetch groups.
+- Run packed-layout regression tests on CPU-only CI, including randomized
+  multi-window permutations, inverse mappings, degree boundaries, and sparse
+  clause headers.
+
+### Compatibility and limits
+
+- Compatible internal optimizations with no public API, default, output, device
+  buffer, or numerical summation-order changes.
+- Performance measurements use a Colab Xeon host and Tesla T4 at alpha=4.2.
+  They cover layout setup and observable passes, rather than complete solves;
+  no other GPU architecture or f64 performance improvement is claimed.
+
 ## [0.4.0] - 2026-11-04
 
 ### CLI

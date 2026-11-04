@@ -528,16 +528,30 @@ template <class T> __global__ void observable_final(Params p) {
     return;
   T vs = 0, cs = 0, vc = 0, cc = 0;
   unsigned flag = 1;
-  for (unsigned i = 0; i < (maximum(p.n, p.m) + 255) / 256; ++i) {
-    Quad<T> a = buf<Quad<T>>(p, 23)[i];
-    T y = a.x - vc, t = vs + y;
-    vc = (t - vs) - y;
-    vs = t;
-    y = a.y - cc;
-    t = cs + y;
-    cc = (t - cs) - y;
-    cs = t;
-    flag &= a.z != 0;
+  unsigned count = (maximum(p.n, p.m) + 255) / 256;
+  // Overlap independent record loads; keep both Kahan recurrences and the
+  // record order unchanged. The barrier keeps loads ahead of consumption.
+  for (unsigned i = 0; i < count; i += 8) {
+    Quad<T> records[8];
+    #pragma unroll
+    for (unsigned j = 0; j < 8; ++j)
+      if (i + j < count)
+        records[j] = buf<Quad<T>>(p, 23)[i + j];
+    asm volatile("" ::: "memory");
+    #pragma unroll
+    for (unsigned j = 0; j < 8; ++j) {
+      if (i + j < count) {
+        Quad<T> a = records[j];
+        T y = a.x - vc, t = vs + y;
+        vc = (t - vs) - y;
+        vs = t;
+        y = a.y - cc;
+        t = cs + y;
+        cc = (t - cs) - y;
+        cs = t;
+        flag &= a.z != 0;
+      }
+    }
   }
   Control &s = *buf<Control>(p, 19);
   s.paramagnetic = flag;
