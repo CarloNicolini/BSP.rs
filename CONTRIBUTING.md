@@ -19,6 +19,7 @@ This builds the release CLI, runs Rust release tests, builds and installs a
 Python wheel, and runs Python tests plus an example. Use `make test-rust` or
 `make test-python` to rerun tests after building. CUDA CI checks compilation,
 linking, and CPU execution; NVIDIA device tests remain ignored on hosted runners.
+Linux CUDA wheel builds also need `patchelf` to bundle the CUDA runtime library.
 
 Additional local checks, when relevant:
 
