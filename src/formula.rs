@@ -9,6 +9,8 @@ pub struct Formula(pub(crate) Arc<Data>);
 pub(crate) struct Data {
     pub n: usize,
     pub feistel: Option<FeistelTopology>,
+    // Zero means the generic offset tables are used.
+    pub width: usize,
     // Clause-major CSR; literal = (zero-based variable << 1) | negative.
     pub offsets: Vec<u32>,
     pub literals: Vec<u32>,
@@ -49,15 +51,17 @@ impl Formula {
     fn build(
         n: usize,
         preserve_order: bool,
-        (clauses, edges): (usize, usize),
+        (clauses, width): (usize, usize),
         mut fill: impl FnMut(&mut Vec<u32>) -> Result<bool>,
     ) -> Result<Self> {
-        let mut offsets = Vec::with_capacity(clauses + 1);
-        offsets.push(0);
-        let mut literals = Vec::with_capacity(edges);
-        let mut edge_clause = Vec::with_capacity(edges);
-        let mut mask_offsets = Vec::with_capacity(clauses + 1);
-        mask_offsets.push(0u32);
+        let mut offsets = Vec::new();
+        let mut mask_offsets = Vec::new();
+        let mut edge_clause = Vec::new();
+        if width == 0 {
+            offsets.push(0);
+            mask_offsets.push(0u32);
+        }
+        let mut literals = Vec::with_capacity(clauses * width);
         let mut packed = Vec::new();
         while fill(&mut packed)? {
             if preserve_order {
@@ -87,14 +91,17 @@ impl Formula {
             {
                 return Err(Error("formula exceeds u32 edge/clause capacity".into()));
             }
-            let c = (offsets.len() - 1) as u32;
             let len = packed.len();
             literals.extend_from_slice(&packed);
             packed.clear();
-            edge_clause.resize(literals.len(), c);
-            offsets.push(literals.len() as u32);
-            // At most one mask word per edge, already bounded by u32.
-            mask_offsets.push(mask_offsets.last().unwrap() + len.div_ceil(64) as u32);
+            if width == 0 {
+                let c = (offsets.len() - 1) as u32;
+                edge_clause.resize(literals.len(), c);
+                offsets.push(literals.len() as u32);
+                mask_offsets.push(mask_offsets.last().unwrap() + len.div_ceil(64) as u32);
+            } else {
+                debug_assert_eq!(len, width);
+            }
         }
         let mut var_offsets = vec![0u32; 2 * n + 1];
         for &lit in &literals {
@@ -103,16 +110,20 @@ impl Formula {
         for i in 1..var_offsets.len() {
             var_offsets[i] += var_offsets[i - 1];
         }
-        let mut cursor = var_offsets[..2 * n].to_vec();
         let mut var_edges = vec![0; literals.len()];
         for (e, &lit) in literals.iter().enumerate() {
-            let slot = &mut cursor[lit as usize];
+            let slot = &mut var_offsets[lit as usize];
             var_edges[*slot as usize] = e as u32;
             *slot += 1;
         }
+        // The fill advanced each group start to its end. Shift those ends
+        // right to recover the original CSR offsets without a second array.
+        var_offsets.copy_within(..2 * n, 1);
+        var_offsets[0] = 0;
         Ok(Self(Arc::new(Data {
             n,
             feistel: None,
+            width,
             offsets,
             literals,
             edge_clause,
@@ -165,6 +176,7 @@ impl Formula {
             .map_err(|_| Error("Feistel exceeds address width".into()))?;
         Ok(Self(Arc::new(Data {
             n,
+            width: topology.k() as usize,
             feistel: Some(topology),
             offsets: Vec::new(),
             literals: Vec::new(),
@@ -317,7 +329,7 @@ impl Formula {
         let mut pool: Vec<i32> = (1..=n as i32).collect();
         let m = m as usize;
         let mut remaining = m;
-        Self::build(n, false, (m, m * k), |packed| {
+        Self::build(n, false, (m, k), |packed| {
             if remaining == 0 {
                 return Ok(false);
             }
@@ -367,9 +379,11 @@ impl ClauseMasks {
 
 impl Data {
     pub fn m(&self) -> usize {
-        self.feistel
-            .as_ref()
-            .map_or_else(|| self.offsets.len() - 1, |f| f.m() as usize)
+        if self.width == 0 {
+            self.offsets.len() - 1
+        } else {
+            self.edges() / self.width
+        }
     }
     pub fn edges(&self) -> usize {
         self.feistel
@@ -378,9 +392,11 @@ impl Data {
     }
     #[inline]
     pub fn offset(&self, c: usize) -> usize {
-        self.feistel
-            .as_ref()
-            .map_or_else(|| self.offsets[c] as usize, |f| c * f.k() as usize)
+        if self.width == 0 {
+            self.offsets[c] as usize
+        } else {
+            c * self.width
+        }
     }
     pub fn clause_range(&self, c: usize) -> std::ops::Range<usize> {
         self.offset(c)..self.offset(c + 1)
@@ -397,21 +413,51 @@ impl Data {
     }
     #[inline]
     pub fn edge_clause(&self, e: usize) -> usize {
-        self.feistel
-            .as_ref()
-            .map_or_else(|| self.edge_clause[e] as usize, |f| e / f.k() as usize)
+        match self.width {
+            0 => self.edge_clause[e] as usize,
+            3 => e / 3,
+            k => e / k,
+        }
     }
     #[inline]
     pub fn mask_offset(&self, c: usize) -> usize {
-        self.feistel
-            .as_ref()
-            .map_or_else(|| self.mask_offsets[c] as usize, |_| c)
+        if self.width == 0 {
+            self.mask_offsets[c] as usize
+        } else {
+            c * self.width.div_ceil(64)
+        }
     }
+
+    #[cfg(any(
+        all(feature = "metal", target_os = "macos"),
+        all(feature = "cuda", target_os = "linux")
+    ))]
+    pub fn device_clause_indexes(
+        &self,
+    ) -> (std::borrow::Cow<'_, [u32]>, std::borrow::Cow<'_, [u32]>) {
+        use std::borrow::Cow;
+        if self.width == 0 {
+            (
+                Cow::Borrowed(&self.offsets),
+                Cow::Borrowed(&self.edge_clause),
+            )
+        } else {
+            (
+                Cow::Owned((0..=self.m()).map(|c| self.offset(c) as u32).collect()),
+                Cow::Owned(
+                    (0..self.m())
+                        .flat_map(|c| std::iter::repeat_n(c as u32, self.width))
+                        .collect(),
+                ),
+            )
+        }
+    }
+
     pub fn initial_masks(&self, max_width: usize) -> ClauseMasks {
         if max_width <= 8 {
             let mut masks = Vec::with_capacity(self.mask_offset(self.m()));
-            if let Some(f) = &self.feistel {
-                masks.resize(f.m() as usize, ((1u16 << f.k()) - 1) as u8);
+            if self.width != 0 {
+                masks.resize(self.m(), ((1u16 << self.width) - 1) as u8);
             } else {
                 for offsets in self.offsets.windows(2) {
                     let width = offsets[1] - offsets[0];
@@ -422,12 +468,9 @@ impl Data {
             }
             return ClauseMasks::Byte(masks);
         }
-        if let Some(f) = &self.feistel {
-            return ClauseMasks::Word(vec![u64::MAX >> (64 - f.k()); f.m() as usize]);
-        }
         let mut masks = Vec::with_capacity(self.mask_offset(self.m()));
-        for offsets in self.offsets.windows(2) {
-            let width = (offsets[1] - offsets[0]) as usize;
+        for c in 0..self.m() {
+            let width = self.offset(c + 1) - self.offset(c);
             masks.extend(std::iter::repeat_n(u64::MAX, width / 64));
             if !width.is_multiple_of(64) {
                 masks.push(u64::MAX >> (64 - width % 64));

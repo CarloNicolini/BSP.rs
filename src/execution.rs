@@ -295,12 +295,13 @@ impl Solver {
                         }
                         s.saved_eta.clone_from(&s.eta);
                         let f = &s.formula.0;
+                        let (offsets, edge_clause) = f.device_clause_indexes();
                         let gpu = bsp_metal::MetalSolver::new(
                             bsp_metal::Topology {
                                 n: f.n,
-                                offsets: &f.offsets,
+                                offsets: &offsets,
                                 literals: &f.literals,
-                                edge_clause: &f.edge_clause,
+                                edge_clause: &edge_clause,
                                 var_offsets: &f.var_offsets,
                                 var_edges: &f.var_edges,
                             },
@@ -333,12 +334,13 @@ impl Solver {
                             s.saved_eta.clone_from(&s.eta);
                         }
                         let f = &s.formula.0;
+                        let (offsets, edge_clause) = f.device_clause_indexes();
                         let cuda = bsp_cuda::CudaSolver::new(
                             bsp_cuda::Topology {
                                 n: f.n,
-                                offsets: &f.offsets,
+                                offsets: &offsets,
                                 literals: &f.literals,
-                                edge_clause: &f.edge_clause,
+                                edge_clause: &edge_clause,
                                 var_offsets: &f.var_offsets,
                                 var_edges: &f.var_edges,
                             },
@@ -822,21 +824,15 @@ pub(crate) struct Parallel {
     q: Vec<f64>,
     norm: Vec<f64>,
     products: Vec<[f64; 2]>,
-    slot: Vec<usize>,
-    logs: Vec<f64>,
+    slot: Vec<u32>,
     clause_logs: Vec<f64>,
     variable_terms: Vec<f64>,
     ranges: Vec<(usize, usize)>,
 }
 impl Parallel {
     fn allocated_bytes(&self) -> usize {
-        (self.q.len()
-            + self.norm.len()
-            + self.logs.len()
-            + self.clause_logs.len()
-            + self.variable_terms.len())
-            * 8
-            + self.slot.len() * std::mem::size_of::<usize>()
+        (self.q.len() + self.norm.len() + self.clause_logs.len() + self.variable_terms.len()) * 8
+            + self.slot.len() * std::mem::size_of::<u32>()
             + self.products.len() * 16
             + self.ranges.len() * 16
     }
@@ -844,14 +840,13 @@ impl Parallel {
         let f = &s.formula.0;
         let mut slot = vec![0; f.literals.len()];
         for (p, &e) in f.var_edges.iter().enumerate() {
-            slot[e as usize] = p;
+            slot[e as usize] = p as u32;
         }
         let chunk = f.n.div_ceil(s.execution.report.threads * 4).max(1);
         Self {
             q: vec![0.0; slot.len()],
             norm: vec![1.0; slot.len()],
             products: vec![[1.0; 2]; f.n],
-            logs: vec![0.0; slot.len()],
             clause_logs: vec![0.0; s.formula.m()],
             variable_terms: vec![0.0; f.n],
             slot,
@@ -924,17 +919,17 @@ impl Parallel {
                 .zip(&mut s.saved_eta)
                 .enumerate()
                 .for_each(|(e, (q, norm))| {
-                    *q = self.q[self.slot[e]];
-                    if active.contains(f.edge_clause[e] as usize)
+                    *q = self.q[self.slot[e] as usize];
+                    if active.contains(f.edge_clause(e))
                         && assignment[(f.literals[e] >> 1) as usize] < 0
                     {
-                        *norm = self.norm[self.slot[e]];
+                        *norm = self.norm[self.slot[e] as usize];
                     }
                 });
         } else {
             s.q.par_iter_mut()
                 .enumerate()
-                .for_each(|(e, q)| *q = self.q[self.slot[e]]);
+                .for_each(|(e, q)| *q = self.q[self.slot[e] as usize]);
         }
         s.plus
             .par_iter_mut()
@@ -948,7 +943,7 @@ impl Parallel {
     }
     fn observables(&mut self, s: &mut Solver) -> std::result::Result<(f64, bool), Status> {
         let f = &s.formula.0;
-        self.logs
+        self.norm
             .par_iter_mut()
             .zip(&s.saved_eta)
             .for_each(|(log, &norm)| *log = norm.ln());
@@ -983,7 +978,7 @@ impl Parallel {
                     return Ok(());
                 }
                 let mut product = 1.0;
-                for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
+                for e in f.clause_range(c) {
                     if s.assignment[(f.literals[e] >> 1) as usize] < 0 {
                         product *= s.q[e];
                     }
@@ -1006,9 +1001,9 @@ impl Parallel {
         }
         let mut clause_term = 0.0;
         for c in s.active.ones() {
-            for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
+            for e in f.clause_range(c) {
                 if s.assignment[(f.literals[e] >> 1) as usize] < 0 {
-                    clause_term += self.logs[e];
+                    clause_term += self.norm[e];
                 }
             }
             clause_term += self.clause_logs[c];

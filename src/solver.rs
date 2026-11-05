@@ -309,13 +309,17 @@ impl Solver {
         }
         let mut rng = SmallRng::seed_from_u64(options.seed);
         let eta: Vec<_> = (0..edges).map(|_| rng.random::<f64>()).collect();
-        let mut width = 0;
+        let mut width = f.width;
         let mut unit_queue = Vec::new();
-        for c in 0..m {
-            let count = f.offset(c + 1) - f.offset(c);
-            width = width.max(count);
-            if count <= 1 {
-                unit_queue.push(c as u32);
+        if width == 1 {
+            unit_queue.extend(0..m as u32);
+        } else if width == 0 {
+            for c in 0..m {
+                let count = f.offset(c + 1) - f.offset(c);
+                width = width.max(count);
+                if count <= 1 {
+                    unit_queue.push(c as u32);
+                }
             }
         }
         let degree = if let Some(topology) = &f.feistel {
@@ -716,7 +720,7 @@ impl Solver {
                             .iter()
                             .map(|&e| e as usize)
                     },
-                    |e| f.edge_clause[e] as usize,
+                    |e| f.edge_clause(e),
                 )?;
             }
         }
@@ -1128,6 +1132,34 @@ mod index_tests {
             .min_by(|&a, &b| s.cert[a].total_cmp(&s.cert[b]).then(a.cmp(&b)));
         assert_eq!(s.decisions.len(), eligible.len());
         assert_eq!(s.decisions.peek().map(|v| v as usize), best);
+    }
+    #[test]
+    fn generated_width_indexes_match_generic_indexes() {
+        for (k, alpha) in [(1, 1.0), (3, 4.0), (64, 1.0), (65, 1.0), (3, 0.0)] {
+            let generated = Formula::random(k, alpha, 130, 17).unwrap();
+            let generic = Formula::new(generated.n(), generated.clauses()).unwrap();
+            let f = &generated.0;
+            assert!(f.offsets.is_empty() && f.edge_clause.is_empty() && f.mask_offsets.is_empty());
+            assert_eq!(f.var_offsets, generic.0.var_offsets);
+            assert_eq!(f.var_edges, generic.0.var_edges);
+            assert_eq!(generated.to_dimacs(), generic.to_dimacs());
+            for e in 0..f.edges() {
+                assert_eq!(f.edge_clause(e), generic.0.edge_clause(e));
+            }
+            for c in 0..=f.m() {
+                assert_eq!(f.mask_offset(c), generic.0.mask_offset(c));
+            }
+
+            let mut a = Solver::new(generated, Options::default()).unwrap();
+            let mut b = Solver::new(generic, Options::default()).unwrap();
+            assert_eq!(a.unit_queue, b.unit_queue);
+            for v in [0, 63, 64, 129] {
+                a.fix(v, true).unwrap();
+                b.fix(v, true).unwrap();
+                check_indexes(&a);
+                assert_eq!(a.degree, b.degree);
+            }
+        }
     }
     #[test]
     fn cached_indexes_match_full_recounts_through_mixed_mutations() {
