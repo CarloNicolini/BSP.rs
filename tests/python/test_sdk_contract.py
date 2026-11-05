@@ -2,12 +2,44 @@
 import inspect
 import re
 
+import numpy as np
 import pytest
 
 from pybsp_rust import (
     ExecutionOptions, Formula, Options, Solver, SolveResult, from_file,
     solve, solve_many,
 )
+
+
+@pytest.mark.parametrize("seed", [1, 3, 7])
+def test_compact_cavities_matches_scalar_cpu(seed):
+    formula = Formula.random(3, 4.0, 100, seed=seed)
+    standard = Solver(formula=formula, seed=seed, damping=0.2, epsilon=0.99)
+    compact = Solver(formula=formula, seed=seed, damping=0.2, epsilon=0.99,
+                     compact_cavities=True)
+    for fixed in (False, True, False):
+        for solver in (standard, compact):
+            if fixed:
+                solver.fix(0, True)
+            elif solver.assignment[0] >= 0:
+                solver.release(0)
+        assert compact.sweep_many(3) == standard.sweep_many(3)
+        assert compact.converge() == standard.converge()
+        np.testing.assert_array_equal(compact.messages.view(np.uint64),
+                                      standard.messages.view(np.uint64))
+        np.testing.assert_array_equal(compact.surveys, standard.surveys)
+
+    settings = dict(formula=formula, seed=seed, max_steps=32, max_flips=5000)
+    a = solve(**settings)
+    b = solve(**settings, compact_cavities=True)
+    assert (a.status, a.steps, a.sp_sweeps, a.flips) == (b.status, b.steps, b.sp_sweeps, b.flips)
+    np.testing.assert_array_equal(a.assignment, b.assignment)
+    np.testing.assert_array_equal(a.partial_assignment, b.partial_assignment)
+
+
+def test_compact_cavities_requires_scalar_cpu():
+    with pytest.raises(ValueError, match="scalar CPU"):
+        Solver(Formula([[1]], n=1), backend="cpu-parallel", compact_cavities=True)
 
 
 def test_explicit_keyword_signatures_and_individual_numpy_parameter_docs():

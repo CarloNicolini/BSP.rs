@@ -43,6 +43,7 @@ pub struct FileConfig {
     pub walksat_restarts: Option<usize>,
     pub walksat_noise: Option<f64>,
     pub timeout_seconds: Option<f64>,
+    pub compact_cavities: Option<bool>,
     pub backend: Option<Backend>,
     pub threads: Option<usize>,
     pub profile: Option<PathBuf>,
@@ -63,6 +64,7 @@ pub struct Resolved {
     pub feistel_ensemble: Option<FeistelEnsemble>,
     pub options: Options,
     pub execution: ExecutionOptions,
+    pub compact_cavities: bool,
     pub sweeps: Option<usize>,
     pub messages: Option<PathBuf>,
     pub dump_messages: bool,
@@ -133,6 +135,9 @@ impl FileConfig {
         }
         if let Some(value) = self.timeout_seconds {
             resolved.options.timeout_seconds = Some(value);
+        }
+        if let Some(value) = self.compact_cavities {
+            resolved.compact_cavities = value;
         }
         if let Some(value) = self.backend {
             resolved.execution.backend = value;

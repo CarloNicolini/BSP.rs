@@ -150,6 +150,46 @@ The same budget controls independent jobs in ``solve_many``. GPU jobs can be
 further limited by device memory. ``profile`` enables instrumentation and writes
 a JSON file from ``solve()``; batch profiling is rejected to avoid path races.
 
+Compact cavity storage
+~~~~~~~~~~~~~~~~~~~~~~
+
+Compact cavity storage trades extra computation for lower memory use on the
+scalar CPU. It removes an eight-byte buffer per literal occurrence. When the
+solver calculates observables, it recomputes the cavity normalization terms
+and temporarily stores one eight-byte product per active clause. Both modes
+use double precision and evaluate the same survey propagation equations.
+
+Pass ``compact_cavities=True`` to Python's ``solve`` or ``Solver``.
+Python's ``solve_many`` uses standard cavity storage.
+
+.. code-block:: python
+
+   from pybsp_rust import Formula, solve
+
+   formula = Formula.random(3, 4.0, 100_000, seed=3)
+   result = solve(formula=formula, seed=3, backend="cpu", compact_cavities=True)
+
+On the CLI, use ``--backend cpu --compact-cavities`` or set
+``compact_cavities = true`` in a TOML run file. Rust callers can use
+``Solver::with_compact_cavities``. Standard storage is the default.
+
+In paired runs on an Apple M1 Pro at 200,000 variables and clause density
+4.0, the median peak process footprint dropped by 21% with ``--generate``
+and 27% with ``--feistel`` over setup and four sweeps. Median wall time
+increased by 7% and 3%, respectively. With frequent observable calculations,
+the footprint fell by 14% and 17%, while wall time increased by 21% and 15%.
+Each comparison used three seeds and three repeats per seed. A second series
+reproduced the memory savings at 200,000 variables. At 100,000 variables and
+density 4.0, four sweeps used 21% less memory with ``--generate`` and 27%
+less with ``--feistel``, with wall time up 6% and 2%.
+
+At 5,000 variables and density 4.2, searches stopped after 32 recorded
+actions. The memory savings were about 2% with ``--generate`` and 4% with
+``--feistel``, while wall time increased by 31% and 22%. At 500 variables,
+the memory difference was small and bounded searches also took longer.
+These results describe bounded workloads on one machine. Use compact
+storage when memory is the limiting resource.
+
 Seed and integer fields reject negative or oversized native values. All floating
 parameters must be finite. Probability and tolerance ranges differ as shown
 above; in particular, epsilon cannot be zero, and damping cannot be one.
