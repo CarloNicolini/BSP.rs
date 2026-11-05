@@ -33,6 +33,26 @@ impl BitSet {
     pub fn len(&self) -> usize {
         self.count
     }
+    /// Prefix counts for a bitset whose membership will remain fixed.
+    pub fn rank_index(&self) -> Vec<u32> {
+        let mut total = 0;
+        self.words
+            .iter()
+            .map(|word| {
+                let before = total;
+                total += word.count_ones();
+                before
+            })
+            .collect()
+    }
+
+    #[inline]
+    pub fn rank_before(&self, index: &[u32], bit: usize) -> usize {
+        let word = bit / 64;
+        let lower = (1u64 << (bit % 64)) - 1;
+        (index[word] + (self.words[word] & lower).count_ones()) as usize
+    }
+
     pub fn ones(&self) -> impl Iterator<Item = usize> + '_ {
         self.words
             .iter()

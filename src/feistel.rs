@@ -307,6 +307,14 @@ impl FeistelTopology {
             range.end - range.start
         }
     }
+    pub(crate) fn initial_degrees(&self) -> Vec<u32> {
+        if let Some(f) = &self.fluctuating {
+            f.initial_degrees()
+        } else {
+            (0..self.n).map(|v| self.degree(v) as u32).collect()
+        }
+    }
+
     /// Exact degree histogram. Fluctuating mode traverses the implicit degree tree.
     pub fn degree_counts(&self) -> BTreeMap<u64, u64> {
         if let Some(f) = &self.fluctuating {

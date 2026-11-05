@@ -79,12 +79,13 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 
 pub fn write_json(
     path: &Path,
-    value: &serde_json::Value,
+    value: &impl serde::Serialize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut file = std::fs::File::create(path)?;
+    let mut file = std::io::BufWriter::new(std::fs::File::create(path)?);
     serde_json::to_writer(&mut file, value)?;
     use std::io::Write;
     file.write_all(b"\n")?;
+    file.flush()?;
     Ok(())
 }
 

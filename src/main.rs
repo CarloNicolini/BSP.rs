@@ -245,13 +245,21 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
             "checksum": solver.messages().iter().sum::<f64>(),
             "execution": solver.execution_report()
         });
-        if dump_messages {
-            report["messages"] = serde_json::json!(solver.messages());
-        }
         if let Some(topology) = topology_report {
             report["topology"] = topology;
         }
-        finish(live, &clock, &report_path, &report)?;
+        #[derive(serde::Serialize)]
+        struct SweepReport<'a> {
+            #[serde(flatten)]
+            fields: &'a serde_json::Value,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            messages: Option<&'a [f64]>,
+        }
+        let output = SweepReport {
+            fields: &report,
+            messages: dump_messages.then(|| solver.messages()),
+        };
+        finish(live, &clock, &report_path, &output, &report)?;
         return Ok(ExitCode::SUCCESS);
     }
     let result = solver.solve();
@@ -261,11 +269,30 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
     } else {
         ExitCode::FAILURE
     };
-    let mut report = serde_json::to_value(&result)?;
-    if let Some(topology) = topology_report {
-        report["topology"] = topology;
+    drop(solver);
+    drop(formula);
+    let summary_fields = serde_json::json!({
+        "status": result.status,
+        "seed": result.seed,
+        "wall_seconds": result.wall_seconds,
+        "sp_sweeps": result.sp_sweeps,
+        "flips": result.flips,
+        "decimations": result.decimations,
+        "releases": result.releases,
+        "unit_assignments": result.unit_assignments,
+    });
+    #[derive(serde::Serialize)]
+    struct SolveReport {
+        #[serde(flatten)]
+        result: bsp_rust::SolveResult,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        topology: Option<serde_json::Value>,
     }
-    finish(live, &clock, &report_path, &report)?;
+    let report = SolveReport {
+        result,
+        topology: topology_report,
+    };
+    finish(live, &clock, &report_path, &report, &summary_fields)?;
     Ok(code)
 }
 
@@ -273,7 +300,8 @@ fn finish(
     mut live: Option<cli::progress::LiveLine>,
     clock: &PhaseClock,
     path: &Path,
-    report: &serde_json::Value,
+    report: &impl serde::Serialize,
+    summary_fields: &serde_json::Value,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let times = clock.seconds();
     if let Some(line) = live.as_mut() {
@@ -281,7 +309,7 @@ fn finish(
         println!();
     }
     cli::output::write_json(path, report)?;
-    println!("{}", cli::output::summary(path, report, times));
+    println!("{}", cli::output::summary(path, summary_fields, times));
     std::io::stdout().flush()?;
     Ok(())
 }

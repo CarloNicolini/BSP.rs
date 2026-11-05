@@ -161,10 +161,8 @@ pub struct Solver {
     pub(crate) active: BitSet,
     free: BitSet,
     forced: Vec<bool>,
-    masks: Vec<u64>,
-    free_count: Vec<u32>,
-    true_count: Vec<u32>,
-    free_xor: Vec<u32>,
+    masks: crate::formula::ClauseMasks,
+    true_count: TrueCounts,
     degree: Vec<u32>,
     decisions: DecisionHeap,
     eta: Vec<f64>,
@@ -194,6 +192,43 @@ pub struct Solver {
     terminal: Option<Status>,
     solution: Option<Vec<i8>>,
     walksat_hook: Option<Arc<dyn Fn() + Send + Sync>>,
+}
+
+enum TrueCounts {
+    Byte(Vec<u8>),
+    Wide(Vec<u32>),
+}
+
+impl TrueCounts {
+    fn new(clauses: usize, max_width: usize) -> Self {
+        if max_width <= u8::MAX as usize {
+            Self::Byte(vec![0; clauses])
+        } else {
+            Self::Wide(vec![0; clauses])
+        }
+    }
+
+    #[inline]
+    fn get(&self, clause: usize) -> u32 {
+        match self {
+            Self::Byte(counts) => u32::from(counts[clause]),
+            Self::Wide(counts) => counts[clause],
+        }
+    }
+
+    #[inline]
+    fn change(&mut self, clause: usize, fix: bool) -> u32 {
+        let count = if fix {
+            self.get(clause) + 1
+        } else {
+            self.get(clause) - 1
+        };
+        match self {
+            Self::Byte(counts) => counts[clause] = count as u8,
+            Self::Wide(counts) => counts[clause] = count,
+        }
+        count
+    }
 }
 
 // A full width-three clause has three independent pair products. Keep
@@ -274,37 +309,29 @@ impl Solver {
         }
         let mut rng = SmallRng::seed_from_u64(options.seed);
         let eta: Vec<_> = (0..edges).map(|_| rng.random::<f64>()).collect();
-        let free_count: Vec<_> = (0..m)
-            .map(|c| (f.offset(c + 1) - f.offset(c)) as u32)
-            .collect();
-        let unit_queue = free_count
-            .iter()
-            .enumerate()
-            .filter(|(_, &k)| k <= 1)
-            .map(|(c, _)| c as u32)
-            .collect();
-        let width = free_count.iter().copied().max().unwrap_or(0) as usize;
-        // XOR of [start,end), computed without scanning clause literals.
-        let xor_below = |end: u32| {
-            if end == 0 {
-                0
-            } else {
-                let last = end - 1;
-                match last % 4 {
-                    0 => last,
-                    1 => 1,
-                    2 => last + 1,
-                    _ => 0,
+        let mut width = f.width;
+        let mut unit_queue = Vec::new();
+        if width == 1 {
+            unit_queue.extend(0..m as u32);
+        } else if width == 0 {
+            for c in 0..m {
+                let count = f.offset(c + 1) - f.offset(c);
+                width = width.max(count);
+                if count <= 1 {
+                    unit_queue.push(c as u32);
                 }
             }
+        }
+        let degree = if let Some(topology) = &f.feistel {
+            topology.initial_degrees()
+        } else {
+            (0..n)
+                .map(|v| f.var_offsets[2 * v + 2] - f.var_offsets[2 * v])
+                .collect()
         };
-        let free_xor = (0..m)
-            .map(|c| xor_below(f.offset(c) as u32) ^ xor_below(f.offset(c + 1) as u32))
-            .collect();
-        let degree = (0..n).map(|v| f.degree(v)).collect();
         Ok(Self {
             execution: Execution::new(ExecutionOptions::default())?,
-            masks: f.initial_masks(),
+            masks: f.initial_masks(width),
             saved_eta: eta.clone(),
             formula,
             options,
@@ -313,9 +340,7 @@ impl Solver {
             active: BitSet::full(m),
             free: BitSet::full(n),
             forced: vec![false; n],
-            free_count,
-            true_count: vec![0; m],
-            free_xor,
+            true_count: TrueCounts::new(m, width),
             degree,
             decisions: DecisionHeap::new(n),
             eta,
@@ -481,9 +506,8 @@ impl Solver {
             let c = f.edge_clause(e);
             let start = f.offset(c);
             let local = e - start;
-            self.masks[f.mask_offset(c) + local / 64] &= !(1u64 << (local % 64));
-            self.free_count[c] -= 1;
-            self.free_xor[c] ^= e as u32;
+            self.masks
+                .set_bit(f.mask_offset(c) + local / 64, local % 64, false);
             if self.active.contains(c) {
                 #[cfg(all(feature = "metal", target_os = "macos"))]
                 if let Some(gpu) = &mut self.execution.gpu {
@@ -497,8 +521,7 @@ impl Solver {
                 self.eta[e] = 0.0;
             }
             if value != i8::from(f.negative(e)) {
-                self.true_count[c] += 1;
-                if self.true_count[c] == 1 {
+                if self.true_count.change(c, true) == 1 {
                     self.active.set(c, false);
                     #[cfg(all(feature = "metal", target_os = "macos"))]
                     if let Some(gpu) = &mut self.execution.gpu {
@@ -510,7 +533,7 @@ impl Solver {
                     }
                     for w in f.mask_offset(c)..f.mask_offset(c + 1) {
                         for other in (Ones {
-                            word: self.masks[w],
+                            word: self.masks.get(w),
                             base: start + 64 * (w - f.mask_offset(c)),
                         }) {
                             self.degree[(f.literal(other) >> 1) as usize] -= 1;
@@ -527,7 +550,7 @@ impl Solver {
                         }
                     }
                 }
-            } else if self.active.contains(c) && self.free_count[c] <= 1 {
+            } else if self.active.contains(c) && self.free_literals_up_to_two(c).0 <= 1 {
                 self.unit_queue.push(c as u32);
             }
         }
@@ -551,13 +574,14 @@ impl Solver {
             let c = f.edge_clause(e);
             let start = f.offset(c);
             let local = e - start;
-            self.masks[f.mask_offset(c) + local / 64] |= 1u64 << (local % 64);
-            self.free_count[c] += 1;
-            self.free_xor[c] ^= e as u32;
-            if value != i8::from(f.negative(e)) {
-                self.true_count[c] -= 1;
-            }
-            if self.true_count[c] == 0 {
+            self.masks
+                .set_bit(f.mask_offset(c) + local / 64, local % 64, true);
+            let true_count = if value != i8::from(f.negative(e)) {
+                self.true_count.change(c, false)
+            } else {
+                self.true_count.get(c)
+            };
+            if true_count == 0 {
                 if self.active.contains(c) {
                     self.degree[v] += 1;
                     #[cfg(all(feature = "metal", target_os = "macos"))]
@@ -581,7 +605,7 @@ impl Solver {
                     }
                     for w in f.mask_offset(c)..f.mask_offset(c + 1) {
                         for other in (Ones {
-                            word: self.masks[w],
+                            word: self.masks.get(w),
                             base: start + 64 * (w - f.mask_offset(c)),
                         }) {
                             self.degree[(f.literal(other) >> 1) as usize] += 1;
@@ -597,12 +621,31 @@ impl Solver {
                         }
                     }
                 }
-                if self.free_count[c] <= 1 {
+                if self.free_literals_up_to_two(c).0 <= 1 {
                     self.unit_queue.push(c as u32);
                 }
             }
         }
     }
+    // Unit propagation only distinguishes zero, one and multiple free bits.
+    // Stop as soon as two bits are found, even for very wide clauses.
+    fn free_literals_up_to_two(&self, c: usize) -> (u8, usize) {
+        let f = &self.formula.0;
+        let mut unit_edge = None;
+        let first = f.mask_offset(c);
+        for w in first..f.mask_offset(c + 1) {
+            let mask = self.masks.get(w);
+            if mask == 0 {
+                continue;
+            }
+            if unit_edge.is_some() || mask & (mask - 1) != 0 {
+                return (2, 0);
+            }
+            unit_edge = Some(f.offset(c) + 64 * (w - first) + mask.trailing_zeros() as usize);
+        }
+        unit_edge.map_or((0, 0), |edge| (1, edge))
+    }
+
     pub fn propagate(&mut self) -> std::result::Result<usize, Status> {
         let result = self.timed("propagation", Self::propagate_inner);
         self.sync_messages();
@@ -619,15 +662,15 @@ impl Solver {
             if !self.active.contains(c) {
                 continue;
             }
-            if self.free_count[c] == 0 {
+            let (count, e) = self.free_literals_up_to_two(c);
+            if count == 0 {
                 self.unit_queue.push(c as u32);
                 return Err(Status::Contradiction);
             }
-            if self.free_count[c] != 1 {
+            if count != 1 {
                 continue;
             }
             let f = &self.formula.0;
-            let e = self.free_xor[c] as usize;
             let lit = f.literal(e);
             self.cert[(lit >> 1) as usize] = 1.0;
             self.set_fixed((lit >> 1) as usize, (1 - (lit & 1)) as i8, true);
@@ -677,7 +720,7 @@ impl Solver {
                             .iter()
                             .map(|&e| e as usize)
                     },
-                    |e| f.edge_clause[e] as usize,
+                    |e| f.edge_clause(e),
                 )?;
             }
         }
@@ -737,14 +780,11 @@ impl Solver {
         let damping = self.options.damping;
         let mut residual: f64 = 0.0;
         for c in self.active.ones() {
-            if self.free_count[c] == 0 {
-                return Err(Status::Contradiction);
-            }
             self.clause_edges.clear();
             self.prefix.clear();
             let start = f.offset(c);
             let first_word = f.mask_offset(c);
-            if f.offset(c + 1) - start == 3 && self.masks[first_word] == 7 {
+            if f.offset(c + 1) - start == 3 && self.masks.get(first_word) == 7 {
                 residual = residual.max(update_full_triple(
                     &self.q[start..start + 3],
                     &mut self.eta[start..start + 3],
@@ -755,13 +795,16 @@ impl Solver {
             let mut product = 1.0;
             for w in first_word..f.mask_offset(c + 1) {
                 for e in (Ones {
-                    word: self.masks[w],
+                    word: self.masks.get(w),
                     base: start + 64 * (w - first_word),
                 }) {
                     self.clause_edges.push(e);
                     self.prefix.push(product);
                     product *= self.q[e];
                 }
+            }
+            if self.clause_edges.is_empty() {
+                return Err(Status::Contradiction);
             }
             let mut suffix = 1.0;
             for (&e, &prefix) in self.clause_edges.iter().zip(&self.prefix).rev() {
@@ -815,7 +858,7 @@ impl Solver {
             let first_word = f.mask_offset(c);
             for w in first_word..f.mask_offset(c + 1) {
                 for e in (Ones {
-                    word: self.masks[w],
+                    word: self.masks.get(w),
                     base: start + 64 * (w - first_word),
                 }) {
                     product *= self.q[e];
@@ -1051,27 +1094,24 @@ mod index_tests {
         let f = &s.formula.0;
         let mut degree = vec![0u32; f.n];
         for c in 0..s.formula.m() {
-            let mut free = 0;
+            let mut free = 0usize;
             let mut true_count = 0;
-            let mut free_xor = 0;
             for e in f.offset(c)..f.offset(c + 1) {
                 let lit = f.literal(e);
                 let v = (lit >> 1) as usize;
                 let is_free = s.assignment[v] < 0;
                 let local = e - f.offset(c);
                 let mask_free =
-                    s.masks[f.mask_offset(c) + local / 64] & (1u64 << (local % 64)) != 0;
+                    s.masks.get(f.mask_offset(c) + local / 64) & (1u64 << (local % 64)) != 0;
                 assert_eq!(is_free, mask_free);
                 if is_free {
                     free += 1;
-                    free_xor ^= e as u32;
                 } else if s.assignment[v] == (1 - (lit & 1)) as i8 {
                     true_count += 1;
                 }
             }
-            assert_eq!(s.free_count[c], free);
-            assert_eq!(s.free_xor[c], free_xor);
-            assert_eq!(s.true_count[c], true_count);
+            assert_eq!(s.free_literals_up_to_two(c).0, free.min(2) as u8);
+            assert_eq!(s.true_count.get(c), true_count);
             assert_eq!(s.active.contains(c), true_count == 0);
             if true_count == 0 {
                 for e in f.offset(c)..f.offset(c + 1) {
@@ -1092,6 +1132,34 @@ mod index_tests {
             .min_by(|&a, &b| s.cert[a].total_cmp(&s.cert[b]).then(a.cmp(&b)));
         assert_eq!(s.decisions.len(), eligible.len());
         assert_eq!(s.decisions.peek().map(|v| v as usize), best);
+    }
+    #[test]
+    fn generated_width_indexes_match_generic_indexes() {
+        for (k, alpha) in [(1, 1.0), (3, 4.0), (64, 1.0), (65, 1.0), (3, 0.0)] {
+            let generated = Formula::random(k, alpha, 130, 17).unwrap();
+            let generic = Formula::new(generated.n(), generated.clauses()).unwrap();
+            let f = &generated.0;
+            assert!(f.offsets.is_empty() && f.edge_clause.is_empty() && f.mask_offsets.is_empty());
+            assert_eq!(f.var_offsets, generic.0.var_offsets);
+            assert_eq!(f.var_edges, generic.0.var_edges);
+            assert_eq!(generated.to_dimacs(), generic.to_dimacs());
+            for e in 0..f.edges() {
+                assert_eq!(f.edge_clause(e), generic.0.edge_clause(e));
+            }
+            for c in 0..=f.m() {
+                assert_eq!(f.mask_offset(c), generic.0.mask_offset(c));
+            }
+
+            let mut a = Solver::new(generated, Options::default()).unwrap();
+            let mut b = Solver::new(generic, Options::default()).unwrap();
+            assert_eq!(a.unit_queue, b.unit_queue);
+            for v in [0, 63, 64, 129] {
+                a.fix(v, true).unwrap();
+                b.fix(v, true).unwrap();
+                check_indexes(&a);
+                assert_eq!(a.degree, b.degree);
+            }
+        }
     }
     #[test]
     fn cached_indexes_match_full_recounts_through_mixed_mutations() {

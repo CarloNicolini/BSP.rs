@@ -1,4 +1,4 @@
-use crate::{Solver, Status};
+use crate::{bitset::BitSet, Solver, Status};
 use rand::Rng;
 
 /// Random selection and removal both cost O(1). A word mask would make random
@@ -10,22 +10,22 @@ struct Unsatisfied {
 impl Unsatisfied {
     fn new(m: usize) -> Self {
         Self {
-            clauses: Vec::with_capacity(m),
+            clauses: Vec::new(),
             positions: vec![u32::MAX; m],
         }
     }
-    fn insert(&mut self, c: usize) {
-        debug_assert_eq!(self.positions[c], u32::MAX);
-        self.positions[c] = self.clauses.len() as u32;
-        self.clauses.push(c as u32);
+    fn insert(&mut self, clause: usize, slot: usize) {
+        debug_assert_eq!(self.positions[slot], u32::MAX);
+        self.positions[slot] = self.clauses.len() as u32;
+        self.clauses.push(clause as u32);
     }
-    fn remove(&mut self, c: usize) {
-        let p = self.positions[c] as usize;
+    fn remove(&mut self, slot: usize, slot_of: impl FnOnce(usize) -> usize) {
+        let p = self.positions[slot] as usize;
         self.clauses.swap_remove(p);
         if p < self.clauses.len() {
-            self.positions[self.clauses[p] as usize] = p as u32;
+            self.positions[slot_of(self.clauses[p] as usize)] = p as u32;
         }
-        self.positions[c] = u32::MAX;
+        self.positions[slot] = u32::MAX;
     }
 }
 
@@ -36,11 +36,26 @@ impl Solver {
         let formula = self.formula.clone();
         let f = &formula.0;
         let mut values = self.assignment.clone();
-        let mut count = vec![0u32; formula.m()];
-        let mut true_xor = vec![0u32; formula.m()];
+        // Clause activity is immutable during WalkSAT. Store dense state for
+        // the residual when it is sparse, using rank to map original IDs.
+        let ranks = (self.active.len() <= formula.m() / 2).then(|| self.active.rank_index());
+        let slots = if ranks.is_some() {
+            self.active.len()
+        } else {
+            formula.m()
+        };
+        let slot_of = |active: &BitSet, c: usize| {
+            ranks
+                .as_ref()
+                .map_or(c, |index| active.rank_before(index, c))
+        };
+        let mut count = vec![0u32; slots];
+        let mut true_xor = vec![0u32; slots];
         let mut breaks = vec![0u32; f.n];
-        let mut unsat = Unsatisfied::new(formula.m());
-        let width = (0..formula.m())
+        let mut unsat = Unsatisfied::new(slots);
+        let width = self
+            .active
+            .ones()
             .map(|c| f.offset(c + 1) - f.offset(c))
             .max()
             .unwrap_or(0);
@@ -74,19 +89,20 @@ impl Solver {
             breaks.fill(0);
             unsat.clauses.clear();
             unsat.positions.fill(u32::MAX);
-            for c in self.active.ones() {
+            for (i, c) in self.active.ones().enumerate() {
+                let slot = if ranks.is_some() { i } else { c };
                 for e in f.offset(c)..f.offset(c + 1) {
                     let lit = f.literal(e);
                     let v = (lit >> 1) as usize;
                     if values[v] == (1 - (lit & 1)) as i8 {
-                        count[c] += 1;
-                        true_xor[c] ^= v as u32;
+                        count[slot] += 1;
+                        true_xor[slot] ^= v as u32;
                     }
                 }
-                if count[c] == 0 {
-                    unsat.insert(c);
-                } else if count[c] == 1 {
-                    breaks[true_xor[c] as usize] += 1;
+                if count[slot] == 0 {
+                    unsat.insert(c, slot);
+                } else if count[slot] == 1 {
+                    breaks[true_xor[slot] as usize] += 1;
                 }
             }
             if let Some(started) = initialization_started {
@@ -146,26 +162,27 @@ impl Solver {
                     if !self.active.contains(c) {
                         continue;
                     }
+                    let slot = slot_of(&self.active, c);
                     if old != i8::from(f.negative(e)) {
-                        if count[c] == 1 {
+                        if count[slot] == 1 {
                             breaks[v] -= 1;
-                            unsat.insert(c);
+                            unsat.insert(c, slot);
                         }
-                        count[c] -= 1;
-                        true_xor[c] ^= v as u32;
-                        if count[c] == 1 {
-                            breaks[true_xor[c] as usize] += 1;
+                        count[slot] -= 1;
+                        true_xor[slot] ^= v as u32;
+                        if count[slot] == 1 {
+                            breaks[true_xor[slot] as usize] += 1;
                         }
                     } else {
-                        if count[c] == 1 {
-                            breaks[true_xor[c] as usize] -= 1;
+                        if count[slot] == 1 {
+                            breaks[true_xor[slot] as usize] -= 1;
                         }
-                        if count[c] == 0 {
-                            unsat.remove(c);
+                        if count[slot] == 0 {
+                            unsat.remove(slot, |other| slot_of(&self.active, other));
                             breaks[v] += 1;
                         }
-                        count[c] += 1;
-                        true_xor[c] ^= v as u32;
+                        count[slot] += 1;
+                        true_xor[slot] ^= v as u32;
                     }
                 }
                 total_flips += 1;
@@ -189,6 +206,34 @@ fn flip_budget(explicit: u64, restarts: usize, variables: usize) -> u64 {
 #[cfg(test)]
 mod budget_tests {
     use super::flip_budget;
+    #[test]
+    fn sparse_residual_keeps_walksat_order() {
+        use crate::{Formula, Options, Solver};
+        use rand::{rngs::SmallRng, SeedableRng};
+
+        let residual: Vec<Vec<i32>> = Formula::random(3, 2.0, 64, 7)
+            .unwrap()
+            .clauses()
+            .into_iter()
+            .map(|clause| clause.into_iter().map(|lit| lit + lit.signum()).collect())
+            .collect();
+        let interleaved = residual
+            .iter()
+            .flat_map(|c| [vec![1, 2], c.clone(), vec![1, -2]])
+            .collect();
+        let mut compact =
+            Solver::new(Formula::new(65, interleaved).unwrap(), Options::default()).unwrap();
+        let mut dense =
+            Solver::new(Formula::new(65, residual).unwrap(), Options::default()).unwrap();
+        for s in [&mut compact, &mut dense] {
+            s.fix(0, true).unwrap();
+            s.rng = SmallRng::seed_from_u64(11);
+        }
+        assert_eq!(compact.active.len(), dense.active.len());
+        let expected = dense.walksat().unwrap();
+        assert_eq!(compact.walksat().unwrap(), expected);
+    }
+
     #[test]
     fn scales_with_residual_and_restarts_and_preserves_overrides() {
         assert_eq!(flip_budget(0, 4, 470_226), 188_090_400);
