@@ -335,6 +335,36 @@ impl Formula {
     }
 }
 
+// A byte covers every mask word when all clauses have at most eight literals.
+pub(crate) enum ClauseMasks {
+    Byte(Vec<u8>),
+    Word(Vec<u64>),
+}
+
+impl ClauseMasks {
+    #[inline]
+    pub fn get(&self, index: usize) -> u64 {
+        match self {
+            Self::Byte(masks) => u64::from(masks[index]),
+            Self::Word(masks) => masks[index],
+        }
+    }
+
+    #[inline]
+    pub fn set_bit(&mut self, word: usize, bit: usize, free: bool) {
+        let mask = 1u64 << bit;
+        match self {
+            Self::Byte(masks) => {
+                debug_assert!(bit < 8);
+                masks[word] = (masks[word] & !(mask as u8)) | if free { mask as u8 } else { 0 };
+            }
+            Self::Word(masks) => {
+                masks[word] = (masks[word] & !mask) | if free { mask } else { 0 };
+            }
+        }
+    }
+}
+
 impl Data {
     pub fn m(&self) -> usize {
         self.feistel
@@ -377,9 +407,23 @@ impl Data {
             .as_ref()
             .map_or_else(|| self.mask_offsets[c] as usize, |_| c)
     }
-    pub fn initial_masks(&self) -> Vec<u64> {
+    pub fn initial_masks(&self, max_width: usize) -> ClauseMasks {
+        if max_width <= 8 {
+            let mut masks = Vec::with_capacity(self.mask_offset(self.m()));
+            if let Some(f) = &self.feistel {
+                masks.resize(f.m() as usize, ((1u16 << f.k()) - 1) as u8);
+            } else {
+                for offsets in self.offsets.windows(2) {
+                    let width = offsets[1] - offsets[0];
+                    if width != 0 {
+                        masks.push(((1u16 << width) - 1) as u8);
+                    }
+                }
+            }
+            return ClauseMasks::Byte(masks);
+        }
         if let Some(f) = &self.feistel {
-            return vec![u64::MAX >> (64 - f.k()); f.m() as usize];
+            return ClauseMasks::Word(vec![u64::MAX >> (64 - f.k()); f.m() as usize]);
         }
         let mut masks = Vec::with_capacity(self.mask_offset(self.m()));
         for offsets in self.offsets.windows(2) {
@@ -389,13 +433,7 @@ impl Data {
                 masks.push(u64::MAX >> (64 - width % 64));
             }
         }
-        masks
-    }
-    pub fn degree(&self, v: usize) -> u32 {
-        self.feistel.as_ref().map_or_else(
-            || self.var_offsets[2 * v + 2] - self.var_offsets[2 * v],
-            |f| f.degree(v as u64) as u32,
-        )
+        ClauseMasks::Word(masks)
     }
     #[inline]
     pub fn negative(&self, e: usize) -> bool {

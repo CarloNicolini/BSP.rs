@@ -1060,7 +1060,7 @@ fn parallel_clauses(s: &mut Solver) -> std::result::Result<f64, Status> {
                     let mut product = 1.0;
                     let start = f.offset(c);
                     let first_word = f.mask_offset(c);
-                    if f.offset(c + 1) - start == 3 && masks[first_word] == 7 {
+                    if f.offset(c + 1) - start == 3 && masks.get(first_word) == 7 {
                         residual = residual.max(super::update_full_triple(
                             &q[start..start + 3],
                             &mut eta[start - base..start - base + 3],
@@ -1068,10 +1068,10 @@ fn parallel_clauses(s: &mut Solver) -> std::result::Result<f64, Status> {
                         ));
                         continue;
                     }
-                    for (w, &mask) in masks[first_word..f.mask_offset(c + 1)].iter().enumerate() {
+                    for w in first_word..f.mask_offset(c + 1) {
                         for e in (crate::bitset::Ones {
-                            word: mask,
-                            base: start + 64 * w,
+                            word: masks.get(w),
+                            base: start + 64 * (w - first_word),
                         }) {
                             prefix.push((e, product));
                             product *= q[e];

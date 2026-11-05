@@ -3,6 +3,7 @@ use rand::{rand_core::impls::fill_bytes_via_next, RngCore};
 use rand_distr::{Binomial, Distribution};
 use std::{collections::BTreeMap, ops::Range};
 
+const SPLIT_CACHE_SLOTS: u64 = 65_536;
 const DEGREES: u64 = 0xa4093822299f31d0;
 const MATCH: u64 = 0x082efa98ec4e6c89;
 const REPAIR: u64 = 0x452821e638d01377;
@@ -57,9 +58,8 @@ struct DegreeTree {
 
 impl DegreeTree {
     fn new(n: u64, edges: u64, key: u64) -> Self {
-        // At most 4 KiB, independent of N and E. Store only upper binomial
-        // counts, never literal IDs or incidence lists.
-        const CACHE_SLOTS: u64 = 512;
+        // At most 512 KiB, independent of N and E. Cache upper binomial
+        // counts for forward queries and reverse interval lookup.
         fn fill(tree: &DegreeTree, cache: &mut [u64], node: usize, size: u64, count: u64) {
             if node >= cache.len() || size <= 1 || count == 0 {
                 return;
@@ -76,7 +76,7 @@ impl DegreeTree {
             upper_splits: Box::default(),
         };
         if n > 1 && edges > 0 {
-            let mut cache = vec![0; n.next_power_of_two().min(CACHE_SLOTS) as usize];
+            let mut cache = vec![0; n.next_power_of_two().min(SPLIT_CACHE_SLOTS) as usize];
             fill(&tree, &mut cache, 1, n, edges);
             tree.upper_splits = cache.into_boxed_slice();
         }
@@ -136,6 +136,27 @@ impl DegreeTree {
             }
         }
         start..start + count
+    }
+
+    fn initial_degrees(&self) -> Vec<u32> {
+        fn fill(tree: &DegreeTree, node: u64, count: u64, degrees: &mut [u32]) {
+            if count == 0 {
+                return;
+            }
+            if degrees.len() == 1 {
+                degrees[0] = count as u32;
+                return;
+            }
+            let size = degrees.len();
+            let left = tree.split(node, size as u64, count);
+            let (first, second) = degrees.split_at_mut(size / 2);
+            fill(tree, node * 2, left, first);
+            fill(tree, node * 2 + 1, count - left, second);
+        }
+        debug_assert!(self.edges < u32::MAX as u64);
+        let mut degrees = vec![0; self.n as usize];
+        fill(self, 1, self.edges, &mut degrees);
+        degrees
     }
 
     fn histogram(&self) -> BTreeMap<u64, u64> {
@@ -291,6 +312,15 @@ impl Fluctuating {
             .expect("nonnegative degree")
     }
 
+    pub(super) fn initial_degrees(&self) -> Vec<u32> {
+        let mut degrees = self.tree.initial_degrees();
+        for &(v, delta) in &self.degree_delta {
+            let degree = &mut degrees[v as usize];
+            *degree = (i64::from(*degree) + delta) as u32;
+        }
+        degrees
+    }
+
     pub(super) fn degree_counts(&self) -> BTreeMap<u64, u64> {
         let mut counts = self.tree.histogram();
         for &(v, delta) in &self.degree_delta {
@@ -331,7 +361,7 @@ mod tests {
         for n in [33, 500, 1003] {
             for seed in [0, 7, u64::MAX] {
                 let cached = DegreeTree::new(n, 12 * n, mix(seed ^ DEGREES));
-                assert!(cached.upper_splits.len() * 8 <= 4096);
+                assert!(cached.upper_splits.len() <= SPLIT_CACHE_SLOTS as usize);
                 let mut uncached = cached.clone();
                 uncached.upper_splits = Box::default();
                 for v in 0..n {
