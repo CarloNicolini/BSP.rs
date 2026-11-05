@@ -379,11 +379,9 @@ impl ClauseMasks {
 
 impl Data {
     pub fn m(&self) -> usize {
-        if self.width == 0 {
-            self.offsets.len() - 1
-        } else {
-            self.edges() / self.width
-        }
+        self.edges()
+            .checked_div(self.width)
+            .unwrap_or_else(|| self.offsets.len() - 1)
     }
     pub fn edges(&self) -> usize {
         self.feistel
