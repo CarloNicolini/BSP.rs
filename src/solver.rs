@@ -196,6 +196,71 @@ pub struct Solver {
     walksat_hook: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
+// A full width-three clause has three independent pair products. Keep
+// damping lane-local, and reduce the residual after computing each lane.
+#[inline]
+fn update_full_triple(q: &[f64], eta: &mut [f64], damping: f64) -> f64 {
+    let raw = [q[1] * q[2], q[0] * q[2], q[0] * q[1]];
+    let [a, b, c] = raw.map(|x| if x < 1e-16 { 0.0 } else { x });
+    let old = [eta[0], eta[1], eta[2]];
+    let delta = [old[0] - a, old[1] - b, old[2] - c];
+    eta[..3].copy_from_slice(&[
+        a + delta[0] * damping,
+        b + delta[1] * damping,
+        c + delta[2] * damping,
+    ]);
+    delta[0].abs().max(delta[1].abs()).max(delta[2].abs())
+}
+
+struct ScalarCavity<'a> {
+    q: &'a mut [f64],
+    eta: &'a [f64],
+    saved_eta: &'a mut [f64],
+    plus: &'a mut [f64],
+    minus: &'a mut [f64],
+    active: &'a BitSet,
+}
+
+impl ScalarCavity<'_> {
+    #[inline]
+    fn update<I: DoubleEndedIterator<Item = usize>>(
+        &mut self,
+        v: usize,
+        store_norms: bool,
+        edges: impl Fn(usize) -> I,
+        clause_of: impl Fn(usize) -> usize,
+    ) -> std::result::Result<(), Status> {
+        let mut products = [1.0; 2];
+        for (sign, product) in products.iter_mut().enumerate() {
+            for e in edges(sign) {
+                self.q[e] = *product;
+                *product *= 1.0 - self.eta[e];
+            }
+        }
+        self.plus[v] = products[0];
+        self.minus[v] = products[1];
+        for sign in 0..2 {
+            let opposite = products[1 - sign];
+            let mut suffix = 1.0;
+            for e in edges(sign).rev() {
+                let same = self.q[e] * suffix;
+                suffix *= 1.0 - self.eta[e];
+                let norm = opposite + (1.0 - opposite) * same;
+                if norm <= 0.0 || !norm.is_finite() {
+                    return Err(Status::NumericalFailure);
+                }
+                self.q[e] = ((1.0 - opposite) * same / norm).clamp(0.0, 1.0);
+                if store_norms && self.active.contains(clause_of(e)) {
+                    // Active/free incidences do not need a frozen value:
+                    // freeze saves their current eta before any restoration.
+                    self.saved_eta[e] = norm;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Solver {
     pub fn new(formula: Formula, options: Options) -> Result<Self> {
         let started = Instant::now();
@@ -411,7 +476,8 @@ impl Solver {
             [0.0, 1.0, 0.0]
         };
         let f = &self.formula.0;
-        for e in f.variable_edges(v) {
+        let mut incident = Vec::new();
+        for e in f.variable_edges(v, &mut incident) {
             let c = f.edge_clause(e);
             let start = f.offset(c);
             let local = e - start;
@@ -430,7 +496,7 @@ impl Solver {
                 self.saved_eta[e] = self.eta[e];
                 self.eta[e] = 0.0;
             }
-            if value == (1 - (f.literal(e) & 1)) as i8 {
+            if value != i8::from(f.negative(e)) {
                 self.true_count[c] += 1;
                 if self.true_count[c] == 1 {
                     self.active.set(c, false);
@@ -480,14 +546,15 @@ impl Solver {
         self.gpu_assignment(v, -1);
         self.free.set(v, true);
         let f = &self.formula.0;
-        for e in f.variable_edges(v) {
+        let mut incident = Vec::new();
+        for e in f.variable_edges(v, &mut incident) {
             let c = f.edge_clause(e);
             let start = f.offset(c);
             let local = e - start;
             self.masks[f.mask_offset(c) + local / 64] |= 1u64 << (local % 64);
             self.free_count[c] += 1;
             self.free_xor[c] ^= e as u32;
-            if value == (1 - (f.literal(e) & 1)) as i8 {
+            if value != i8::from(f.negative(e)) {
                 self.true_count[c] -= 1;
             }
             if self.true_count[c] == 0 {
@@ -573,71 +640,50 @@ impl Solver {
         self.timed("cavities", |s| s.scalar_cavities(store_norms))
     }
     fn scalar_cavities(&mut self, store_norms: bool) -> std::result::Result<(), Status> {
-        // Choose traversal once per sweep so the explicit path still walks
-        // contiguous slices without checking the topology kind at each edge.
         let formula = self.formula.clone();
         let f = &formula.0;
+        let mut state = ScalarCavity {
+            q: &mut self.q,
+            eta: &self.eta,
+            saved_eta: &mut self.saved_eta,
+            plus: &mut self.plus,
+            minus: &mut self.minus,
+            active: &self.active,
+        };
         if let Some(topology) = &f.feistel {
-            self.scalar_cavities_with(
-                store_norms,
-                |v, sign| {
-                    topology
-                        .variable_edges(v as u64)
-                        .filter(move |&e| usize::from(topology.negative(e)) == sign)
-                        .map(|e| e as usize)
-                },
-                |e| e / topology.k() as usize,
-            )
-        } else {
-            self.scalar_cavities_with(
-                store_norms,
-                |v, sign| {
-                    let group = 2 * v + sign;
-                    f.var_edges[f.var_offsets[group] as usize..f.var_offsets[group + 1] as usize]
-                        .iter()
-                        .map(|&e| e as usize)
-                },
-                |e| f.edge_clause[e] as usize,
-            )
-        }
-    }
-    fn scalar_cavities_with<I: DoubleEndedIterator<Item = usize>>(
-        &mut self,
-        store_norms: bool,
-        edges: impl Fn(usize, usize) -> I,
-        clause_of: impl Fn(usize) -> usize,
-    ) -> std::result::Result<(), Status> {
-        for v in self.free.ones() {
-            let mut products = [1.0; 2];
-            for (sign, product) in products.iter_mut().enumerate() {
-                for e in edges(v, sign) {
-                    self.q[e] = *product;
-                    *product *= 1.0 - self.eta[e];
-                }
+            let mut scratch = Vec::new();
+            let width = topology.k() as usize;
+            for v in self.free.ones() {
+                topology.ordered_edges(v as u64, &mut scratch);
+                let split = scratch.partition_point(|&edge| edge < (1 << 32));
+                let (positive, negative) = scratch.split_at(split);
+                let groups = [positive, negative];
+                state.update(
+                    v,
+                    store_norms,
+                    |sign| groups[sign].iter().map(|&e| e as u32 as usize),
+                    |e| e / width,
+                )?;
             }
-            self.plus[v] = products[0];
-            self.minus[v] = products[1];
-            for sign in 0..2 {
-                let opposite = products[1 - sign];
-                let mut suffix = 1.0;
-                for e in edges(v, sign).rev() {
-                    let same = self.q[e] * suffix;
-                    suffix *= 1.0 - self.eta[e];
-                    let norm = opposite + (1.0 - opposite) * same;
-                    if norm <= 0.0 || !norm.is_finite() {
-                        return Err(Status::NumericalFailure);
-                    }
-                    self.q[e] = ((1.0 - opposite) * same / norm).clamp(0.0, 1.0);
-                    if store_norms && self.active.contains(clause_of(e)) {
-                        // Active/free incidences do not need a frozen value:
-                        // freeze saves their current eta before any restoration.
-                        self.saved_eta[e] = norm;
-                    }
-                }
+        } else {
+            for v in self.free.ones() {
+                state.update(
+                    v,
+                    store_norms,
+                    |sign| {
+                        let group = 2 * v + sign;
+                        f.var_edges
+                            [f.var_offsets[group] as usize..f.var_offsets[group + 1] as usize]
+                            .iter()
+                            .map(|&e| e as usize)
+                    },
+                    |e| f.edge_clause[e] as usize,
+                )?;
             }
         }
         Ok(())
     }
+
     /// One synchronous SP sweep, returning the largest undamped message change.
     /// Clause exclusion uses prefix/suffix products, including multiple zero q's.
     pub fn sweep(&mut self) -> std::result::Result<f64, Status> {
@@ -698,6 +744,14 @@ impl Solver {
             self.prefix.clear();
             let start = f.offset(c);
             let first_word = f.mask_offset(c);
+            if f.offset(c + 1) - start == 3 && self.masks[first_word] == 7 {
+                residual = residual.max(update_full_triple(
+                    &self.q[start..start + 3],
+                    &mut self.eta[start..start + 3],
+                    damping,
+                ));
+                continue;
+            }
             let mut product = 1.0;
             for w in first_word..f.mask_offset(c + 1) {
                 for e in (Ones {
@@ -731,6 +785,9 @@ impl Solver {
     }
     fn scalar_observables(&mut self) -> std::result::Result<(f64, bool), Status> {
         self.cavities(true)?;
+        self.scalar_observables_from_cavities()
+    }
+    fn scalar_observables_from_cavities(&mut self) -> std::result::Result<(f64, bool), Status> {
         let f = &self.formula.0;
         let mut variable_term = 0.0;
         let mut paramagnetic = true;

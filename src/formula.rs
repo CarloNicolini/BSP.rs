@@ -23,6 +23,10 @@ pub(crate) struct Data {
 impl Formula {
     /// Normalize repeated literals and omit tautological clauses. Empty clauses stay.
     pub fn new(n: usize, clauses: Vec<Vec<i32>>) -> Result<Self> {
+        Self::from_clauses(n, clauses, false)
+    }
+
+    fn from_clauses(n: usize, clauses: Vec<Vec<i32>>, preserve_order: bool) -> Result<Self> {
         if n > i32::MAX as usize {
             return Err(Error("too many variables for packed literals".into()));
         }
@@ -40,10 +44,22 @@ impl Formula {
                 }
                 packed.push((((var - 1) as u32) << 1) | u32::from(lit < 0));
             }
-            packed.sort_unstable();
-            packed.dedup();
-            if packed.windows(2).any(|w| w[0] ^ w[1] == 1) {
-                continue;
+            if preserve_order {
+                let mut seen = std::collections::HashSet::with_capacity(packed.len());
+                let mut tautology = false;
+                packed.retain(|&lit| {
+                    tautology |= seen.contains(&(lit ^ 1));
+                    seen.insert(lit)
+                });
+                if tautology {
+                    continue;
+                }
+            } else {
+                packed.sort_unstable();
+                packed.dedup();
+                if packed.windows(2).any(|w| w[0] ^ w[1] == 1) {
+                    continue;
+                }
             }
             if literals
                 .len()
@@ -213,6 +229,15 @@ impl Formula {
         Ok(())
     }
     pub fn from_dimacs(text: &str) -> Result<Self> {
+        Self::parse_dimacs(text, false)
+    }
+
+    /// Parse DIMACS while retaining the first occurrence of each literal in file order.
+    pub fn from_dimacs_preserving_order(text: &str) -> Result<Self> {
+        Self::parse_dimacs(text, true)
+    }
+
+    fn parse_dimacs(text: &str, preserve_order: bool) -> Result<Self> {
         let mut header = None;
         let mut clauses = Vec::new();
         let mut clause = Vec::new();
@@ -258,7 +283,7 @@ impl Formula {
         if !clause.is_empty() || clauses.len() != m {
             return Err(Error("DIMACS clause count or terminator mismatch".into()));
         }
-        Self::new(n, clauses)
+        Self::from_clauses(n, clauses, preserve_order)
     }
     pub fn to_dimacs(&self) -> String {
         let mut bytes = Vec::new();
@@ -348,16 +373,28 @@ impl Data {
             |f| f.degree(v as u64) as u32,
         )
     }
-    pub fn variable_edges(&self, v: usize) -> impl Iterator<Item = usize> + '_ {
-        let explicit = if self.feistel.is_some() {
-            &[]
+    #[inline]
+    pub fn negative(&self, e: usize) -> bool {
+        self.feistel
+            .as_ref()
+            .map_or_else(|| self.literals[e] & 1 != 0, |f| f.negative(e as u64))
+    }
+
+    pub fn variable_edges<'a>(
+        &'a self,
+        v: usize,
+        scratch: &'a mut Vec<u64>,
+    ) -> impl Iterator<Item = usize> + 'a {
+        let explicit = if let Some(f) = &self.feistel {
+            f.ordered_edges(v as u64, scratch);
+            &[][..]
         } else {
+            scratch.clear();
             &self.var_edges[self.var_offsets[2 * v] as usize..self.var_offsets[2 * v + 2] as usize]
         };
-        explicit.iter().map(|&e| e as usize).chain(
-            self.feistel
-                .iter()
-                .flat_map(move |f| f.variable_edges(v as u64).map(|e| e as usize)),
-        )
+        explicit
+            .iter()
+            .map(|&e| e as usize)
+            .chain(scratch.iter().map(|&e| e as u32 as usize))
     }
 }

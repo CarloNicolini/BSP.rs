@@ -150,3 +150,66 @@ fn fluctuating_v1_seed_reproduces_clause_and_slot_order() {
         "p cnf 8 9\n-2 3 7 0\n6 8 5 0\n-5 -4 1 0\n-5 2 -1 0\n-2 6 4 0\n-6 -3 8 0\n2 6 -1 0\n3 -7 8 0\n7 -6 -3 0\n"
     );
 }
+
+#[test]
+fn cpu_parallel_preserves_messages_and_search_order() {
+    use bsp_rust::{Backend, ExecutionOptions};
+    type Generate = fn(usize, f64, usize, u64) -> bsp_rust::Result<Formula>;
+    let cases: [(Generate, usize); 3] = [
+        (Formula::feistel_fluctuating, 500),
+        (Formula::feistel, 500),
+        (Formula::random, 2000),
+    ];
+    for (generate, n) in cases {
+        let f = generate(3, 4.0, n, 7).unwrap();
+        let opts = Options {
+            seed: 7,
+            damping: 0.1,
+            max_steps: 64,
+            max_sweeps: 128,
+            ..Options::default()
+        };
+        let mut scalar = Solver::new(f.clone(), opts.clone()).unwrap();
+        let mut parallel = Solver::with_execution(
+            f.clone(),
+            opts,
+            ExecutionOptions {
+                backend: Backend::CpuParallel,
+                threads: 4,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        for v in (0..19).step_by(2) {
+            scalar.fix(v, v % 4 == 0).unwrap();
+            parallel.fix(v, v % 4 == 0).unwrap();
+        }
+        for v in [None, Some(4), Some(12), Some(16)] {
+            if let Some(v) = v {
+                scalar.release(v).unwrap();
+                parallel.release(v).unwrap();
+            }
+            assert_eq!(
+                scalar.sweep_many(8).unwrap().to_bits(),
+                parallel.sweep_many(8).unwrap().to_bits()
+            );
+            assert_eq!(scalar.messages(), parallel.messages());
+        }
+        assert!(parallel.execution_report().parallel_sweeps > 0);
+        if f.feistel_topology().is_some() {
+            assert!(parallel.execution_report().allocated_bytes <= 48 * 1024);
+        }
+        let a = scalar.solve();
+        let b = parallel.solve();
+        assert_eq!(a.status, b.status);
+        assert_eq!(a.assignment, b.assignment);
+        assert_eq!(a.partial_assignment, b.partial_assignment);
+        assert_eq!(
+            serde_json::to_value(&a.steps).unwrap(),
+            serde_json::to_value(&b.steps).unwrap()
+        );
+        if let Some(x) = a.assignment {
+            assert!(f.is_satisfied(&x));
+        }
+    }
+}

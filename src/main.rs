@@ -28,6 +28,9 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
     if let Some(path) = cli.formula {
         resolved.formula = Some(path);
     }
+    if cli.preserve_literal_order {
+        resolved.preserve_literal_order = true;
+    }
     if let Some(values) = &cli.generate {
         resolved.generate = Some(parse_generate(values)?);
     }
@@ -102,6 +105,7 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
 fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let Resolved {
         formula: source,
+        preserve_literal_order,
         generate,
         feistel,
         feistel_ensemble,
@@ -115,6 +119,9 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         progress,
     } = resolved;
     options.validate()?;
+    if preserve_literal_order && source.is_none() {
+        return Err("--preserve-literal-order requires a DIMACS input".into());
+    }
     if feistel.is_none() && feistel_ensemble.is_some() {
         return Err("--feistel-ensemble requires a Feistel formula source".into());
     }
@@ -124,15 +131,24 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let clock = PhaseClock::new();
     let start_live = || show_progress.then(|| cli::progress::LiveLine::start(clock.clone()));
     let mut live = if partitioned { None } else { start_live() };
-    if feistel.is_some() && execution.backend != bsp_rust::Backend::Cpu {
-        return Err("Feistel formulas currently require --backend cpu".into());
+    if feistel.is_some()
+        && !matches!(
+            execution.backend,
+            bsp_rust::Backend::Cpu | bsp_rust::Backend::CpuParallel
+        )
+    {
+        return Err("Feistel formulas require --backend cpu or cpu-parallel".into());
     }
     let construction_started = std::time::Instant::now();
     let (formula_name, formula) = match (source, generate, feistel) {
-        (Some(path), None, None) => (
-            cli::output::formula_token(&path.to_string_lossy()),
-            Formula::from_dimacs(&fs::read_to_string(&path)?)?,
-        ),
+        (Some(path), None, None) => (cli::output::formula_token(&path.to_string_lossy()), {
+            let text = fs::read_to_string(&path)?;
+            if preserve_literal_order {
+                Formula::from_dimacs_preserving_order(&text)?
+            } else {
+                Formula::from_dimacs(&text)?
+            }
+        }),
         (None, Some((k, alpha, n)), None) => (
             cli::output::generated_token(k, alpha, n),
             Formula::random(k, alpha, n, options.seed)?,

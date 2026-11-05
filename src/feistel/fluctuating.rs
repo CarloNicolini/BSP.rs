@@ -52,12 +52,43 @@ struct DegreeTree {
     n: u64,
     edges: u64,
     key: u64,
+    upper_splits: Box<[u64]>,
 }
 
 impl DegreeTree {
+    fn new(n: u64, edges: u64, key: u64) -> Self {
+        // At most 4 KiB, independent of N and E. Store only upper binomial
+        // counts, never literal IDs or incidence lists.
+        const CACHE_SLOTS: u64 = 512;
+        fn fill(tree: &DegreeTree, cache: &mut [u64], node: usize, size: u64, count: u64) {
+            if node >= cache.len() || size <= 1 || count == 0 {
+                return;
+            }
+            let left = tree.split(node as u64, size, count);
+            cache[node] = left;
+            fill(tree, cache, 2 * node, size / 2, left);
+            fill(tree, cache, 2 * node + 1, size - size / 2, count - left);
+        }
+        let mut tree = Self {
+            n,
+            edges,
+            key,
+            upper_splits: Box::default(),
+        };
+        if n > 1 && edges > 0 {
+            let mut cache = vec![0; n.next_power_of_two().min(CACHE_SLOTS) as usize];
+            fill(&tree, &mut cache, 1, n, edges);
+            tree.upper_splits = cache.into_boxed_slice();
+        }
+        tree
+    }
+
     fn split(&self, node: u64, size: u64, count: u64) -> u64 {
         if count == 0 {
             return 0;
+        }
+        if node < self.upper_splits.len() as u64 {
+            return self.upper_splits[node as usize];
         }
         let mut rng = Stream::new(mix(self.key ^ node));
         Binomial::new(count, (size / 2) as f64 / size as f64)
@@ -136,7 +167,8 @@ impl DegreeTree {
 pub(super) struct Fluctuating {
     tree: DegreeTree,
     matching: Permutation,
-    match_key: u64,
+    match_keys: [u64; 8],
+    round_table: Box<[u8]>,
     // Sorted clause IDs and their corresponding K replacement variables.
     repairs: Vec<u64>,
     replacements: Vec<u64>,
@@ -148,14 +180,14 @@ pub(super) struct Fluctuating {
 impl Fluctuating {
     pub(super) fn new(n: u64, k: u64, m: u64, seed: u64) -> Self {
         let edges = m * k;
+        let matching = Permutation::new(edges);
+        let match_keys = Permutation::round_keys(mix(seed ^ MATCH));
+        let round_table = matching.round_table(&match_keys);
         let mut topology = Self {
-            tree: DegreeTree {
-                n,
-                edges,
-                key: mix(seed ^ DEGREES),
-            },
-            matching: Permutation::new(edges),
-            match_key: mix(seed ^ MATCH),
+            tree: DegreeTree::new(n, edges, mix(seed ^ DEGREES)),
+            matching,
+            match_keys,
+            round_table,
             repairs: Vec::new(),
             replacements: Vec::new(),
             insertions: Vec::new(),
@@ -211,9 +243,18 @@ impl Fluctuating {
         topology
     }
 
+    fn walk(&self, index: u64, inverse: bool) -> (u64, u64) {
+        if self.round_table.is_empty() {
+            self.matching
+                .walk_with_keys(index, &self.match_keys, inverse)
+        } else {
+            self.matching
+                .walk_with_table(index, &self.round_table, inverse)
+        }
+    }
+
     fn raw_variable(&self, e: u64) -> u64 {
-        self.tree
-            .owner(self.matching.walk(e, self.match_key, false).0)
+        self.tree.owner(self.walk(e, false).0)
     }
 
     pub(super) fn variable(&self, e: u64, k: u64) -> u64 {
@@ -229,7 +270,7 @@ impl Fluctuating {
     }
 
     pub(super) fn original_edge(&self, stub: u64, k: u64) -> Option<u64> {
-        let e = self.matching.walk(stub, self.match_key, true).0;
+        let e = self.walk(stub, true).0;
         self.repairs.binary_search(&(e / k)).is_err().then_some(e)
     }
 
@@ -268,12 +309,15 @@ impl Fluctuating {
     }
 
     pub(super) fn walk_steps(&self, index: u64, inverse: bool) -> u64 {
-        self.matching.walk(index, self.match_key, inverse).1
+        self.walk(index, inverse).1
     }
 
     pub(super) fn heap_bytes(&self) -> usize {
         std::mem::size_of::<Self>()
-            + 8 * (self.repairs.capacity() + self.replacements.capacity())
+            + self.round_table.len()
+            + 8 * (self.tree.upper_splits.len()
+                + self.repairs.capacity()
+                + self.replacements.capacity())
             + 16 * (self.insertions.capacity() + self.degree_delta.capacity())
     }
 }
@@ -283,14 +327,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bounded_split_cache_matches_regeneration() {
+        for n in [33, 500, 1003] {
+            for seed in [0, 7, u64::MAX] {
+                let cached = DegreeTree::new(n, 12 * n, mix(seed ^ DEGREES));
+                assert!(cached.upper_splits.len() * 8 <= 4096);
+                let mut uncached = cached.clone();
+                uncached.upper_splits = Box::default();
+                for v in 0..n {
+                    assert_eq!(cached.stubs(v), uncached.stubs(v));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn sampled_large_matching_inverts_without_a_repair_scan() {
         let n = 1_000_000_000;
         let edges = 12 * n;
-        let tree = DegreeTree {
-            n,
-            edges,
-            key: mix(11 ^ DEGREES),
-        };
+        let tree = DegreeTree::new(n, edges, mix(11 ^ DEGREES));
         let matching = Permutation::new(edges);
         let key = mix(11 ^ MATCH);
         for edge in [0, edges - 1, 1u64 << 32]
