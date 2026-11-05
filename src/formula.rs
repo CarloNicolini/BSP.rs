@@ -17,7 +17,6 @@ pub(crate) struct Data {
     pub var_offsets: Vec<u32>,
     pub var_edges: Vec<u32>,
     pub mask_offsets: Vec<u32>,
-    pub masks: Vec<u64>,
 }
 
 impl Formula {
@@ -30,13 +29,12 @@ impl Formula {
         if n > i32::MAX as usize {
             return Err(Error("too many variables for packed literals".into()));
         }
-        let mut offsets = vec![0];
-        let mut literals = Vec::new();
-        let mut edge_clause = Vec::new();
-        let mut masks = Vec::new();
-        let mut mask_offsets = vec![0];
-        for clause in clauses {
-            let mut packed = Vec::with_capacity(clause.len());
+        let mut clauses = clauses.into_iter();
+        Self::build(n, preserve_order, (0, 0), |packed| {
+            let Some(clause) = clauses.next() else {
+                return Ok(false);
+            };
+            packed.reserve(clause.len());
             for lit in clause {
                 let var = lit.unsigned_abs() as usize;
                 if var == 0 || var > n {
@@ -44,6 +42,24 @@ impl Formula {
                 }
                 packed.push((((var - 1) as u32) << 1) | u32::from(lit < 0));
             }
+            Ok(true)
+        })
+    }
+
+    fn build(
+        n: usize,
+        preserve_order: bool,
+        (clauses, edges): (usize, usize),
+        mut fill: impl FnMut(&mut Vec<u32>) -> Result<bool>,
+    ) -> Result<Self> {
+        let mut offsets = Vec::with_capacity(clauses + 1);
+        offsets.push(0);
+        let mut literals = Vec::with_capacity(edges);
+        let mut edge_clause = Vec::with_capacity(edges);
+        let mut mask_offsets = Vec::with_capacity(clauses + 1);
+        mask_offsets.push(0u32);
+        let mut packed = Vec::new();
+        while fill(&mut packed)? {
             if preserve_order {
                 let mut seen = std::collections::HashSet::with_capacity(packed.len());
                 let mut tautology = false;
@@ -52,12 +68,14 @@ impl Formula {
                     seen.insert(lit)
                 });
                 if tautology {
+                    packed.clear();
                     continue;
                 }
             } else {
                 packed.sort_unstable();
                 packed.dedup();
                 if packed.windows(2).any(|w| w[0] ^ w[1] == 1) {
+                    packed.clear();
                     continue;
                 }
             }
@@ -71,15 +89,12 @@ impl Formula {
             }
             let c = (offsets.len() - 1) as u32;
             let len = packed.len();
-            literals.extend(packed);
+            literals.extend_from_slice(&packed);
+            packed.clear();
             edge_clause.resize(literals.len(), c);
             offsets.push(literals.len() as u32);
-            for start in (0..len).step_by(64) {
-                let width = (len - start).min(64);
-                masks.push(u64::MAX >> (64 - width));
-            }
-            mask_offsets
-                .push(u32::try_from(masks.len()).map_err(|_| Error("too many mask words".into()))?);
+            // At most one mask word per edge, already bounded by u32.
+            mask_offsets.push(mask_offsets.last().unwrap() + len.div_ceil(64) as u32);
         }
         let mut var_offsets = vec![0u32; 2 * n + 1];
         for &lit in &literals {
@@ -104,7 +119,6 @@ impl Formula {
             var_offsets,
             var_edges,
             mask_offsets,
-            masks,
         })))
     }
     /// Construct an implicit partitioned formula. Only scalar CPU solving is supported.
@@ -158,7 +172,6 @@ impl Formula {
             var_offsets: Vec::new(),
             var_edges: Vec::new(),
             mask_offsets: Vec::new(),
-            masks: Vec::new(),
         })))
     }
     pub fn feistel_topology(&self) -> Option<&FeistelTopology> {
@@ -174,7 +187,6 @@ impl Formula {
                 + f.var_offsets.capacity()
                 + f.var_edges.capacity()
                 + f.mask_offsets.capacity())
-            + 8 * f.masks.capacity()
             + f.feistel.as_ref().map_or(0, FeistelTopology::heap_bytes)
     }
     pub fn n(&self) -> usize {
@@ -303,19 +315,23 @@ impl Formula {
         }
         let mut rng = SmallRng::seed_from_u64(seed);
         let mut pool: Vec<i32> = (1..=n as i32).collect();
-        let mut clauses = Vec::with_capacity(m as usize);
-        for _ in 0..m as usize {
-            // Partial Fisher-Yates; O(k), including dense k/n, without rejection.
-            let mut clause = Vec::with_capacity(k);
+        let m = m as usize;
+        let mut remaining = m;
+        Self::build(n, false, (m, m * k), |packed| {
+            if remaining == 0 {
+                return Ok(false);
+            }
+            remaining -= 1;
+            // Same partial Fisher-Yates draws, written directly to packed CSR.
+            packed.reserve(k);
             for i in 0..k {
                 let j = rng.random_range(i..n);
                 pool.swap(i, j);
-                let v = pool[i];
-                clause.push(if rng.random::<bool>() { v } else { -v });
+                let v = (pool[i] - 1) as u32;
+                packed.push((v << 1) | u32::from(!rng.random::<bool>()));
             }
-            clauses.push(clause);
-        }
-        Self::new(n, clauses)
+            Ok(true)
+        })
     }
 }
 
@@ -362,10 +378,18 @@ impl Data {
             .map_or_else(|| self.mask_offsets[c] as usize, |_| c)
     }
     pub fn initial_masks(&self) -> Vec<u64> {
-        self.feistel.as_ref().map_or_else(
-            || self.masks.clone(),
-            |f| vec![u64::MAX >> (64 - f.k()); f.m() as usize],
-        )
+        if let Some(f) = &self.feistel {
+            return vec![u64::MAX >> (64 - f.k()); f.m() as usize];
+        }
+        let mut masks = Vec::with_capacity(self.mask_offset(self.m()));
+        for offsets in self.offsets.windows(2) {
+            let width = (offsets[1] - offsets[0]) as usize;
+            masks.extend(std::iter::repeat_n(u64::MAX, width / 64));
+            if !width.is_multiple_of(64) {
+                masks.push(u64::MAX >> (64 - width % 64));
+            }
+        }
+        masks
     }
     pub fn degree(&self, v: usize) -> u32 {
         self.feistel.as_ref().map_or_else(

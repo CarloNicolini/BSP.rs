@@ -164,7 +164,6 @@ pub struct Solver {
     masks: Vec<u64>,
     free_count: Vec<u32>,
     true_count: Vec<u32>,
-    free_xor: Vec<u32>,
     degree: Vec<u32>,
     decisions: DecisionHeap,
     eta: Vec<f64>,
@@ -284,23 +283,6 @@ impl Solver {
             .map(|(c, _)| c as u32)
             .collect();
         let width = free_count.iter().copied().max().unwrap_or(0) as usize;
-        // XOR of [start,end), computed without scanning clause literals.
-        let xor_below = |end: u32| {
-            if end == 0 {
-                0
-            } else {
-                let last = end - 1;
-                match last % 4 {
-                    0 => last,
-                    1 => 1,
-                    2 => last + 1,
-                    _ => 0,
-                }
-            }
-        };
-        let free_xor = (0..m)
-            .map(|c| xor_below(f.offset(c) as u32) ^ xor_below(f.offset(c + 1) as u32))
-            .collect();
         let degree = (0..n).map(|v| f.degree(v)).collect();
         Ok(Self {
             execution: Execution::new(ExecutionOptions::default())?,
@@ -315,7 +297,6 @@ impl Solver {
             forced: vec![false; n],
             free_count,
             true_count: vec![0; m],
-            free_xor,
             degree,
             decisions: DecisionHeap::new(n),
             eta,
@@ -483,7 +464,6 @@ impl Solver {
             let local = e - start;
             self.masks[f.mask_offset(c) + local / 64] &= !(1u64 << (local % 64));
             self.free_count[c] -= 1;
-            self.free_xor[c] ^= e as u32;
             if self.active.contains(c) {
                 #[cfg(all(feature = "metal", target_os = "macos"))]
                 if let Some(gpu) = &mut self.execution.gpu {
@@ -553,7 +533,6 @@ impl Solver {
             let local = e - start;
             self.masks[f.mask_offset(c) + local / 64] |= 1u64 << (local % 64);
             self.free_count[c] += 1;
-            self.free_xor[c] ^= e as u32;
             if value != i8::from(f.negative(e)) {
                 self.true_count[c] -= 1;
             }
@@ -627,7 +606,14 @@ impl Solver {
                 continue;
             }
             let f = &self.formula.0;
-            let e = self.free_xor[c] as usize;
+            let first = f.mask_offset(c);
+            let e = self.masks[first..f.mask_offset(c + 1)]
+                .iter()
+                .enumerate()
+                .find_map(|(word, &mask)| {
+                    (mask != 0).then(|| f.offset(c) + 64 * word + mask.trailing_zeros() as usize)
+                })
+                .expect("a unit clause has exactly one free literal");
             let lit = f.literal(e);
             self.cert[(lit >> 1) as usize] = 1.0;
             self.set_fixed((lit >> 1) as usize, (1 - (lit & 1)) as i8, true);
@@ -1053,7 +1039,6 @@ mod index_tests {
         for c in 0..s.formula.m() {
             let mut free = 0;
             let mut true_count = 0;
-            let mut free_xor = 0;
             for e in f.offset(c)..f.offset(c + 1) {
                 let lit = f.literal(e);
                 let v = (lit >> 1) as usize;
@@ -1064,13 +1049,11 @@ mod index_tests {
                 assert_eq!(is_free, mask_free);
                 if is_free {
                     free += 1;
-                    free_xor ^= e as u32;
                 } else if s.assignment[v] == (1 - (lit & 1)) as i8 {
                     true_count += 1;
                 }
             }
             assert_eq!(s.free_count[c], free);
-            assert_eq!(s.free_xor[c], free_xor);
             assert_eq!(s.true_count[c], true_count);
             assert_eq!(s.active.contains(c), true_count == 0);
             if true_count == 0 {
