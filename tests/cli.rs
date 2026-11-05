@@ -329,7 +329,6 @@ fn feistel_config_export_messages_and_conflicts() {
     for extra in [
         vec!["--generate", "3", "4", "100"],
         vec!["f.cnf"],
-        vec!["--backend", "cpu-parallel"],
         vec!["--backend", "metal"],
         vec!["--backend", "cuda"],
         vec!["--backend", "cuda-f32"],
@@ -396,5 +395,96 @@ fn feistel_config_export_messages_and_conflicts() {
         .code(),
         Some(2)
     );
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn feistel_dimacs_replays_the_same_seed_on_scalar_cpu() {
+    let dir = temp_dir("feistel-replay");
+    for seed in ["2", "7"] {
+        let source = ["--feistel", "3", "4", "100", "--seed", seed];
+        let mut export = source.to_vec();
+        export.extend(["--write-formula", "replay.cnf"]);
+        assert!(run(&dir, &export).status.success());
+
+        let common = [
+            "--max-steps",
+            "512",
+            "--max-sweeps",
+            "256",
+            "--frac",
+            "0.01",
+        ];
+        let mut implicit = source.to_vec();
+        implicit.extend(common);
+        implicit.extend(["--output", "implicit.json"]);
+        let a = run(&dir, &implicit);
+        let mut explicit = vec!["replay.cnf", "--preserve-literal-order", "--seed", seed];
+        explicit.extend(common);
+        explicit.extend(["--output", "explicit.json"]);
+        let b = run(&dir, &explicit);
+        assert_eq!(a.status.code(), b.status.code());
+        assert!(matches!(a.status.code(), Some(0 | 1)));
+        let load = |name| {
+            serde_json::from_str::<serde_json::Value>(&fs::read_to_string(dir.join(name)).unwrap())
+                .unwrap()
+        };
+        let (a, b) = (load("implicit.json"), load("explicit.json"));
+        for key in [
+            "status",
+            "assignment",
+            "partial_assignment",
+            "steps",
+            "sp_sweeps",
+            "flips",
+            "unit_assignments",
+        ] {
+            assert_eq!(a[key], b[key], "{seed}: {key}");
+        }
+        if let Some(assignment) = a["assignment"].as_array() {
+            let x: Vec<_> = assignment
+                .iter()
+                .map(|v| v.as_i64().unwrap() as i8)
+                .collect();
+            let f = bsp_rust::Formula::from_dimacs(
+                &fs::read_to_string(dir.join("replay.cnf")).unwrap(),
+            )
+            .unwrap();
+            assert!(f.is_satisfied(&x));
+        }
+    }
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn generated_and_feistel_cli_sweeps_use_the_requested_cpu_pool() {
+    let dir = temp_dir("parallel-sources");
+    for (flag, n) in [("--generate", "2000"), ("--feistel", "500")] {
+        let out = run(
+            &dir,
+            &[
+                flag,
+                "3",
+                "4",
+                n,
+                "--sweeps",
+                "2",
+                "--backend",
+                "cpu-parallel",
+                "--threads",
+                "4",
+                "--output",
+                "parallel.json",
+            ],
+        );
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let report: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(dir.join("parallel.json")).unwrap()).unwrap();
+        assert_eq!(report["execution"]["parallel_sweeps"], 2);
+    }
     let _ = fs::remove_dir_all(dir);
 }

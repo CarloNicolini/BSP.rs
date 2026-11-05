@@ -45,6 +45,7 @@ impl Solver {
             .max()
             .unwrap_or(0);
         let mut choices = Vec::with_capacity(width);
+        let mut incident = Vec::new();
         let mut best = Vec::with_capacity(width);
         // Only free variables occurring in active clauses can be flipped.
         let residual_variables = self.residual_variable_count();
@@ -140,12 +141,12 @@ impl Solver {
                 let v = pick[self.rng.random_range(0..pick.len())];
                 let old = values[v];
                 values[v] ^= 1;
-                for e in f.variable_edges(v) {
+                for e in f.variable_edges(v, &mut incident) {
                     let c = f.edge_clause(e);
                     if !self.active.contains(c) {
                         continue;
                     }
-                    if old == (1 - (f.literal(e) & 1)) as i8 {
+                    if old != i8::from(f.negative(e)) {
                         if count[c] == 1 {
                             breaks[v] -= 1;
                             unsat.insert(c);

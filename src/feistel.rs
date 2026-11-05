@@ -42,24 +42,67 @@ impl Permutation {
         Self { limit, bits }
     }
 
-    fn raw(&self, x: u64, key: u64, inverse: bool) -> u64 {
+    fn round_keys(key: u64) -> [u64; 8] {
+        std::array::from_fn(|round| mix(key ^ ROUND.wrapping_mul(round as u64 + 1)))
+    }
+
+    fn raw(&self, x: u64, keys: &[u64; 8], inverse: bool) -> u64 {
         let mask = (1u64 << self.bits) - 1;
         let (mut left, mut right) = (x >> self.bits, x & mask);
-        for j in 0..8u64 {
-            let round = if inverse { 7 - j } else { j };
-            let rk = mix(key ^ ROUND.wrapping_mul(round + 1));
-            if inverse {
-                (left, right) = (right ^ (mix(left ^ rk) & mask), left);
-            } else {
-                (left, right) = (right, left ^ (mix(right ^ rk) & mask));
+        if inverse {
+            for &key in keys.iter().rev() {
+                (left, right) = (right ^ (mix(left ^ key) & mask), left);
+            }
+        } else {
+            for &key in keys {
+                (left, right) = (right, left ^ (mix(right ^ key) & mask));
             }
         }
         (left << self.bits) | right
     }
-    fn walk(&self, mut x: u64, key: u64, inverse: bool) -> (u64, u64) {
+    // Each round reads only a half-word. For small domains an exact lookup
+    // table costs at most 8 * 256 bytes, independent of graph connectivity.
+    fn round_table(&self, keys: &[u64; 8]) -> Box<[u8]> {
+        if self.bits > 8 || self.limit == 0 {
+            return Box::default();
+        }
+        let width = 1u64 << self.bits;
+        keys.iter()
+            .flat_map(|&key| (0..width).map(move |x| (mix(x ^ key) & (width - 1)) as u8))
+            .collect()
+    }
+
+    fn walk_with_table(&self, mut x: u64, table: &[u8], inverse: bool) -> (u64, u64) {
+        let width = 1usize << self.bits;
+        let mask = width - 1;
         let mut steps = 0;
         loop {
-            x = self.raw(x, key, inverse);
+            let (mut left, mut right) = (x as usize >> self.bits, x as usize & mask);
+            if inverse {
+                for row in table.chunks_exact(width).rev() {
+                    (left, right) = (right ^ usize::from(row[left]), left);
+                }
+            } else {
+                for row in table.chunks_exact(width) {
+                    (left, right) = (right, left ^ usize::from(row[right]));
+                }
+            }
+            x = ((left << self.bits) | right) as u64;
+            steps += 1;
+            if x < self.limit {
+                return (x, steps);
+            }
+        }
+    }
+
+    fn walk(&self, x: u64, key: u64, inverse: bool) -> (u64, u64) {
+        self.walk_with_keys(x, &Self::round_keys(key), inverse)
+    }
+
+    fn walk_with_keys(&self, mut x: u64, keys: &[u64; 8], inverse: bool) -> (u64, u64) {
+        let mut steps = 0;
+        loop {
+            x = self.raw(x, keys, inverse);
             steps += 1;
             if x < self.limit {
                 return (x, steps);
@@ -244,6 +287,18 @@ impl FeistelTopology {
             })
             .chain(inserted.iter().map(|&(_, e)| e))
     }
+    /// Solver scratch uses the existing u32 edge limit. Sort by sign first,
+    /// then clause-major edge ID, exactly like the explicit incidence arrays.
+    pub(crate) fn ordered_edges(&self, v: u64, scratch: &mut Vec<u64>) {
+        debug_assert!(self.edges() < u32::MAX as u64);
+        scratch.clear();
+        scratch.extend(
+            self.variable_edges(v)
+                .map(|e| e | (u64::from(self.negative(e)) << 32)),
+        );
+        scratch.sort_unstable();
+    }
+
     pub fn degree(&self, v: u64) -> u64 {
         if let Some(f) = &self.fluctuating {
             f.degree(v)
@@ -294,6 +349,25 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn round_tables_preserve_both_directions_and_walk_lengths() {
+        for limit in [1, 17, 103, 1024, 6000, 65536] {
+            let permutation = Permutation::new(limit);
+            let keys = Permutation::round_keys(91);
+            let table = permutation.round_table(&keys);
+            assert!(table.len() <= 2048);
+            for index in 0..limit {
+                for inverse in [false, true] {
+                    assert_eq!(
+                        permutation.walk_with_keys(index, &keys, inverse),
+                        permutation.walk_with_table(index, &table, inverse),
+                    );
+                }
+            }
+        }
+        assert!(Permutation::new(65537).round_table(&[0; 8]).is_empty());
+    }
+
     #[test]
     fn invalid_dimensions() {
         for (k, m, n) in [

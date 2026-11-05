@@ -56,6 +56,7 @@ pub(crate) struct Execution {
     pub report: ExecutionReport,
     pub pool: Option<Arc<ThreadPool>>,
     pub parallel: Option<Parallel>,
+    implicit_parallel: Option<ImplicitParallel>,
     pub batch_active: Option<Arc<AtomicUsize>>,
     #[cfg(all(feature = "metal", target_os = "macos"))]
     pub gpu: Option<bsp_metal::MetalSolver>,
@@ -114,6 +115,7 @@ impl Execution {
             options,
             pool,
             parallel: None,
+            implicit_parallel: None,
             batch_active: None,
             #[cfg(all(feature = "metal", target_os = "macos"))]
             gpu: None,
@@ -252,9 +254,11 @@ impl Solver {
         options: Options,
         execution: ExecutionOptions,
     ) -> Result<Self> {
-        if formula.feistel_topology().is_some() && execution.backend != Backend::Cpu {
+        if formula.feistel_topology().is_some()
+            && !matches!(execution.backend, Backend::Cpu | Backend::CpuParallel)
+        {
             return Err(Error(
-                "Feistel formulas currently require --backend cpu".into(),
+                "Feistel formulas require --backend cpu or cpu-parallel".into(),
             ));
         }
         let setup = execution.profile.as_ref().map(|_| Instant::now());
@@ -263,10 +267,19 @@ impl Solver {
         match s.execution.options.backend {
             Backend::Cpu => (),
             Backend::CpuParallel => {
-                if s.formula.edges() >= 32768 && s.execution.report.threads > 1 {
-                    let scratch = Parallel::new(&s);
-                    s.execution.report.allocated_bytes = scratch.allocated_bytes();
-                    s.execution.parallel = Some(scratch);
+                if s.execution.report.threads > 1 {
+                    if s.formula.feistel_topology().is_some() && s.formula.edges() >= IMPLICIT_MIN {
+                        let scratch = ImplicitParallel::new(s.formula.edges());
+                        s.execution.report.allocated_bytes =
+                            scratch.outputs.len() * std::mem::size_of::<CavityOutput>();
+                        s.execution.implicit_parallel = Some(scratch);
+                    } else if s.formula.feistel_topology().is_none()
+                        && s.formula.edges() >= explicit_min(s.execution.report.threads)
+                    {
+                        let scratch = Parallel::new(&s);
+                        s.execution.report.allocated_bytes = scratch.allocated_bytes();
+                        s.execution.parallel = Some(scratch);
+                    }
                 }
             }
             Backend::Metal => {
@@ -467,48 +480,65 @@ impl Solver {
         }
         let _ = (v, value);
     }
-    pub(super) fn parallel_sweep(&mut self) -> Option<std::result::Result<f64, Status>> {
+    fn parallel_work_available(&self) -> bool {
         if self
             .execution
             .batch_active
             .as_ref()
             .is_some_and(|n| n.load(Ordering::Relaxed) * 2 >= self.execution.report.threads)
         {
+            return false;
+        }
+        let min = if self.formula.feistel_topology().is_some() {
+            IMPLICIT_MIN
+        } else {
+            explicit_min(self.execution.report.threads)
+        };
+        self.free.len().saturating_mul(self.formula.edges()) / self.formula.n().max(1) >= min
+    }
+
+    pub(super) fn parallel_sweep(&mut self) -> Option<std::result::Result<f64, Status>> {
+        if !self.parallel_work_available() {
             return None;
         }
-        if self.free.len().saturating_mul(self.formula.edges()) / self.formula.n().max(1) < 32768 {
-            return None;
-        }
-        let mut scratch = self.execution.parallel.take()?;
-        let p = self.execution.pool.as_ref().unwrap().clone();
-        let result = p.install(|| {
-            self.timed("cavities", |s| scratch.cavities(s, false))
-                .and_then(|()| self.timed("clauses", |s| scratch.clauses(s)))
-        });
+        let pool = self.execution.pool.as_ref()?.clone();
+        let result = if let Some(mut scratch) = self.execution.implicit_parallel.take() {
+            let result = pool.install(|| {
+                self.timed("cavities", |s| scratch.cavities(s, false))
+                    .and_then(|()| self.timed("clauses", parallel_clauses))
+            });
+            self.execution.implicit_parallel = Some(scratch);
+            result
+        } else {
+            let mut scratch = self.execution.parallel.take()?;
+            let result = pool.install(|| {
+                self.timed("cavities", |s| scratch.cavities(s, false))
+                    .and_then(|()| self.timed("clauses", parallel_clauses))
+            });
+            self.execution.parallel = Some(scratch);
+            result
+        };
         if result.is_ok() {
             self.sp_sweeps += 1;
             self.execution.report.parallel_sweeps += 1;
         }
-        self.execution.parallel = Some(scratch);
         Some(result)
     }
+
     pub(super) fn parallel_observables(
         &mut self,
     ) -> Option<std::result::Result<(f64, bool), Status>> {
-        if self
-            .execution
-            .batch_active
-            .as_ref()
-            .is_some_and(|n| n.load(Ordering::Relaxed) * 2 >= self.execution.report.threads)
-        {
+        if !self.parallel_work_available() {
             return None;
         }
-        if self.free.len().saturating_mul(self.formula.edges()) / self.formula.n().max(1) < 32768 {
-            return None;
+        let pool = self.execution.pool.as_ref()?.clone();
+        if let Some(mut scratch) = self.execution.implicit_parallel.take() {
+            let result = pool.install(|| self.timed("cavities", |s| scratch.cavities(s, true)));
+            self.execution.implicit_parallel = Some(scratch);
+            return Some(result.and_then(|()| self.scalar_observables_from_cavities()));
         }
         let mut scratch = self.execution.parallel.take()?;
-        let p = self.execution.pool.as_ref().unwrap().clone();
-        let result = p.install(|| {
+        let result = pool.install(|| {
             self.timed("cavities", |s| scratch.cavities(s, true))
                 .and_then(|()| scratch.observables(self))
         });
@@ -916,62 +946,6 @@ impl Parallel {
             });
         Ok(())
     }
-    fn clauses(&mut self, s: &mut Solver) -> std::result::Result<f64, Status> {
-        let f = &s.formula.0;
-        let chunk = s
-            .formula
-            .m()
-            .div_ceil(s.execution.report.threads * 4)
-            .max(1);
-        let mut eta = s.eta.as_mut_slice();
-        let mut chunks = Vec::new();
-        for start in (0..s.formula.m()).step_by(chunk) {
-            let end = (start + chunk).min(s.formula.m());
-            let first = f.offsets[start] as usize;
-            let len = f.offsets[end] as usize - first;
-            let (a, b) = eta.split_at_mut(len);
-            eta = b;
-            chunks.push((start, end, first, a));
-        }
-        let active = &s.active;
-        let assignment = &s.assignment;
-        let q = &s.q;
-        let damping = s.options.damping;
-        chunks
-            .into_par_iter()
-            .map_init(
-                Vec::<(usize, f64)>::new,
-                |prefix, (start, end, base, eta)| {
-                    let mut residual: f64 = 0.0;
-                    for c in start..end {
-                        if !active.contains(c) {
-                            continue;
-                        }
-                        prefix.clear();
-                        let mut product = 1.0;
-                        for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
-                            if assignment[(f.literals[e] >> 1) as usize] < 0 {
-                                prefix.push((e, product));
-                                product *= q[e];
-                            }
-                        }
-                        if prefix.is_empty() {
-                            return Err(Status::Contradiction);
-                        }
-                        let mut suffix = 1.0;
-                        for &(e, p) in prefix.iter().rev() {
-                            let raw = p * suffix;
-                            suffix *= q[e];
-                            let raw = if raw < 1e-16 { 0.0 } else { raw };
-                            residual = residual.max((raw - eta[e - base]).abs());
-                            eta[e - base] = raw + (eta[e - base] - raw) * damping;
-                        }
-                    }
-                    Ok(residual)
-                },
-            )
-            .try_reduce(|| 0.0, |a, b| Ok(a.max(b)))
-    }
     fn observables(&mut self, s: &mut Solver) -> std::result::Result<(f64, bool), Status> {
         let f = &s.formula.0;
         self.logs
@@ -1048,5 +1022,204 @@ impl Parallel {
             return Err(Status::NumericalFailure);
         }
         Ok((complexity, paramagnetic))
+    }
+}
+
+fn parallel_clauses(s: &mut Solver) -> std::result::Result<f64, Status> {
+    let f = &s.formula.0;
+    let chunk = s
+        .formula
+        .m()
+        .div_ceil(s.execution.report.threads * 4)
+        .max(1);
+    let mut eta = s.eta.as_mut_slice();
+    let mut chunks = Vec::new();
+    for start in (0..s.formula.m()).step_by(chunk) {
+        let end = (start + chunk).min(s.formula.m());
+        let first = f.offset(start);
+        let len = f.offset(end) - first;
+        let (a, b) = eta.split_at_mut(len);
+        eta = b;
+        chunks.push((start, end, first, a));
+    }
+    let active = &s.active;
+    let masks = &s.masks;
+    let q = &s.q;
+    let damping = s.options.damping;
+    chunks
+        .into_par_iter()
+        .map_init(
+            Vec::<(usize, f64)>::new,
+            |prefix, (start, end, base, eta)| {
+                let mut residual: f64 = 0.0;
+                for c in start..end {
+                    if !active.contains(c) {
+                        continue;
+                    }
+                    prefix.clear();
+                    let mut product = 1.0;
+                    let start = f.offset(c);
+                    let first_word = f.mask_offset(c);
+                    if f.offset(c + 1) - start == 3 && masks[first_word] == 7 {
+                        residual = residual.max(super::update_full_triple(
+                            &q[start..start + 3],
+                            &mut eta[start - base..start - base + 3],
+                            damping,
+                        ));
+                        continue;
+                    }
+                    for (w, &mask) in masks[first_word..f.mask_offset(c + 1)].iter().enumerate() {
+                        for e in (crate::bitset::Ones {
+                            word: mask,
+                            base: start + 64 * w,
+                        }) {
+                            prefix.push((e, product));
+                            product *= q[e];
+                        }
+                    }
+                    if prefix.is_empty() {
+                        return Err(Status::Contradiction);
+                    }
+                    let mut suffix = 1.0;
+                    for &(e, p) in prefix.iter().rev() {
+                        let raw = p * suffix;
+                        suffix *= q[e];
+                        let raw = if raw < 1e-16 { 0.0 } else { raw };
+                        residual = residual.max((raw - eta[e - base]).abs());
+                        eta[e - base] = raw + (eta[e - base] - raw) * damping;
+                    }
+                }
+                Ok(residual)
+            },
+        )
+        .try_reduce(|| 0.0, |a, b| Ok(a.max(b)))
+}
+
+// Implicit output is bounded independently of the graph. Temporary incidence
+// decoding uses at most one variable's edges per Rayon task.
+const IMPLICIT_MIN: usize = 1024;
+fn explicit_min(threads: usize) -> usize {
+    // Direct CSR traversal is cheap. Leave enough work per worker to
+    // amortize the cavity, scatter, and clause dispatches.
+    (threads * 4096).max(8192)
+}
+const OUTPUT_WINDOW: usize = 2048;
+
+#[derive(Clone, Copy, Default)]
+struct CavityOutput {
+    edge: u32,
+    q: f64,
+    norm: f64,
+}
+
+struct ImplicitParallel {
+    outputs: Vec<CavityOutput>,
+}
+
+impl ImplicitParallel {
+    fn new(edges: usize) -> Self {
+        Self {
+            outputs: vec![CavityOutput::default(); edges.min(OUTPUT_WINDOW)],
+        }
+    }
+
+    fn cavities(&mut self, s: &mut Solver, store_norms: bool) -> std::result::Result<(), Status> {
+        let topology = s.formula.feistel_topology().unwrap();
+        let k = topology.k() as usize;
+        if s.degree.iter().any(|&d| d as usize > self.outputs.len()) {
+            return s.scalar_cavities(store_norms);
+        }
+
+        let mut start = 0;
+        while start < s.formula.n() {
+            let mut end = start;
+            let mut len = 0;
+            while end < s.formula.n() && len + s.degree[end] as usize <= self.outputs.len() {
+                len += s.degree[end] as usize;
+                end += 1;
+            }
+            let chunk = (end - start)
+                .div_ceil(s.execution.report.threads * 2)
+                .max(1);
+            let mut jobs = Vec::new();
+            let mut output = &mut self.outputs[..len];
+            let mut plus = &mut s.plus[start..end];
+            let mut minus = &mut s.minus[start..end];
+            for first in (start..end).step_by(chunk) {
+                let last = (first + chunk).min(end);
+                let edges: usize = s.degree[first..last].iter().map(|&d| d as usize).sum();
+                let (head, tail) = output.split_at_mut(edges);
+                let (p, p_tail) = plus.split_at_mut(last - first);
+                let (m, m_tail) = minus.split_at_mut(last - first);
+                jobs.push((first, head, p, m));
+                (output, plus, minus) = (tail, p_tail, m_tail);
+            }
+            let active = &s.active;
+            let eta = &s.eta;
+            let assignment = &s.assignment;
+            let degree = &s.degree;
+            jobs.into_par_iter().try_for_each_init(
+                Vec::new,
+                |edges, (first, mut output, plus, minus)| {
+                    for (i, (plus, minus)) in plus.iter_mut().zip(minus).enumerate() {
+                        let v = first + i;
+                        if assignment[v] >= 0 {
+                            continue;
+                        }
+                        topology.ordered_edges(v as u64, edges);
+                        // Inactive messages are zero. Their factors are exactly one,
+                        // and their cavity values are never consumed by active clauses.
+                        edges.retain(|&e| active.contains(e as u32 as usize / k));
+                        debug_assert_eq!(edges.len(), degree[v] as usize);
+                        let (variable, tail) = output.split_at_mut(degree[v] as usize);
+                        output = tail;
+                        let split = edges.partition_point(|&e| e < (1 << 32));
+                        let mut products = [1.0; 2];
+                        for (range, product) in [0..split, split..edges.len()]
+                            .into_iter()
+                            .zip(&mut products)
+                        {
+                            for i in range {
+                                let edge = edges[i] as u32;
+                                variable[i] = CavityOutput {
+                                    edge,
+                                    q: *product,
+                                    norm: 1.0,
+                                };
+                                *product *= 1.0 - eta[edge as usize];
+                            }
+                        }
+                        [*plus, *minus] = products;
+                        for (range, opposite) in [0..split, split..edges.len()]
+                            .into_iter()
+                            .zip([products[1], products[0]])
+                        {
+                            let mut suffix = 1.0;
+                            for i in range.rev() {
+                                let slot = &mut variable[i];
+                                let same = slot.q * suffix;
+                                suffix *= 1.0 - eta[slot.edge as usize];
+                                let norm = opposite + (1.0 - opposite) * same;
+                                if norm <= 0.0 || !norm.is_finite() {
+                                    return Err(Status::NumericalFailure);
+                                }
+                                slot.q = ((1.0 - opposite) * same / norm).clamp(0.0, 1.0);
+                                slot.norm = norm;
+                            }
+                        }
+                    }
+                    Ok(())
+                },
+            )?;
+            for &entry in &self.outputs[..len] {
+                let edge = entry.edge as usize;
+                s.q[edge] = entry.q;
+                if store_norms {
+                    s.saved_eta[edge] = entry.norm;
+                }
+            }
+            start = end;
+        }
+        Ok(())
     }
 }

@@ -57,11 +57,15 @@ pub struct Cli {
     /// DIMACS CNF formula path
     pub formula: Option<PathBuf>,
 
+    /// Retain DIMACS literal order for same-seed replay of an exported Feistel formula
+    #[arg(long)]
+    pub preserve_literal_order: bool,
+
     /// Build a random formula with floor(alpha*N) clauses
     #[arg(long, num_args = 3, value_names = ["K", "ALPHA", "N"])]
     pub generate: Option<Vec<String>>,
 
-    /// Implicit random formula with fluctuating variable degrees (scalar CPU only)
+    /// Implicit random formula with fluctuating variable degrees (CPU backends)
     #[arg(long, num_args = 3, value_names = ["K", "ALPHA", "N"])]
     pub feistel: Option<Vec<String>>,
 

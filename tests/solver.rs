@@ -459,3 +459,14 @@ fn feistel_sweeps_match_independent_definition() {
         }
     }
 }
+
+#[test]
+fn dimacs_preserved_order_still_normalizes_duplicates_and_tautologies() {
+    let text = "p cnf 4 3\n4 -1 2 4 0\n4 1 -4 0\n0\n";
+    let preserved = Formula::from_dimacs_preserving_order(text).unwrap();
+    assert_eq!(preserved.clauses(), vec![vec![4, -1, 2], vec![]]);
+    assert_eq!(
+        Formula::from_dimacs(text).unwrap().clauses(),
+        vec![vec![-1, 2, 4], vec![]]
+    );
+}

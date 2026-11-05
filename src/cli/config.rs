@@ -29,6 +29,7 @@ pub struct FeistelSpec {
 #[serde(default, deny_unknown_fields)]
 pub struct FileConfig {
     pub formula: Option<PathBuf>,
+    pub preserve_literal_order: Option<bool>,
     pub generate: Option<GenerateSpec>,
     pub feistel: Option<FeistelSpec>,
     pub seed: Option<u64>,
@@ -56,6 +57,7 @@ pub struct FileConfig {
 #[derive(Clone, Debug, Default)]
 pub struct Resolved {
     pub formula: Option<PathBuf>,
+    pub preserve_literal_order: bool,
     pub generate: Option<(usize, f64, usize)>,
     pub feistel: Option<(usize, f64, usize)>,
     pub feistel_ensemble: Option<FeistelEnsemble>,
@@ -88,6 +90,9 @@ impl FileConfig {
     pub fn apply(&self, resolved: &mut Resolved) {
         if let Some(path) = &self.formula {
             resolved.formula = Some(path.clone());
+        }
+        if let Some(preserve) = self.preserve_literal_order {
+            resolved.preserve_literal_order = preserve;
         }
         if let Some(generate) = &self.generate {
             resolved.generate = Some((generate.k, generate.alpha, generate.n));
