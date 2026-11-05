@@ -311,6 +311,9 @@ class Solver:
         A single scalar CPU or GPU solver uses one host execution thread;
         ``solve_many`` uses this budget for independent jobs. The parallel CPU
         backend also uses it for sweeps within a job when appropriate.
+    compact_cavities : bool
+        Save memory by recomputing cavity terms for observables. Defaults to
+        ``False``. Set to ``True`` only with the ``cpu`` backend.
     profile : str or pathlib.Path or None, default=None
         JSON profile destination written by ``Solver.solve()``. Enables phase
         timers and GPU timestamps; GPU instrumentation changes submission costs.
@@ -368,6 +371,7 @@ class Solver:
         backend=_DEFAULT,
         threads=_DEFAULT,
         profile=_DEFAULT,
+        compact_cavities=False,
     ):
         """Initialize native solver state using the class parameter contract."""
         algorithm, hardware = _configuration(options, execution, _direct_settings(locals()))
@@ -380,7 +384,9 @@ class Solver:
             self.options = options
         if execution is not None:
             self.execution = execution
-        self._native = _core.Solver(formula, _json(algorithm), _json(hardware))
+        self._native = _core.Solver(
+            formula, _json(algorithm), _json(hardware), compact_cavities=compact_cavities,
+        )
         self.cancellation_token = self._native.cancellation_token
 
     @cached_property
@@ -765,6 +771,7 @@ def solve(
     backend=_DEFAULT,
     threads=_DEFAULT,
     profile=_DEFAULT,
+    compact_cavities=False,
 ):
     """Construct a fresh solver and return one terminal result.
 
@@ -827,6 +834,9 @@ def solve(
         A single scalar CPU or GPU solver uses one host execution thread;
         ``solve_many`` uses this budget for independent jobs. The parallel CPU
         backend also uses it for sweeps within a job when appropriate.
+    compact_cavities : bool
+        Save memory by recomputing cavity terms for observables. Defaults to
+        ``False``. Set to ``True`` only with the ``cpu`` backend.
     profile : str or pathlib.Path or None, default=None
         JSON profile destination written by ``Solver.solve()``. Enables phase
         timers and GPU timestamps; GPU instrumentation changes submission costs.
@@ -856,6 +866,7 @@ def solve(
     ('sat', [1, 0])
     """
     return Solver(formula=formula, options=options, execution=execution,
+                  compact_cavities=compact_cavities,
                   **_direct_settings(locals())).solve()
 
 

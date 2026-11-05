@@ -260,7 +260,7 @@ struct PySolver {
 #[pymethods]
 impl PySolver {
     #[new]
-    #[pyo3(signature = (formula, options_json=None, execution_json=None))]
+    #[pyo3(signature = (formula, options_json=None, execution_json=None, *, compact_cavities=false))]
     /// Construct native solver state from serialized configuration.
     ///
     /// Parameters
@@ -271,6 +271,8 @@ impl PySolver {
     ///     Algorithm settings JSON; None selects Rust defaults.
     /// execution_json : str or None, default=None
     ///     Backend/resource settings JSON; None selects scalar CPU defaults.
+    /// compact_cavities : bool, default=False
+    ///     Use compact cavity storage on the scalar CPU.
     ///
     /// Returns
     /// -------
@@ -286,11 +288,17 @@ impl PySolver {
         formula: &PyFormula,
         options_json: Option<&str>,
         execution_json: Option<&str>,
+        compact_cavities: bool,
     ) -> PyResult<Self> {
         let options = options(options_json)?;
         let execution = execution(execution_json)?;
         let formula = formula.inner.clone();
-        py.allow_threads(|| Solver::with_execution(formula, options, execution))
+        let build_solver = if compact_cavities {
+            Solver::with_compact_cavities
+        } else {
+            Solver::with_execution
+        };
+        py.allow_threads(|| build_solver(formula, options, execution))
             .map(|inner| Self { inner })
             .map_err(value_error)
     }
