@@ -1,5 +1,6 @@
 """Native Rust tests, named separately from the existing C++ binding suite."""
 import gc
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 import json
@@ -11,6 +12,34 @@ import pytest
 from pybsp_rust import Formula, Options, Solver, solve
 from pybsp_rust import ExecutionOptions, solve_many
 from pybsp_rust import bsp_rust as core
+
+
+@pytest.mark.parametrize("ensemble,digest", [
+    ("fluctuating", "188449095383d5d1c7773c682c869ca959cc0f967d47cd01fce7f547ba0685cb"),
+    ("partitioned", "968f087b3bb47ddee4d6359aaf4536c7759fff6b19100eba2b54a154a530594b"),
+])
+def test_feistel_matches_cli_and_solves(ensemble, digest):
+    f = Formula.feistel(3, 2.0, 8, seed=7, ensemble=ensemble)
+    assert hashlib.sha256(f.to_dimacs().encode()).hexdigest() == digest
+    assert f.topology["ensemble"] == ensemble
+    assert f.topology["generator"] == f"{ensemble}-feistel-v1"
+    assert (f.n, f.m, f.edges, f.topology["seed"]) == (8, 16, 48, 7)
+    assert f.to_dimacs() == Formula.feistel(3, 2.0, 8, seed=7, ensemble=ensemble).to_dimacs()
+    for backend in ("cpu", "cpu-parallel"):
+        result = solve(formula=f, seed=7, backend=backend, threads=2)
+        assert result.status == "sat"
+        assert f.is_satisfied(result.assignment)
+    with pytest.raises(ValueError, match="Feistel formulas require"):
+        Solver(formula=f, backend="metal")
+
+
+def test_feistel_validation_and_empty_formula():
+    assert Formula([[1]]).topology is None
+    assert Formula.feistel(3, 0, 8).m == 0
+    for kwargs in (dict(k=0), dict(alpha=-1), dict(n=2),
+                   dict(ensemble="unknown"), dict(alpha=0, ensemble="partitioned")):
+        with pytest.raises(ValueError):
+            Formula.feistel(**({"k": 3, "alpha": 2, "n": 8} | kwargs))
 
 
 def test_defaults_match_rust_and_reject_invalid_inputs():

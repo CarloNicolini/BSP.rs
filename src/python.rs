@@ -3,6 +3,7 @@ use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
     prelude::*,
+    types::PyDict,
 };
 
 fn value_error(e: impl std::fmt::Display) -> PyErr {
@@ -144,6 +145,92 @@ impl PyFormula {
         py.allow_threads(|| Formula::random(k, alpha, n, seed))
             .map(|inner| Self { inner })
             .map_err(value_error)
+    }
+    #[staticmethod]
+    #[pyo3(signature = (k, alpha, n, seed=1, ensemble="fluctuating"))]
+    /// Construct an experimental implicit Feistel k-SAT formula.
+    ///
+    /// Parameters
+    /// ----------
+    /// k : int
+    ///     Clause width, between 1 and min(n, 64).
+    /// alpha : float
+    ///     Clause density; the clause count is floor(alpha * n). Fluctuating
+    ///     accepts zero; partitioned requires at least one clause.
+    /// n : int
+    ///     Variable count, at most i32::MAX.
+    /// seed : int, default=1
+    ///     Unsigned 64-bit generation seed, independent of the solver seed.
+    /// ensemble : {'fluctuating', 'partitioned'}, default='fluctuating'
+    ///     Fluctuating targets random k-SAT; partitioned uses balanced degrees
+    ///     and fixed variable groups, producing a different ensemble.
+    ///
+    /// Returns
+    /// -------
+    /// Formula
+    ///     Implicit topology supported by CPU and CPU-parallel solvers.
+    ///
+    /// Raises
+    /// ------
+    /// ValueError
+    ///     If the ensemble or formula parameters are invalid.
+    /// OverflowError
+    ///     If an integer exceeds the native range.
+    ///
+    /// Notes
+    /// -----
+    /// Construction releases the GIL. Fluctuating scans clauses for repairs.
+    /// Solver state still scales with the instance and has u32 capacity limits.
+    /// Accessing clauses or DIMACS materializes the output.
+    fn feistel(
+        py: Python<'_>,
+        k: usize,
+        alpha: f64,
+        n: usize,
+        seed: u64,
+        ensemble: &str,
+    ) -> PyResult<Self> {
+        let generate = match ensemble {
+            "fluctuating" => Formula::feistel_fluctuating,
+            "partitioned" => Formula::feistel,
+            _ => {
+                return Err(value_error(
+                    "ensemble must be 'fluctuating' or 'partitioned'",
+                ))
+            }
+        };
+        py.allow_threads(|| generate(k, alpha, n, seed))
+            .map(|inner| Self { inner })
+            .map_err(value_error)
+    }
+    #[getter]
+    /// Feistel generator metadata, or None for an explicit formula.
+    ///
+    /// The dictionary contains generator, ensemble, k, n, m, edges, seed,
+    /// repaired_clauses and topology_bytes. The byte count excludes allocator
+    /// overhead and solver state.
+    fn topology<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyDict>>> {
+        let Some(t) = self.inner.feistel_topology() else {
+            return Ok(None);
+        };
+        let info = PyDict::new(py);
+        info.set_item("generator", t.version())?;
+        info.set_item(
+            "ensemble",
+            if t.version() == crate::FeistelTopology::FLUCTUATING_VERSION {
+                "fluctuating"
+            } else {
+                "partitioned"
+            },
+        )?;
+        info.set_item("k", t.k())?;
+        info.set_item("n", t.n())?;
+        info.set_item("m", t.m())?;
+        info.set_item("edges", t.edges())?;
+        info.set_item("seed", t.seed())?;
+        info.set_item("repaired_clauses", t.repair_count())?;
+        info.set_item("topology_bytes", self.inner.topology_bytes())?;
+        Ok(Some(info))
     }
     #[getter]
     /// Declared number of variables, including unused ones.

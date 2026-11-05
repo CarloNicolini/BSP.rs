@@ -5,6 +5,10 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Expose both implicit Feistel ensembles and their topology metadata in the
+  Python `Formula` API. This is compatible new functionality; a future 0.x
+  release containing it requires a minor version increment.
+
 ## [0.5.0]
 
 - Add experimental CPU and CPU-parallel `--feistel K ALPHA N` and configuration

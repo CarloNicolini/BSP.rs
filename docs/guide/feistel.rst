@@ -34,6 +34,23 @@ partitioned constructor. ``Formula::feistel_topology()`` exposes the descriptor.
 Calling ``clauses()``, ``to_dimacs()``, or ``Solver::residual_formula()``
 materializes the requested output.
 
+Python uses the same constructors and generation seed as the CLI::
+
+    from pybsp_rust import Formula, solve
+
+    formula = Formula.feistel(k=3, alpha=4.0, n=100, seed=7)
+    result = solve(formula=formula, seed=7, backend="cpu")
+    print(formula.topology["generator"], result.status)
+    balanced = Formula.feistel(3, 4.0, 100, seed=7, ensemble="partitioned")
+
+The generation seed and solver seed are independent. ``formula.topology``
+reports the generator version, ensemble, dimensions, seed, repaired clauses,
+and owned topology bytes; it is ``None`` for explicit formulas. Python supports
+``cpu`` and ``cpu-parallel`` for these formulas; GPU backends reject them.
+Accessing ``formula.clauses`` or ``formula.to_dimacs()`` materializes output.
+The fluctuating constructor scans the clauses for repairs before solver capacity
+is checked, so avoid constructing instances beyond the solver limits below.
+
 Fluctuating degrees
 -------------------
 
