@@ -150,6 +150,13 @@ The same budget controls independent jobs in ``solve_many``. GPU jobs can be
 further limited by device memory. ``profile`` enables instrumentation and writes
 a JSON file from ``solve()``; batch profiling is rejected to avoid path races.
 
+On the scalar CPU, ``--compact-cavities`` (or ``compact_cavities = true``
+in a TOML run file) omits an eight-byte buffer per literal occurrence.
+Observable calculations then recompute the cavity terms and temporarily use
+one eight-byte product per active clause. Use this option when memory is
+the limiting resource and the extra computation is acceptable. Rust callers
+can select it with ``Solver::with_compact_cavities``.
+
 Seed and integer fields reject negative or oversized native values. All floating
 parameters must be finite. Probability and tolerance ranges differ as shown
 above; in particular, epsilon cannot be zero, and damping cannot be one.

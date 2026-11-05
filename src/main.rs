@@ -70,6 +70,9 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
     if let Some(value) = cli.timeout {
         resolved.options.timeout_seconds = Some(value);
     }
+    if cli.compact_cavities {
+        resolved.compact_cavities = true;
+    }
     if let Some(value) = cli.backend {
         resolved.execution.backend = value.into();
     }
@@ -111,6 +114,7 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         feistel_ensemble,
         options,
         execution,
+        compact_cavities,
         sweeps,
         messages,
         dump_messages,
@@ -119,6 +123,9 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         progress,
     } = resolved;
     options.validate()?;
+    if compact_cavities && execution.backend != bsp_rust::Backend::Cpu {
+        return Err("--compact-cavities requires --backend cpu".into());
+    }
     if preserve_literal_order && source.is_none() {
         return Err("--preserve-literal-order requires a DIMACS input".into());
     }
@@ -207,7 +214,12 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
             "topology_bytes": formula.topology_bytes()
         })
     });
-    let mut solver = Solver::with_execution(formula.clone(), options.clone(), execution.clone())?;
+    let build_solver = if compact_cavities {
+        Solver::with_compact_cavities
+    } else {
+        Solver::with_execution
+    };
+    let mut solver = build_solver(formula.clone(), options.clone(), execution.clone())?;
     let watched = clock.clone();
     solver.on_walksat(Arc::new(move || watched.enter(WALKSAT)));
     clock.enter(BSP);

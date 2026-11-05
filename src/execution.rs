@@ -254,6 +254,29 @@ impl Solver {
         options: Options,
         execution: ExecutionOptions,
     ) -> Result<Self> {
+        Self::with_cavity_storage(formula, options, execution, false)
+    }
+
+    /// Use less scalar CPU memory by recomputing cavity terms for observables.
+    pub fn with_compact_cavities(
+        formula: Formula,
+        options: Options,
+        execution: ExecutionOptions,
+    ) -> Result<Self> {
+        if execution.backend != Backend::Cpu {
+            return Err(Error(
+                "compact cavities require the scalar CPU backend".into(),
+            ));
+        }
+        Self::with_cavity_storage(formula, options, execution, true)
+    }
+
+    fn with_cavity_storage(
+        formula: Formula,
+        options: Options,
+        execution: ExecutionOptions,
+        compact: bool,
+    ) -> Result<Self> {
         if formula.feistel_topology().is_some()
             && !matches!(execution.backend, Backend::Cpu | Backend::CpuParallel)
         {
@@ -262,7 +285,7 @@ impl Solver {
             ));
         }
         let setup = execution.profile.as_ref().map(|_| Instant::now());
-        let mut s = Self::new(formula, options)?;
+        let mut s = Self::new_with_cavities(formula, options, compact)?;
         s.execution = Execution::new(execution)?;
         match s.execution.options.backend {
             Backend::Cpu => (),

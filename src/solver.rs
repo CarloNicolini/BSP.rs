@@ -254,6 +254,8 @@ struct ScalarCavity<'a> {
     plus: &'a mut [f64],
     minus: &'a mut [f64],
     active: &'a BitSet,
+    all_active: bool,
+    prefix: Vec<f64>,
 }
 
 impl ScalarCavity<'_> {
@@ -265,6 +267,42 @@ impl ScalarCavity<'_> {
         edges: impl Fn(usize) -> I,
         clause_of: impl Fn(usize) -> usize,
     ) -> std::result::Result<(), Status> {
+        if self.q.is_empty() {
+            // Only active/free slots may overwrite frozen-message storage.
+            let mut products = [1.0; 2];
+            let mut offsets = [0; 3];
+            self.prefix.clear();
+            for (sign, product) in products.iter_mut().enumerate() {
+                for e in edges(sign) {
+                    self.prefix.push(*product);
+                    *product *= 1.0 - self.eta[e];
+                }
+                offsets[sign + 1] = self.prefix.len();
+            }
+            self.plus[v] = products[0];
+            self.minus[v] = products[1];
+            for sign in 0..2 {
+                let opposite = products[1 - sign];
+                let prefixes = &self.prefix[offsets[sign]..offsets[sign + 1]];
+                let mut suffix = 1.0;
+                for (e, &prefix) in edges(sign).rev().zip(prefixes.iter().rev()) {
+                    let same = prefix * suffix;
+                    suffix *= 1.0 - self.eta[e];
+                    let norm = opposite + (1.0 - opposite) * same;
+                    if norm <= 0.0 || !norm.is_finite() {
+                        return Err(Status::NumericalFailure);
+                    }
+                    if self.all_active || self.active.contains(clause_of(e)) {
+                        self.saved_eta[e] = if store_norms {
+                            norm
+                        } else {
+                            ((1.0 - opposite) * same / norm).clamp(0.0, 1.0)
+                        };
+                    }
+                }
+            }
+            return Ok(());
+        }
         let mut products = [1.0; 2];
         for (sign, product) in products.iter_mut().enumerate() {
             for e in edges(sign) {
@@ -298,6 +336,14 @@ impl ScalarCavity<'_> {
 
 impl Solver {
     pub fn new(formula: Formula, options: Options) -> Result<Self> {
+        Self::new_with_cavities(formula, options, false)
+    }
+
+    pub(super) fn new_with_cavities(
+        formula: Formula,
+        options: Options,
+        compact: bool,
+    ) -> Result<Self> {
         let started = Instant::now();
         options.validate()?;
         let f = &formula.0;
@@ -344,7 +390,11 @@ impl Solver {
             degree,
             decisions: DecisionHeap::new(n),
             eta,
-            q: vec![0.0; edges],
+            q: if compact {
+                Vec::new()
+            } else {
+                vec![0.0; edges]
+            },
             plus: vec![1.0; n],
             minus: vec![1.0; n],
             surveys: vec![[0.0, 0.0, 1.0]; n],
@@ -692,6 +742,8 @@ impl Solver {
             plus: &mut self.plus,
             minus: &mut self.minus,
             active: &self.active,
+            all_active: self.active.len() == f.m(),
+            prefix: Vec::new(),
         };
         if let Some(topology) = &f.feistel {
             let mut scratch = Vec::new();
@@ -777,6 +829,11 @@ impl Solver {
     }
     fn scalar_clauses(&mut self) -> std::result::Result<f64, Status> {
         let f = &self.formula.0;
+        let q = if self.q.is_empty() {
+            &self.saved_eta
+        } else {
+            &self.q
+        };
         let damping = self.options.damping;
         let mut residual: f64 = 0.0;
         for c in self.active.ones() {
@@ -786,7 +843,7 @@ impl Solver {
             let first_word = f.mask_offset(c);
             if f.offset(c + 1) - start == 3 && self.masks.get(first_word) == 7 {
                 residual = residual.max(update_full_triple(
-                    &self.q[start..start + 3],
+                    &q[start..start + 3],
                     &mut self.eta[start..start + 3],
                     damping,
                 ));
@@ -800,7 +857,7 @@ impl Solver {
                 }) {
                     self.clause_edges.push(e);
                     self.prefix.push(product);
-                    product *= self.q[e];
+                    product *= q[e];
                 }
             }
             if self.clause_edges.is_empty() {
@@ -809,7 +866,7 @@ impl Solver {
             let mut suffix = 1.0;
             for (&e, &prefix) in self.clause_edges.iter().zip(&self.prefix).rev() {
                 let raw = prefix * suffix;
-                suffix *= self.q[e];
+                suffix *= q[e];
                 let raw = if raw < 1e-16 { 0.0 } else { raw };
                 residual = residual.max((raw - self.eta[e]).abs());
                 self.eta[e] = raw + (self.eta[e] - raw) * damping;
@@ -827,10 +884,38 @@ impl Solver {
         })
     }
     fn scalar_observables(&mut self) -> std::result::Result<(f64, bool), Status> {
+        if !self.q.is_empty() {
+            self.cavities(true)?;
+            return self.scalar_observables_from_cavities();
+        }
+        self.cavities(false)?;
+        let f = &self.formula.0;
+        let mut products = Vec::with_capacity(self.active.len());
+        for c in self.active.ones() {
+            let mut product = 1.0;
+            let start = f.offset(c);
+            let first_word = f.mask_offset(c);
+            for w in first_word..f.mask_offset(c + 1) {
+                for e in (Ones {
+                    word: self.masks.get(w),
+                    base: start + 64 * (w - first_word),
+                }) {
+                    product *= self.saved_eta[e];
+                }
+            }
+            products.push(product);
+        }
+        // Recompute norms and accumulate in the original clause/edge order.
         self.cavities(true)?;
-        self.scalar_observables_from_cavities()
+        self.scalar_observables_with_products(Some(&products))
     }
     fn scalar_observables_from_cavities(&mut self) -> std::result::Result<(f64, bool), Status> {
+        self.scalar_observables_with_products(None)
+    }
+    fn scalar_observables_with_products(
+        &mut self,
+        products: Option<&[f64]>,
+    ) -> std::result::Result<(f64, bool), Status> {
         let f = &self.formula.0;
         let mut variable_term = 0.0;
         let mut paramagnetic = true;
@@ -852,7 +937,7 @@ impl Solver {
             }
         }
         let mut clause_term = 0.0;
-        for c in self.active.ones() {
+        for (i, c) in self.active.ones().enumerate() {
             let mut product = 1.0;
             let start = f.offset(c);
             let first_word = f.mask_offset(c);
@@ -861,9 +946,14 @@ impl Solver {
                     word: self.masks.get(w),
                     base: start + 64 * (w - first_word),
                 }) {
-                    product *= self.q[e];
+                    if products.is_none() {
+                        product *= self.q[e];
+                    }
                     clause_term += self.saved_eta[e].ln();
                 }
+            }
+            if let Some(products) = products {
+                product = products[i];
             }
             if product >= 1.0 {
                 return Err(Status::NumericalFailure);
@@ -1090,6 +1180,42 @@ impl Solver {
 #[cfg(test)]
 mod index_tests {
     use super::*;
+    #[test]
+    fn compact_cavities_preserve_dense_sweeps_observables_and_frozen_messages() {
+        for formula in [
+            Formula::random(3, 4.0, 100, 7).unwrap(),
+            Formula::feistel_fluctuating(3, 4.0, 100, 7).unwrap(),
+            Formula::random(65, 0.4, 100, 7).unwrap(),
+        ] {
+            let options = Options {
+                damping: 0.2,
+                ..Options::default()
+            };
+            let mut compact =
+                Solver::new_with_cavities(formula.clone(), options.clone(), true).unwrap();
+            let mut dense = Solver::new(formula, options).unwrap();
+            for phase in 0..3 {
+                for _ in 0..4 {
+                    assert_eq!(compact.sweep(), dense.sweep());
+                    assert_eq!(compact.messages(), dense.messages());
+                }
+                assert_eq!(compact.observables(), dense.observables());
+                assert_eq!(compact.surveys(), dense.surveys());
+                for solver in [&mut compact, &mut dense] {
+                    if phase == 0 {
+                        solver.fix(0, true).unwrap();
+                        solver.fix(1, false).unwrap();
+                    } else if phase == 1 {
+                        solver.release(0).unwrap();
+                        solver.release(1).unwrap();
+                    }
+                }
+                assert_eq!(compact.messages(), dense.messages());
+                assert_eq!(compact.q.capacity(), 0);
+            }
+        }
+    }
+
     fn check_indexes(s: &Solver) {
         let f = &s.formula.0;
         let mut degree = vec![0u32; f.n];

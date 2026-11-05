@@ -121,6 +121,10 @@ pub struct Cli {
     #[arg(long, value_name = "SECONDS")]
     pub timeout: Option<f64>,
 
+    /// Trade extra observable computation for lower scalar CPU memory
+    #[arg(long)]
+    pub compact_cavities: bool,
+
     /// Execution backend
     #[arg(long, value_name = "NAME", value_enum)]
     pub backend: Option<BackendArg>,

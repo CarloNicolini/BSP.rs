@@ -419,6 +419,10 @@ fn feistel_dimacs_replays_the_same_seed_on_scalar_cpu() {
         implicit.extend(common);
         implicit.extend(["--output", "implicit.json"]);
         let a = run(&dir, &implicit);
+        let mut compact = implicit.clone();
+        compact.pop();
+        compact.extend(["compact.json", "--compact-cavities"]);
+        assert_eq!(run(&dir, &compact).status.code(), a.status.code());
         let mut explicit = vec!["replay.cnf", "--preserve-literal-order", "--seed", seed];
         explicit.extend(common);
         explicit.extend(["--output", "explicit.json"]);
@@ -429,7 +433,11 @@ fn feistel_dimacs_replays_the_same_seed_on_scalar_cpu() {
             serde_json::from_str::<serde_json::Value>(&fs::read_to_string(dir.join(name)).unwrap())
                 .unwrap()
         };
-        let (a, b) = (load("implicit.json"), load("explicit.json"));
+        let (a, b, compact) = (
+            load("implicit.json"),
+            load("explicit.json"),
+            load("compact.json"),
+        );
         for key in [
             "status",
             "assignment",
@@ -440,6 +448,7 @@ fn feistel_dimacs_replays_the_same_seed_on_scalar_cpu() {
             "unit_assignments",
         ] {
             assert_eq!(a[key], b[key], "{seed}: {key}");
+            assert_eq!(a[key], compact[key], "{seed}: {key}");
         }
         if let Some(assignment) = a["assignment"].as_array() {
             let x: Vec<_> = assignment
