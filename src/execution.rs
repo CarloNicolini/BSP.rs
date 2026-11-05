@@ -252,6 +252,11 @@ impl Solver {
         options: Options,
         execution: ExecutionOptions,
     ) -> Result<Self> {
+        if formula.feistel_topology().is_some() && execution.backend != Backend::Cpu {
+            return Err(Error(
+                "Feistel formulas currently require --backend cpu".into(),
+            ));
+        }
         let setup = execution.profile.as_ref().map(|_| Instant::now());
         let mut s = Self::new(formula, options)?;
         s.execution = Execution::new(execution)?;

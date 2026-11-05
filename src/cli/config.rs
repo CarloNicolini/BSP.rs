@@ -1,3 +1,4 @@
+use super::args::FeistelEnsemble;
 use bsp_rust::{Backend, ExecutionOptions, Options};
 use serde::Deserialize;
 use std::fs;
@@ -11,6 +12,15 @@ pub struct GenerateSpec {
     pub n: usize,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeistelSpec {
+    pub k: usize,
+    pub alpha: f64,
+    pub n: usize,
+    pub ensemble: Option<FeistelEnsemble>,
+}
+
 /// Values loaded from a TOML, YAML, or JSON run file.
 ///
 /// Absent fields leave the previous layer unchanged. Field names match the
@@ -20,6 +30,7 @@ pub struct GenerateSpec {
 pub struct FileConfig {
     pub formula: Option<PathBuf>,
     pub generate: Option<GenerateSpec>,
+    pub feistel: Option<FeistelSpec>,
     pub seed: Option<u64>,
     pub backtrack_ratio: Option<f64>,
     pub batch_fraction: Option<f64>,
@@ -46,6 +57,8 @@ pub struct FileConfig {
 pub struct Resolved {
     pub formula: Option<PathBuf>,
     pub generate: Option<(usize, f64, usize)>,
+    pub feistel: Option<(usize, f64, usize)>,
+    pub feistel_ensemble: Option<FeistelEnsemble>,
     pub options: Options,
     pub execution: ExecutionOptions,
     pub sweeps: Option<usize>,
@@ -78,6 +91,10 @@ impl FileConfig {
         }
         if let Some(generate) = &self.generate {
             resolved.generate = Some((generate.k, generate.alpha, generate.n));
+        }
+        if let Some(feistel) = &self.feistel {
+            resolved.feistel = Some((feistel.k, feistel.alpha, feistel.n));
+            resolved.feistel_ensemble = feistel.ensemble;
         }
         if let Some(value) = self.seed {
             resolved.options.seed = value;

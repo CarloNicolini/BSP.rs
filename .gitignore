@@ -11,3 +11,10 @@ __pycache__/
 *.pyd
 .DS_Store
 .pytest_cache/
+
+# Local Feistel benchmarks, reports, and probes
+/bench/FEISTEL*.md
+/bench/results/feistel-*.json
+/tools/feistel_audit.py
+/examples/feistel_audit.rs
+/examples/feistel_ensemble*.rs

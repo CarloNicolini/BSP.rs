@@ -4,7 +4,9 @@
 
 mod bitset;
 mod decision_heap;
+mod feistel;
 mod formula;
+pub use feistel::FeistelTopology;
 #[cfg(feature = "python")]
 mod python;
 mod solver;

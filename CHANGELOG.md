@@ -5,6 +5,15 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Add experimental scalar CPU `--feistel K ALPHA N` and configuration
+  `feistel`. The default fluctuating ensemble targets ordinary random K-SAT.
+  `--feistel-ensemble partitioned` selects the different fixed-group ensemble
+  and emits a warning. Rust exposes both through `Formula::feistel_fluctuating`
+  and `Formula::feistel`, with versioned u64 topology queries.
+- Add streaming `Formula::write_dimacs` and Feistel-only CLI topology metadata.
+  Solver state remains linear and retains u32 capacity limits. These additive
+  interfaces belong in the next minor release; no release bump is made here.
+
 - Breaking: the default WalkSAT budget now scales with residual variables and
   restarts. `max_flips=0` selects automatic mode instead of forbidding flips;
   positive explicit budgets retain their meaning.
