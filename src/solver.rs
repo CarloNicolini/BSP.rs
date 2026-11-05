@@ -203,10 +203,15 @@ impl Solver {
         let f = &formula.0;
         let n = f.n;
         let m = formula.m();
-        let edges = f.literals.len();
+        let edges = f.edges();
+        if edges >= u32::MAX as usize || m >= u32::MAX as usize {
+            return Err(Error("solver exceeds u32 edge/clause capacity; Feistel topology supports larger descriptors only".into()));
+        }
         let mut rng = SmallRng::seed_from_u64(options.seed);
         let eta: Vec<_> = (0..edges).map(|_| rng.random::<f64>()).collect();
-        let free_count: Vec<_> = f.offsets.windows(2).map(|w| w[1] - w[0]).collect();
+        let free_count: Vec<_> = (0..m)
+            .map(|c| (f.offset(c + 1) - f.offset(c)) as u32)
+            .collect();
         let unit_queue = free_count
             .iter()
             .enumerate()
@@ -228,17 +233,13 @@ impl Solver {
                 }
             }
         };
-        let free_xor = f
-            .offsets
-            .windows(2)
-            .map(|w| xor_below(w[0]) ^ xor_below(w[1]))
+        let free_xor = (0..m)
+            .map(|c| xor_below(f.offset(c) as u32) ^ xor_below(f.offset(c + 1) as u32))
             .collect();
-        let degree = (0..n)
-            .map(|v| f.var_offsets[2 * v + 2] - f.var_offsets[2 * v])
-            .collect();
+        let degree = (0..n).map(|v| f.degree(v)).collect();
         Ok(Self {
             execution: Execution::new(ExecutionOptions::default())?,
-            masks: f.masks.clone(),
+            masks: f.initial_masks(),
             saved_eta: eta.clone(),
             formula,
             options,
@@ -330,8 +331,8 @@ impl Solver {
         for (e, &value) in values.iter().enumerate() {
             self.saved_eta[e] = value;
             let f = &self.formula.0;
-            self.eta[e] = if self.active.contains(f.edge_clause[e] as usize)
-                && self.assignment[(f.literals[e] >> 1) as usize] < 0
+            self.eta[e] = if self.active.contains(f.edge_clause(e))
+                && self.assignment[(f.literal(e) >> 1) as usize] < 0
             {
                 value
             } else {
@@ -410,12 +411,11 @@ impl Solver {
             [0.0, 1.0, 0.0]
         };
         let f = &self.formula.0;
-        for p in f.var_offsets[2 * v] as usize..f.var_offsets[2 * v + 2] as usize {
-            let e = f.var_edges[p] as usize;
-            let c = f.edge_clause[e] as usize;
-            let start = f.offsets[c] as usize;
+        for e in f.variable_edges(v) {
+            let c = f.edge_clause(e);
+            let start = f.offset(c);
             let local = e - start;
-            self.masks[f.mask_offsets[c] as usize + local / 64] &= !(1u64 << (local % 64));
+            self.masks[f.mask_offset(c) + local / 64] &= !(1u64 << (local % 64));
             self.free_count[c] -= 1;
             self.free_xor[c] ^= e as u32;
             if self.active.contains(c) {
@@ -430,7 +430,7 @@ impl Solver {
                 self.saved_eta[e] = self.eta[e];
                 self.eta[e] = 0.0;
             }
-            if value == (1 - (f.literals[e] & 1)) as i8 {
+            if value == (1 - (f.literal(e) & 1)) as i8 {
                 self.true_count[c] += 1;
                 if self.true_count[c] == 1 {
                     self.active.set(c, false);
@@ -442,12 +442,12 @@ impl Solver {
                     if let Some(cuda) = &mut self.execution.cuda {
                         cuda.set_active(c, false);
                     }
-                    for w in f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize {
+                    for w in f.mask_offset(c)..f.mask_offset(c + 1) {
                         for other in (Ones {
                             word: self.masks[w],
-                            base: start + 64 * (w - f.mask_offsets[c] as usize),
+                            base: start + 64 * (w - f.mask_offset(c)),
                         }) {
-                            self.degree[(f.literals[other] >> 1) as usize] -= 1;
+                            self.degree[(f.literal(other) >> 1) as usize] -= 1;
                             #[cfg(all(feature = "metal", target_os = "macos"))]
                             if let Some(gpu) = &mut self.execution.gpu {
                                 gpu.freeze(other);
@@ -480,15 +480,14 @@ impl Solver {
         self.gpu_assignment(v, -1);
         self.free.set(v, true);
         let f = &self.formula.0;
-        for p in f.var_offsets[2 * v] as usize..f.var_offsets[2 * v + 2] as usize {
-            let e = f.var_edges[p] as usize;
-            let c = f.edge_clause[e] as usize;
-            let start = f.offsets[c] as usize;
+        for e in f.variable_edges(v) {
+            let c = f.edge_clause(e);
+            let start = f.offset(c);
             let local = e - start;
-            self.masks[f.mask_offsets[c] as usize + local / 64] |= 1u64 << (local % 64);
+            self.masks[f.mask_offset(c) + local / 64] |= 1u64 << (local % 64);
             self.free_count[c] += 1;
             self.free_xor[c] ^= e as u32;
-            if value == (1 - (f.literals[e] & 1)) as i8 {
+            if value == (1 - (f.literal(e) & 1)) as i8 {
                 self.true_count[c] -= 1;
             }
             if self.true_count[c] == 0 {
@@ -513,12 +512,12 @@ impl Solver {
                     if let Some(cuda) = &mut self.execution.cuda {
                         cuda.set_active(c, true);
                     }
-                    for w in f.mask_offsets[c] as usize..f.mask_offsets[c + 1] as usize {
+                    for w in f.mask_offset(c)..f.mask_offset(c + 1) {
                         for other in (Ones {
                             word: self.masks[w],
-                            base: start + 64 * (w - f.mask_offsets[c] as usize),
+                            base: start + 64 * (w - f.mask_offset(c)),
                         }) {
-                            self.degree[(f.literals[other] >> 1) as usize] += 1;
+                            self.degree[(f.literal(other) >> 1) as usize] += 1;
                             #[cfg(all(feature = "metal", target_os = "macos"))]
                             if let Some(gpu) = &mut self.execution.gpu {
                                 gpu.restore(other);
@@ -562,7 +561,7 @@ impl Solver {
             }
             let f = &self.formula.0;
             let e = self.free_xor[c] as usize;
-            let lit = f.literals[e];
+            let lit = f.literal(e);
             self.cert[(lit >> 1) as usize] = 1.0;
             self.set_fixed((lit >> 1) as usize, (1 - (lit & 1)) as i8, true);
         }
@@ -574,14 +573,44 @@ impl Solver {
         self.timed("cavities", |s| s.scalar_cavities(store_norms))
     }
     fn scalar_cavities(&mut self, store_norms: bool) -> std::result::Result<(), Status> {
-        let f = &self.formula.0;
+        // Choose traversal once per sweep so the explicit path still walks
+        // contiguous slices without checking the topology kind at each edge.
+        let formula = self.formula.clone();
+        let f = &formula.0;
+        if let Some(topology) = &f.feistel {
+            self.scalar_cavities_with(
+                store_norms,
+                |v, sign| {
+                    topology
+                        .variable_edges(v as u64)
+                        .filter(move |&e| usize::from(topology.negative(e)) == sign)
+                        .map(|e| e as usize)
+                },
+                |e| e / topology.k() as usize,
+            )
+        } else {
+            self.scalar_cavities_with(
+                store_norms,
+                |v, sign| {
+                    let group = 2 * v + sign;
+                    f.var_edges[f.var_offsets[group] as usize..f.var_offsets[group + 1] as usize]
+                        .iter()
+                        .map(|&e| e as usize)
+                },
+                |e| f.edge_clause[e] as usize,
+            )
+        }
+    }
+    fn scalar_cavities_with<I: DoubleEndedIterator<Item = usize>>(
+        &mut self,
+        store_norms: bool,
+        edges: impl Fn(usize, usize) -> I,
+        clause_of: impl Fn(usize) -> usize,
+    ) -> std::result::Result<(), Status> {
         for v in self.free.ones() {
             let mut products = [1.0; 2];
             for (sign, product) in products.iter_mut().enumerate() {
-                let g = 2 * v + sign;
-                for &edge in &f.var_edges[f.var_offsets[g] as usize..f.var_offsets[g + 1] as usize]
-                {
-                    let e = edge as usize;
+                for e in edges(v, sign) {
                     self.q[e] = *product;
                     *product *= 1.0 - self.eta[e];
                 }
@@ -589,14 +618,9 @@ impl Solver {
             self.plus[v] = products[0];
             self.minus[v] = products[1];
             for sign in 0..2 {
-                let g = 2 * v + sign;
                 let opposite = products[1 - sign];
                 let mut suffix = 1.0;
-                for &edge in f.var_edges[f.var_offsets[g] as usize..f.var_offsets[g + 1] as usize]
-                    .iter()
-                    .rev()
-                {
-                    let e = edge as usize;
+                for e in edges(v, sign).rev() {
                     let same = self.q[e] * suffix;
                     suffix *= 1.0 - self.eta[e];
                     let norm = opposite + (1.0 - opposite) * same;
@@ -604,7 +628,7 @@ impl Solver {
                         return Err(Status::NumericalFailure);
                     }
                     self.q[e] = ((1.0 - opposite) * same / norm).clamp(0.0, 1.0);
-                    if store_norms && self.active.contains(f.edge_clause[e] as usize) {
+                    if store_norms && self.active.contains(clause_of(e)) {
                         // Active/free incidences do not need a frozen value:
                         // freeze saves their current eta before any restoration.
                         self.saved_eta[e] = norm;
@@ -672,10 +696,10 @@ impl Solver {
             }
             self.clause_edges.clear();
             self.prefix.clear();
-            let start = f.offsets[c] as usize;
-            let first_word = f.mask_offsets[c] as usize;
+            let start = f.offset(c);
+            let first_word = f.mask_offset(c);
             let mut product = 1.0;
-            for w in first_word..f.mask_offsets[c + 1] as usize {
+            for w in first_word..f.mask_offset(c + 1) {
                 for e in (Ones {
                     word: self.masks[w],
                     base: start + 64 * (w - first_word),
@@ -730,9 +754,9 @@ impl Solver {
         let mut clause_term = 0.0;
         for c in self.active.ones() {
             let mut product = 1.0;
-            let start = f.offsets[c] as usize;
-            let first_word = f.mask_offsets[c] as usize;
-            for w in first_word..f.mask_offsets[c + 1] as usize {
+            let start = f.offset(c);
+            let first_word = f.mask_offset(c);
+            for w in first_word..f.mask_offset(c + 1) {
                 for e in (Ones {
                     word: self.masks[w],
                     base: start + 64 * (w - first_word),
@@ -939,9 +963,9 @@ impl Solver {
             .active
             .ones()
             .map(|c| {
-                (f.offsets[c] as usize..f.offsets[c + 1] as usize)
+                (f.offset(c)..f.offset(c + 1))
                     .filter_map(|e| {
-                        let l = f.literals[e];
+                        let l = f.literal(e);
                         let v = (l >> 1) as usize;
                         if self.assignment[v] >= 0 {
                             None
@@ -973,13 +997,13 @@ mod index_tests {
             let mut free = 0;
             let mut true_count = 0;
             let mut free_xor = 0;
-            for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
-                let lit = f.literals[e];
+            for e in f.offset(c)..f.offset(c + 1) {
+                let lit = f.literal(e);
                 let v = (lit >> 1) as usize;
                 let is_free = s.assignment[v] < 0;
-                let local = e - f.offsets[c] as usize;
+                let local = e - f.offset(c);
                 let mask_free =
-                    s.masks[f.mask_offsets[c] as usize + local / 64] & (1u64 << (local % 64)) != 0;
+                    s.masks[f.mask_offset(c) + local / 64] & (1u64 << (local % 64)) != 0;
                 assert_eq!(is_free, mask_free);
                 if is_free {
                     free += 1;
@@ -993,8 +1017,8 @@ mod index_tests {
             assert_eq!(s.true_count[c], true_count);
             assert_eq!(s.active.contains(c), true_count == 0);
             if true_count == 0 {
-                for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
-                    let v = (f.literals[e] >> 1) as usize;
+                for e in f.offset(c)..f.offset(c + 1) {
+                    let v = (f.literal(e) >> 1) as usize;
                     if s.assignment[v] < 0 {
                         degree[v] += 1;
                     }

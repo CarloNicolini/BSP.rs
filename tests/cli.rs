@@ -215,3 +215,186 @@ fn cli_flags_override_yaml_config() {
     assert_eq!(result["seed"], 9);
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn feistel_config_export_messages_and_conflicts() {
+    let dir = temp_dir("feistel");
+    fs::write(
+        dir.join("run.toml"),
+        "seed = 7\nsweeps = 2\ndump_messages = true\n[feistel]\nk = 3\nalpha = 4.0\nn = 100\n",
+    )
+    .unwrap();
+    let output = run(&dir, &["--config", "run.toml", "--output", "result.json"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    assert_eq!(summary(&output)["output"], "result.json");
+    let report: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join("result.json")).unwrap()).unwrap();
+    assert_eq!(report["topology"]["generator"], "fluctuating-feistel-v1");
+    assert_eq!(report["topology"]["ensemble"], "random-k-sat-target");
+    assert!(report["topology"]["repaired_clauses"].is_u64());
+
+    let partitioned = run(
+        &dir,
+        &[
+            "--config",
+            "run.toml",
+            "--feistel-ensemble",
+            "partitioned",
+            "--output",
+            "partitioned.json",
+        ],
+    );
+    assert!(partitioned.status.success());
+    let warning = String::from_utf8_lossy(&partitioned.stderr);
+    assert_eq!(warning.lines().count(), 1);
+    assert!(warning.contains("different random k-SAT ensemble from --generate"));
+    assert!(warning.contains("depending on instance size"));
+    let report_partitioned: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join("partitioned.json")).unwrap()).unwrap();
+    assert_eq!(
+        report_partitioned["topology"]["generator"],
+        "partitioned-feistel-v1"
+    );
+    assert_eq!(report_partitioned["topology"]["degree_counts"]["12"], 84);
+
+    fs::write(
+        dir.join("messages.json"),
+        serde_json::to_string(&report["messages"]).unwrap(),
+    )
+    .unwrap();
+    assert!(run(
+        &dir,
+        &[
+            "--feistel",
+            "3",
+            "4",
+            "100",
+            "--seed",
+            "7",
+            "--sweeps",
+            "1",
+            "--messages",
+            "messages.json"
+        ]
+    )
+    .status
+    .success());
+    let export = run(
+        &dir,
+        &[
+            "--feistel",
+            "3",
+            "4",
+            "100",
+            "--seed",
+            "7",
+            "--write-formula",
+            "f.cnf",
+        ],
+    );
+    assert!(export.status.success());
+    assert_eq!(export.stderr, output.stderr);
+    assert!(export.stdout.is_empty());
+    let standard = run(
+        &dir,
+        &[
+            "--generate",
+            "3",
+            "4",
+            "100",
+            "--write-formula",
+            "standard.cnf",
+        ],
+    );
+    assert!(standard.status.success());
+    assert!(standard.stderr.is_empty());
+    let f =
+        bsp_rust::Formula::from_dimacs(&fs::read_to_string(dir.join("f.cnf")).unwrap()).unwrap();
+    assert_eq!(
+        f.clauses(),
+        bsp_rust::Formula::new(
+            100,
+            bsp_rust::Formula::feistel_fluctuating(3, 4.0, 100, 7)
+                .unwrap()
+                .clauses(),
+        )
+        .unwrap()
+        .clauses()
+    );
+    for extra in [
+        vec!["--generate", "3", "4", "100"],
+        vec!["f.cnf"],
+        vec!["--backend", "cpu-parallel"],
+        vec!["--backend", "metal"],
+        vec!["--backend", "cuda"],
+        vec!["--backend", "cuda-f32"],
+    ] {
+        let mut args = vec!["--config", "run.toml"];
+        args.extend(extra);
+        assert_eq!(run(&dir, &args).status.code(), Some(2));
+    }
+    for text in [
+        "feistel: {k: 3, alpha: 4, n: 100}\nsweeps: 1\n",
+        "{\"feistel\":{\"k\":3,\"alpha\":4,\"n\":100},\"sweeps\":1}",
+    ] {
+        let path = if text.starts_with('{') {
+            "run.json"
+        } else {
+            "run.yaml"
+        };
+        fs::write(dir.join(path), text).unwrap();
+        assert!(run(&dir, &["--config", path]).status.success());
+    }
+    assert_eq!(
+        run(&dir, &["--feistel", "3", "4", "1000000000"])
+            .status
+            .code(),
+        Some(2)
+    );
+    fs::write(
+        dir.join("partitioned.toml"),
+        "[feistel]\nk = 3\nalpha = 4.0\nn = 100\nensemble = \"partitioned\"\n",
+    )
+    .unwrap();
+    let export_partitioned = run(
+        &dir,
+        &["--config", "partitioned.toml", "--write-formula", "p.cnf"],
+    );
+    assert!(export_partitioned.status.success());
+    assert_eq!(export_partitioned.stderr, partitioned.stderr);
+    let override_mode = run(
+        &dir,
+        &[
+            "--config",
+            "partitioned.toml",
+            "--feistel-ensemble",
+            "fluctuating",
+            "--write-formula",
+            "f.cnf",
+        ],
+    );
+    assert!(override_mode.status.success());
+    assert!(override_mode.stderr.is_empty());
+    assert_eq!(
+        run(
+            &dir,
+            &[
+                "--generate",
+                "3",
+                "4",
+                "100",
+                "--feistel-ensemble",
+                "partitioned"
+            ]
+        )
+        .status
+        .code(),
+        Some(2)
+    );
+    let _ = fs::remove_dir_all(dir);
+}

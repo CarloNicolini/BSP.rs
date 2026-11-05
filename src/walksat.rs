@@ -40,10 +40,8 @@ impl Solver {
         let mut true_xor = vec![0u32; formula.m()];
         let mut breaks = vec![0u32; f.n];
         let mut unsat = Unsatisfied::new(formula.m());
-        let width = f
-            .offsets
-            .windows(2)
-            .map(|w| (w[1] - w[0]) as usize)
+        let width = (0..formula.m())
+            .map(|c| f.offset(c + 1) - f.offset(c))
             .max()
             .unwrap_or(0);
         let mut choices = Vec::with_capacity(width);
@@ -76,8 +74,8 @@ impl Solver {
             unsat.clauses.clear();
             unsat.positions.fill(u32::MAX);
             for c in self.active.ones() {
-                for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
-                    let lit = f.literals[e];
+                for e in f.offset(c)..f.offset(c + 1) {
+                    let lit = f.literal(e);
                     let v = (lit >> 1) as usize;
                     if values[v] == (1 - (lit & 1)) as i8 {
                         count[c] += 1;
@@ -116,8 +114,8 @@ impl Solver {
                 choices.clear();
                 best.clear();
                 let mut min_break = u32::MAX;
-                for e in f.offsets[c] as usize..f.offsets[c + 1] as usize {
-                    let v = (f.literals[e] >> 1) as usize;
+                for e in f.offset(c)..f.offset(c + 1) {
+                    let v = (f.literal(e) >> 1) as usize;
                     if self.assignment[v] >= 0 {
                         continue;
                     }
@@ -142,13 +140,12 @@ impl Solver {
                 let v = pick[self.rng.random_range(0..pick.len())];
                 let old = values[v];
                 values[v] ^= 1;
-                for p in f.var_offsets[2 * v] as usize..f.var_offsets[2 * v + 2] as usize {
-                    let e = f.var_edges[p] as usize;
-                    let c = f.edge_clause[e] as usize;
+                for e in f.variable_edges(v) {
+                    let c = f.edge_clause(e);
                     if !self.active.contains(c) {
                         continue;
                     }
-                    if old == (1 - (f.literals[e] & 1)) as i8 {
+                    if old == (1 - (f.literal(e) & 1)) as i8 {
                         if count[c] == 1 {
                             breaks[v] -= 1;
                             unsat.insert(c);

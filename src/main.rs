@@ -1,6 +1,6 @@
 mod cli;
 
-use crate::cli::args::Cli;
+use crate::cli::args::{Cli, FeistelEnsemble};
 use crate::cli::config::{FileConfig, Resolved};
 use crate::cli::progress::{PhaseClock, BSP, WALKSAT};
 use bsp_rust::{Formula, Solver, Status};
@@ -12,7 +12,7 @@ use std::{fs, process::ExitCode};
 
 fn parse_generate(values: &[String]) -> Result<(usize, f64, usize), Box<dyn std::error::Error>> {
     if values.len() != 3 {
-        return Err("--generate needs K ALPHA N".into());
+        return Err("formula generation needs K ALPHA N".into());
     }
     Ok((values[0].parse()?, values[1].parse()?, values[2].parse()?))
 }
@@ -30,6 +30,12 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
     }
     if let Some(values) = &cli.generate {
         resolved.generate = Some(parse_generate(values)?);
+    }
+    if let Some(values) = &cli.feistel {
+        resolved.feistel = Some(parse_generate(values)?);
+    }
+    if let Some(ensemble) = cli.feistel_ensemble {
+        resolved.feistel_ensemble = Some(ensemble);
     }
     if let Some(value) = cli.seed {
         resolved.options.seed = value;
@@ -97,6 +103,8 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let Resolved {
         formula: source,
         generate,
+        feistel,
+        feistel_ensemble,
         options,
         execution,
         sweeps,
@@ -107,28 +115,82 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         progress,
     } = resolved;
     options.validate()?;
+    if feistel.is_none() && feistel_ensemble.is_some() {
+        return Err("--feistel-ensemble requires a Feistel formula source".into());
+    }
+    let partitioned = feistel_ensemble.unwrap_or_default() == FeistelEnsemble::Partitioned;
     let terminal = std::io::stdout().is_terminal();
     let show_progress = progress.unwrap_or(terminal) && terminal;
     let clock = PhaseClock::new();
-    let mut live = show_progress.then(|| cli::progress::LiveLine::start(clock.clone()));
-    let (formula_name, formula) = match (source, generate) {
-        (Some(path), None) => (
+    let start_live = || show_progress.then(|| cli::progress::LiveLine::start(clock.clone()));
+    let mut live = if partitioned { None } else { start_live() };
+    if feistel.is_some() && execution.backend != bsp_rust::Backend::Cpu {
+        return Err("Feistel formulas currently require --backend cpu".into());
+    }
+    let construction_started = std::time::Instant::now();
+    let (formula_name, formula) = match (source, generate, feistel) {
+        (Some(path), None, None) => (
             cli::output::formula_token(&path.to_string_lossy()),
             Formula::from_dimacs(&fs::read_to_string(&path)?)?,
         ),
-        (None, Some((k, alpha, n))) => (
+        (None, Some((k, alpha, n)), None) => (
             cli::output::generated_token(k, alpha, n),
             Formula::random(k, alpha, n, options.seed)?,
         ),
-        _ => return Err("provide a DIMACS path or --generate K ALPHA N".into()),
+        (None, None, Some((k, alpha, n))) => {
+            // Reject impossible solves before the fluctuating generator's scan.
+            if export.is_none() && (alpha * n as f64).floor() * k as f64 >= u32::MAX as f64 {
+                return Err("solver exceeds u32 edge/clause capacity".into());
+            }
+            let token = cli::output::generated_token(k, alpha, n);
+            if partitioned {
+                (
+                    format!("feistel_partitioned_{token}"),
+                    Formula::feistel(k, alpha, n, options.seed)?,
+                )
+            } else {
+                (
+                    format!("feistel_{token}"),
+                    Formula::feistel_fluctuating(k, alpha, n, options.seed)?,
+                )
+            }
+        }
+        _ => {
+            return Err(
+                "provide exactly one DIMACS path, --generate K ALPHA N, or --feistel K ALPHA N"
+                    .into(),
+            )
+        }
     };
+    let construction_seconds = construction_started.elapsed().as_secs_f64();
+    if partitioned {
+        eprintln!(
+            "bsp-rust: warning: partitioned --feistel uses a different random k-SAT ensemble from --generate. \
+             Each clause draws one variable from each fixed group, and variable degrees are balanced. \
+             This skips the repair scan and can reduce cycle walking, depending on instance size."
+        );
+        live = start_live();
+    }
     if let Some(path) = export {
         if let Some(line) = live.as_mut() {
             line.stop();
         }
-        fs::write(path, formula.to_dimacs())?;
+        let mut writer = std::io::BufWriter::new(fs::File::create(path)?);
+        formula.write_dimacs(&mut writer)?;
+        writer.flush()?;
         return Ok(ExitCode::SUCCESS);
     }
+    let topology_report = formula.feistel_topology().map(|f| {
+        serde_json::json!({
+            "generator": f.version(),
+            "ensemble": if partitioned { "partitioned-balanced-degrees" } else { "random-k-sat-target" },
+            "repaired_clauses": f.repair_count(),
+            "n": f.n(), "m": f.m(), "k": f.k(), "edges": f.edges(), "seed": f.seed(),
+            "degree_counts": f.degree_counts(),
+            "construction_seconds": construction_seconds,
+            "topology_bytes": formula.topology_bytes()
+        })
+    });
     let mut solver = Solver::with_execution(formula.clone(), options.clone(), execution.clone())?;
     let watched = clock.clone();
     solver.on_walksat(Arc::new(move || watched.enter(WALKSAT)));
@@ -170,6 +232,9 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         if dump_messages {
             report["messages"] = serde_json::json!(solver.messages());
         }
+        if let Some(topology) = topology_report {
+            report["topology"] = topology;
+        }
         finish(live, &clock, &report_path, &report)?;
         return Ok(ExitCode::SUCCESS);
     }
@@ -180,7 +245,11 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
     } else {
         ExitCode::FAILURE
     };
-    finish(live, &clock, &report_path, &serde_json::to_value(&result)?)?;
+    let mut report = serde_json::to_value(&result)?;
+    if let Some(topology) = topology_report {
+        report["topology"] = topology;
+    }
+    finish(live, &clock, &report_path, &report)?;
     Ok(code)
 }
 

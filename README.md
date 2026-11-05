@@ -53,6 +53,17 @@ it (`PORT=8001` changes the port). After a GPU Python build, use
 GitHub Actions exercises the Makefile builds on Linux, macOS, and Windows; the
 hosted CUDA job uses an explicit override because that runner has no GPU.
 
+## Experimental implicit topology
+
+`bsp-rust --feistel 3 4 1000 --seed 7 --backend cpu` reconstructs the factor
+graph on demand. The default targets the random k-SAT ensemble of
+`--generate`, with fluctuating variable degrees and distinct variables per
+clause. Choose `--feistel-ensemble partitioned` for the faster fixed-group
+construction, which samples a different ensemble. Both modes still allocate
+messages and mutable solver state.
+
+See the [generator and limits](docs/guide/feistel.rst).
+
 ## Use the Rust crate
 
 To use the library from another Rust project, add the Git dependency. This

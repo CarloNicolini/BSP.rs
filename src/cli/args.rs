@@ -38,6 +38,14 @@ Exit code 1 means a heuristic failure or a limit.
 Exit code 2 means invalid input.
 Assignments use 0 and 1. A partial assignment uses -1 for a free variable.";
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FeistelEnsemble {
+    #[default]
+    Fluctuating,
+    Partitioned,
+}
+
 #[derive(Debug, Parser)]
 #[command(
     name = "bsp-rust",
@@ -52,6 +60,14 @@ pub struct Cli {
     /// Build a random formula with floor(alpha*N) clauses
     #[arg(long, num_args = 3, value_names = ["K", "ALPHA", "N"])]
     pub generate: Option<Vec<String>>,
+
+    /// Implicit random formula with fluctuating variable degrees (scalar CPU only)
+    #[arg(long, num_args = 3, value_names = ["K", "ALPHA", "N"])]
+    pub feistel: Option<Vec<String>>,
+
+    /// Feistel ensemble. Partitioned has balanced degrees and skips the repair scan [default: fluctuating]
+    #[arg(long, value_enum)]
+    pub feistel_ensemble: Option<FeistelEnsemble>,
 
     /// Load run parameters from TOML, YAML, or JSON
     #[arg(long, value_name = "PATH")]

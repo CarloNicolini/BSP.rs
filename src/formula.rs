@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{Error, FeistelTopology, Result};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use std::sync::Arc;
 
@@ -8,6 +8,7 @@ pub struct Formula(pub(crate) Arc<Data>);
 #[derive(Debug)]
 pub(crate) struct Data {
     pub n: usize,
+    pub feistel: Option<FeistelTopology>,
     // Clause-major CSR; literal = (zero-based variable << 1) | negative.
     pub offsets: Vec<u32>,
     pub literals: Vec<u32>,
@@ -80,6 +81,7 @@ impl Formula {
         }
         Ok(Self(Arc::new(Data {
             n,
+            feistel: None,
             offsets,
             literals,
             edge_clause,
@@ -89,23 +91,93 @@ impl Formula {
             masks,
         })))
     }
+    /// Construct an implicit partitioned formula. Only scalar CPU solving is supported.
+    pub fn feistel(k: usize, alpha: f64, n: usize, seed: u64) -> Result<Self> {
+        if n > i32::MAX as usize || !alpha.is_finite() || alpha <= 0.0 {
+            return Err(Error(
+                "Feistel requires N <= i32::MAX and finite alpha > 0".into(),
+            ));
+        }
+        let m = (alpha * n as f64).floor();
+        if m < 1.0 || m >= u64::MAX as f64 {
+            return Err(Error("Feistel clause count outside 1..u64::MAX".into()));
+        }
+        let topology = FeistelTopology::new(k as u64, m as u64, n as u64, seed)?;
+        Self::from_feistel(n, topology)
+    }
+
+    /// Construct an implicit formula targeting the ordinary random K-SAT ensemble.
+    /// This scans the original matching once to replace repeated-variable clauses.
+    pub fn feistel_fluctuating(k: usize, alpha: f64, n: usize, seed: u64) -> Result<Self> {
+        if n > i32::MAX as usize || !alpha.is_finite() || alpha < 0.0 {
+            return Err(Error(
+                "Feistel requires N <= i32::MAX and finite alpha >= 0".into(),
+            ));
+        }
+        let m = (alpha * n as f64).floor();
+        if m > (1u64 << 53) as f64 {
+            return Err(Error(
+                "Fluctuating Feistel clause count exceeds 2^53".into(),
+            ));
+        }
+        let edges = (m as u64).checked_mul(k as u64);
+        if edges.is_none_or(|e| usize::try_from(e).is_err()) {
+            return Err(Error("Feistel exceeds address width".into()));
+        }
+        Self::from_feistel(
+            n,
+            FeistelTopology::new_fluctuating(k as u64, m as u64, n as u64, seed)?,
+        )
+    }
+
+    fn from_feistel(n: usize, topology: FeistelTopology) -> Result<Self> {
+        usize::try_from(topology.edges())
+            .map_err(|_| Error("Feistel exceeds address width".into()))?;
+        Ok(Self(Arc::new(Data {
+            n,
+            feistel: Some(topology),
+            offsets: Vec::new(),
+            literals: Vec::new(),
+            edge_clause: Vec::new(),
+            var_offsets: Vec::new(),
+            var_edges: Vec::new(),
+            mask_offsets: Vec::new(),
+            masks: Vec::new(),
+        })))
+    }
+    pub fn feistel_topology(&self) -> Option<&FeistelTopology> {
+        self.0.feistel.as_ref()
+    }
+    /// Owned topology payload including vector capacity; excludes Arc headers and allocator overhead.
+    pub fn topology_bytes(&self) -> usize {
+        let f = &self.0;
+        std::mem::size_of::<Data>()
+            + 4 * (f.offsets.capacity()
+                + f.literals.capacity()
+                + f.edge_clause.capacity()
+                + f.var_offsets.capacity()
+                + f.var_edges.capacity()
+                + f.mask_offsets.capacity())
+            + 8 * f.masks.capacity()
+            + f.feistel.as_ref().map_or(0, FeistelTopology::heap_bytes)
+    }
     pub fn n(&self) -> usize {
         self.0.n
     }
     pub fn m(&self) -> usize {
-        self.0.offsets.len() - 1
+        self.0.m()
     }
     pub fn edges(&self) -> usize {
-        self.0.literals.len()
+        self.0.edges()
     }
+    /// Explicitly materialize clauses. Solving an implicit formula never calls this method.
     pub fn clauses(&self) -> Vec<Vec<i32>> {
-        self.0
-            .offsets
-            .windows(2)
-            .map(|w| {
-                self.0.literals[w[0] as usize..w[1] as usize]
-                    .iter()
-                    .map(|&l| {
+        (0..self.m())
+            .map(|c| {
+                self.0
+                    .clause_range(c)
+                    .map(|e| {
+                        let l = self.0.literal(e);
                         let v = ((l >> 1) + 1) as i32;
                         if l & 1 == 0 {
                             v
@@ -120,11 +192,25 @@ impl Formula {
     pub fn is_satisfied(&self, assignment: &[i8]) -> bool {
         assignment.len() == self.n()
             && assignment.iter().all(|&v| v == 0 || v == 1)
-            && self.0.offsets.windows(2).all(|w| {
-                self.0.literals[w[0] as usize..w[1] as usize]
-                    .iter()
-                    .any(|&l| assignment[(l >> 1) as usize] == (1 - (l & 1)) as i8)
+            && (0..self.m()).all(|c| {
+                self.0.clause_range(c).any(|e| {
+                    let l = self.0.literal(e);
+                    assignment[(l >> 1) as usize] == (1 - (l & 1)) as i8
+                })
             })
+    }
+    /// Stream DIMACS without materializing the clauses or the output string.
+    pub fn write_dimacs(&self, mut out: impl std::io::Write) -> std::io::Result<()> {
+        writeln!(out, "p cnf {} {}", self.n(), self.m())?;
+        for c in 0..self.m() {
+            for e in self.0.clause_range(c) {
+                let l = self.0.literal(e);
+                let v = ((l >> 1) + 1) as i32;
+                write!(out, "{} ", if l & 1 == 0 { v } else { -v })?;
+            }
+            writeln!(out, "0")?;
+        }
+        Ok(())
     }
     pub fn from_dimacs(text: &str) -> Result<Self> {
         let mut header = None;
@@ -175,15 +261,10 @@ impl Formula {
         Self::new(n, clauses)
     }
     pub fn to_dimacs(&self) -> String {
-        use std::fmt::Write;
-        let mut text = format!("p cnf {} {}\n", self.n(), self.m());
-        for clause in self.clauses() {
-            for lit in clause {
-                write!(text, "{lit} ").unwrap();
-            }
-            text.push_str("0\n");
-        }
-        text
+        let mut bytes = Vec::new();
+        self.write_dimacs(&mut bytes)
+            .expect("writing to Vec cannot fail");
+        String::from_utf8(bytes).expect("DIMACS is ASCII")
     }
     pub fn random(k: usize, alpha: f64, n: usize, seed: u64) -> Result<Self> {
         if k == 0 || k > n || n > i32::MAX as usize || !alpha.is_finite() || alpha < 0.0 {
@@ -210,5 +291,73 @@ impl Formula {
             clauses.push(clause);
         }
         Self::new(n, clauses)
+    }
+}
+
+impl Data {
+    pub fn m(&self) -> usize {
+        self.feistel
+            .as_ref()
+            .map_or_else(|| self.offsets.len() - 1, |f| f.m() as usize)
+    }
+    pub fn edges(&self) -> usize {
+        self.feistel
+            .as_ref()
+            .map_or_else(|| self.literals.len(), |f| f.edges() as usize)
+    }
+    #[inline]
+    pub fn offset(&self, c: usize) -> usize {
+        self.feistel
+            .as_ref()
+            .map_or_else(|| self.offsets[c] as usize, |f| c * f.k() as usize)
+    }
+    pub fn clause_range(&self, c: usize) -> std::ops::Range<usize> {
+        self.offset(c)..self.offset(c + 1)
+    }
+    #[inline]
+    pub fn literal(&self, e: usize) -> u32 {
+        self.feistel.as_ref().map_or_else(
+            || self.literals[e],
+            |f| {
+                let (v, negative) = f.literal(e as u64);
+                ((v as u32) << 1) | u32::from(negative)
+            },
+        )
+    }
+    #[inline]
+    pub fn edge_clause(&self, e: usize) -> usize {
+        self.feistel
+            .as_ref()
+            .map_or_else(|| self.edge_clause[e] as usize, |f| e / f.k() as usize)
+    }
+    #[inline]
+    pub fn mask_offset(&self, c: usize) -> usize {
+        self.feistel
+            .as_ref()
+            .map_or_else(|| self.mask_offsets[c] as usize, |_| c)
+    }
+    pub fn initial_masks(&self) -> Vec<u64> {
+        self.feistel.as_ref().map_or_else(
+            || self.masks.clone(),
+            |f| vec![u64::MAX >> (64 - f.k()); f.m() as usize],
+        )
+    }
+    pub fn degree(&self, v: usize) -> u32 {
+        self.feistel.as_ref().map_or_else(
+            || self.var_offsets[2 * v + 2] - self.var_offsets[2 * v],
+            |f| f.degree(v as u64) as u32,
+        )
+    }
+    pub fn variable_edges(&self, v: usize) -> impl Iterator<Item = usize> + '_ {
+        let explicit = if self.feistel.is_some() {
+            &[]
+        } else {
+            &self.var_edges[self.var_offsets[2 * v] as usize..self.var_offsets[2 * v + 2] as usize]
+        };
+        explicit.iter().map(|&e| e as usize).chain(
+            self.feistel
+                .iter()
+                .flat_map(move |f| f.variable_edges(v as u64).map(|e| e as usize)),
+        )
     }
 }

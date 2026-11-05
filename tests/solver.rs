@@ -436,3 +436,26 @@ fn mixed_width_sweeps_and_complexity_match_direct_products() {
     }
     assert!((report.complexity - (clause_term - variable_term)).abs() < 1e-9);
 }
+
+#[test]
+fn feistel_sweeps_match_independent_definition() {
+    for generate in [Formula::feistel, Formula::feistel_fluctuating] {
+        for seed in 0..8 {
+            let f = generate(3, 4.0, 18, seed).unwrap();
+            let mut s = Solver::new(f.clone(), Options::default()).unwrap();
+            for _ in 0..3 {
+                let expected = scalar_step(&f, s.messages(), s.assignment());
+                s.sweep().unwrap();
+                close(s.messages(), &expected);
+            }
+            s.fix(0, true).unwrap();
+            let expected = scalar_step(&f, s.messages(), s.assignment());
+            s.sweep().unwrap();
+            close(s.messages(), &expected);
+            s.release(0).unwrap();
+            let expected = scalar_step(&f, s.messages(), s.assignment());
+            s.sweep().unwrap();
+            close(s.messages(), &expected);
+        }
+    }
+}
