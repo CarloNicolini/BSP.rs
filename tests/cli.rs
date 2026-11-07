@@ -584,3 +584,94 @@ fn profile_write_error_preserves_solve_result() {
     assert!(report["execution"]["profile_error"].is_string());
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn batch_directory_processes_sorted_inputs_and_continues_after_errors() {
+    let dir = temp_dir("batch-dir");
+    fs::create_dir(dir.join("formulas")).unwrap();
+    fs::create_dir(dir.join("formulas/nested")).unwrap();
+    fs::write(dir.join("formulas/a.cnf"), "p cnf 1 1\n1 0\n").unwrap();
+    fs::write(dir.join("formulas/b.CNF"), "p cnf 1 2\n1 0\n-1 0\n").unwrap();
+    fs::write(dir.join("formulas/c.cnf"), "p cnf 1 1\n2 0\n").unwrap();
+    fs::write(dir.join("formulas/z.txt"), "not a formula").unwrap();
+    fs::write(dir.join("formulas/nested/d.cnf"), "p cnf 1 1\n1 0\n").unwrap();
+    let output = run(&dir, &["formulas", "--no-progress"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stderr.is_empty());
+    let text = stdout(&output);
+    let records: Vec<serde_json::Value> = text
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(records.len(), 4);
+    assert_eq!(records[0]["input"], "formulas/a.cnf");
+    assert_eq!(records[0]["status"], "sat");
+    assert_eq!(records[1]["input"], "formulas/b.CNF");
+    assert_eq!(records[1]["status"], "contradiction");
+    assert_eq!(records[2]["input"], "formulas/c.cnf");
+    assert_eq!(records[2]["status"], "error");
+    assert_eq!(
+        records[3],
+        serde_json::json!({"batch":true,"total":3,"succeeded":1,"failed":1,"errors":1})
+    );
+    for record in &records[..2] {
+        let path = dir.join(record["output"].as_str().unwrap());
+        let report: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+        assert_eq!(report["status"], record["status"]);
+    }
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn batch_files_keep_distinct_reports_and_return_failure_for_unsolved() {
+    let dir = temp_dir("batch-files");
+    fs::create_dir(dir.join("a")).unwrap();
+    fs::create_dir(dir.join("b")).unwrap();
+    fs::write(dir.join("a/same.cnf"), "p cnf 1 1\n1 0\n").unwrap();
+    fs::write(dir.join("b/same.cnf"), "p cnf 1 2\n1 0\n-1 0\n").unwrap();
+    let output = run(&dir, &["b/same.cnf", "a/same.cnf", "--progress"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stderr.is_empty()); // no terminal: no escape sequences or progress line
+    let text = stdout(&output);
+    let records: Vec<serde_json::Value> = text
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(records[0]["input"], "b/same.cnf");
+    assert_eq!(records[1]["input"], "a/same.cnf");
+    assert_ne!(records[0]["output"], records[1]["output"]);
+    assert_eq!(
+        records[2],
+        serde_json::json!({"batch":true,"total":2,"succeeded":1,"failed":1,"errors":0})
+    );
+    for record in &records[..2] {
+        assert!(dir.join(record["output"].as_str().unwrap()).exists());
+    }
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn batch_rejects_ambiguous_options_and_empty_directories() {
+    let dir = temp_dir("batch-options");
+    fs::create_dir(dir.join("empty")).unwrap();
+    assert_eq!(run(&dir, &["empty"]).status.code(), Some(2));
+    for option in [
+        vec!["--output", "same.json"],
+        vec!["--profile", "same.json"],
+        vec!["--write-formula", "same.cnf"],
+        vec!["--sweeps", "1"],
+        vec!["--messages", "messages.json"],
+        vec!["--dump-messages"],
+        vec!["--generate", "3", "2", "10"],
+    ] {
+        let mut args = vec!["a.cnf", "b.cnf"];
+        args.extend(option);
+        assert_eq!(run(&dir, &args).status.code(), Some(2), "{args:?}");
+    }
+    fs::write(dir.join("config.toml"), "formula = \"empty\"\n").unwrap();
+    assert_eq!(
+        run(&dir, &["--config", "config.toml"]).status.code(),
+        Some(2)
+    );
+    let _ = fs::remove_dir_all(dir);
+}

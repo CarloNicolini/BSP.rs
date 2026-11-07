@@ -5,6 +5,10 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Add sequential CLI solving of multiple DIMACS paths and directories, with a
+  terminal progress bar, per-input JSON results, and aggregate status. This
+  compatible CLI addition requires a minor release under the 0.x policy.
+
 - Fix automatic report-name collisions, layered CLI options, profile-write result
   loss, and late execution-option validation. Existing explicit output paths keep
   their overwrite behavior; partial options files now preserve earlier settings.
