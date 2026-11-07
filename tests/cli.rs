@@ -488,3 +488,99 @@ fn generated_and_feistel_cli_sweeps_use_the_requested_cpu_pool() {
     }
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn concurrent_default_reports_do_not_overwrite() {
+    let dir = temp_dir("collision");
+    let mut children: Vec<_> = (0..12)
+        .map(|_| {
+            Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
+                .current_dir(&dir)
+                .args(["--generate", "3", "0.1", "10", "--no-progress"])
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+                .unwrap()
+        })
+        .collect();
+    let mut names = std::collections::HashSet::new();
+    for child in children.drain(..) {
+        let out = child.wait_with_output().unwrap();
+        assert!(out.status.success());
+        let name = summary(&out)["output"].as_str().unwrap().to_owned();
+        assert!(names.insert(name.clone()));
+        let report: serde_json::Value =
+            serde_json::from_slice(&fs::read(dir.join(name)).unwrap()).unwrap();
+        assert_eq!(report["status"], "sat");
+    }
+    assert_eq!(names.len(), 12);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn partial_options_preserve_config_and_null_clears_timeout() {
+    let dir = temp_dir("options-merge");
+    fs::write(
+        dir.join("run.toml"),
+        "seed = 123\ntimeout_seconds = 0.00000000001\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("options.json"),
+        r#"{"damping":0.2,"timeout_seconds":null}"#,
+    )
+    .unwrap();
+    let args = [
+        "--generate",
+        "3",
+        "0.1",
+        "10",
+        "--config",
+        "run.toml",
+        "--options",
+        "options.json",
+        "--output",
+        "result.json",
+    ];
+    let output = run(&dir, &args);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(summary(&output)["seed"], 123);
+    fs::write(dir.join("options.json"), r#"{"misspelled":1}"#).unwrap();
+    assert_eq!(run(&dir, &args).status.code(), Some(2));
+    fs::write(dir.join("options.json"), r#"{"seed":456}"#).unwrap();
+    let mut override_args = args.to_vec();
+    override_args.extend(["--seed", "9", "--timeout", "10"]);
+    assert_eq!(summary(&run(&dir, &override_args))["seed"], 9);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn profile_write_error_preserves_solve_result() {
+    let dir = temp_dir("profile-error");
+    let output = run(
+        &dir,
+        &[
+            "--generate",
+            "3",
+            "0.1",
+            "10",
+            "--profile",
+            "missing/profile.json",
+            "--output",
+            "result.json",
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join("result.json")).unwrap()).unwrap();
+    assert_eq!(report["status"], "sat");
+    assert!(report["execution"]["profile_error"].is_string());
+    let _ = fs::remove_dir_all(dir);
+}

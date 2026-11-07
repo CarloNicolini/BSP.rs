@@ -459,3 +459,18 @@ mod metal {
         assert_eq!(s.sweep_many(100000), Err(Status::Timeout));
     }
 }
+
+#[test]
+fn execution_options_are_checked_before_solver_capacity() {
+    let formula = Formula::feistel(3, 150_000_000.0, 10, 1).unwrap();
+    let options = ExecutionOptions {
+        backend: Backend::Cpu,
+        threads: 1025,
+        profile: None,
+    };
+    let err = match Solver::with_execution(formula.clone(), Options::default(), options) {
+        Ok(_) => panic!("invalid threads accepted"),
+        Err(err) => err.to_string(),
+    };
+    assert!(err.contains("threads"), "{err}");
+}

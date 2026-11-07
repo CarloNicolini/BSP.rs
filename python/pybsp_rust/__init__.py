@@ -1024,4 +1024,4 @@ def from_file(path):
     ValueError
         If DIMACS counts, termination, or literal ranges are invalid.
     """
-    return Formula.from_dimacs(Path(path).read_text(encoding="utf-8"))
+    return Formula._from_file(Path(path))

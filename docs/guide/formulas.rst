@@ -77,6 +77,9 @@ Do not interpret a newly constructed solver's survey array as a converged result
 DIMACS and empty inputs
 -----------------------
 
+The CLI and ``from_file`` read DIMACS incrementally; Rust provides
+``Formula::from_dimacs_reader`` and an order-preserving variant.
+
 DIMACS needs one ``p cnf N M`` header and zero-terminated clauses. Clauses may
 span lines, and several clauses may share a line. ``M`` counts clauses before
 normalization. Blank lines and comment lines beginning with ``c`` are ignored.
