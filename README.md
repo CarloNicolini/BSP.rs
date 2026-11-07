@@ -48,6 +48,25 @@ assignment. Exit code 1 means a heuristic failure or a limit. Exit code 2 means
 invalid input. After a GPU-capable `make` build, select `--backend metal`,
 `cuda`, or `cuda-f32` at run time.
 
+To solve multiple DIMACS inputs sequentially, pass paths or directories:
+
+```sh
+bsp-rust sample-a.cnf sample-b.cnf
+bsp-rust instances/ --no-progress
+```
+
+Directories contribute their immediate regular `.cnf` files (case-insensitive
+extension), sorted by name; explicit inputs keep their argument order. Each input
+produces a JSON summary and a uniquely named full report, followed by a JSON
+batch summary with `total`, `succeeded`, `failed`, and `errors`. A terminal
+progress bar uses stderr; `--no-progress` disables it. Failed searches and input
+errors do not stop the batch. Exit status is 2 if any input errors occur, else 1
+if a search fails, else 0. A directory with no matching files contributes no
+inputs; an entirely empty batch is an error. Batch mode rejects `--output`,
+`--profile`, `--write-formula`, `--sweeps`, `--messages`, and `--dump-messages`
+to avoid ambiguous shared files or non-solve operations. Generation flags also
+conflict with batch input. Existing single-file behavior is unchanged.
+
 Other Makefile targets: `make python` installs the Python package with the same
 backend detection, `make docs` builds Sphinx HTML, and `make docs-serve` serves
 it (`PORT=8001` changes the port). After a GPU Python build, use

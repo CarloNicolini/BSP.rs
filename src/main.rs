@@ -6,7 +6,7 @@ use crate::cli::progress::{PhaseClock, BSP, WALKSAT};
 use bsp_rust::{Formula, Solver, Status};
 use clap::Parser;
 use std::io::{IsTerminal, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, process::ExitCode};
 
@@ -17,7 +17,7 @@ fn parse_generate(values: &[String]) -> Result<(usize, f64, usize), Box<dyn std:
     Ok((values[0].parse()?, values[1].parse()?, values[2].parse()?))
 }
 
-fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
+fn resolve(cli: Cli) -> Result<(Resolved, Vec<PathBuf>), Box<dyn std::error::Error>> {
     let mut resolved = Resolved::default();
     if let Some(path) = &cli.config {
         FileConfig::load(path)?.apply(&mut resolved);
@@ -32,8 +32,9 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
             .extend(patch.clone());
         resolved.options = serde_json::from_value(merged)?;
     }
-    if let Some(path) = cli.formula {
-        resolved.formula = Some(path);
+    let inputs = cli.formula;
+    if !inputs.is_empty() {
+        resolved.formula = None;
     }
     if cli.preserve_literal_order {
         resolved.preserve_literal_order = true;
@@ -106,10 +107,137 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
     if let Some(path) = cli.write_formula {
         resolved.write_formula = Some(path);
     }
-    Ok(resolved)
+    Ok((resolved, inputs))
 }
 
-fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
+#[derive(Clone, Copy)]
+struct BatchContext<'a> {
+    input: &'a Path,
+    bar: Option<&'a indicatif::ProgressBar>,
+}
+
+fn run(
+    (mut resolved, mut inputs): (Resolved, Vec<PathBuf>),
+) -> Result<ExitCode, Box<dyn std::error::Error>> {
+    if inputs.is_empty() {
+        if let Some(path) = resolved.formula.take() {
+            inputs.push(path);
+        }
+    }
+    if inputs.len() <= 1 && inputs.first().is_none_or(|p| !p.is_dir()) {
+        resolved.formula = inputs.pop();
+        return run_single(resolved, None);
+    }
+    if resolved.generate.is_some()
+        || resolved.feistel.is_some()
+        || resolved.feistel_ensemble.is_some()
+    {
+        return Err("batch DIMACS inputs conflict with formula generation".into());
+    }
+    if resolved.output.is_some()
+        || resolved.execution.profile.is_some()
+        || resolved.write_formula.is_some()
+        || resolved.sweeps.is_some()
+        || resolved.messages.is_some()
+        || resolved.dump_messages
+    {
+        return Err("batch mode does not support --output, --profile, --write-formula, --sweeps, --messages, or --dump-messages".into());
+    }
+    resolved.options.validate()?;
+    let mut files = Vec::new();
+    for input in inputs {
+        if input.is_dir() {
+            let mut children = Vec::new();
+            for entry in fs::read_dir(&input)? {
+                let entry = entry?;
+                let path = entry.path();
+                if entry.file_type()?.is_file()
+                    && path
+                        .extension()
+                        .and_then(|v| v.to_str())
+                        .is_some_and(|v| v.eq_ignore_ascii_case("cnf"))
+                {
+                    children.push(path);
+                }
+            }
+            children.sort();
+            files.extend(children);
+        } else {
+            files.push(input);
+        }
+    }
+    if files.is_empty() {
+        return Err("no .cnf files found in batch inputs".into());
+    }
+    let bar = if resolved.progress.unwrap_or(std::io::stderr().is_terminal())
+        && std::io::stderr().is_terminal()
+    {
+        let bar = indicatif::ProgressBar::with_draw_target(
+            Some(files.len() as u64),
+            indicatif::ProgressDrawTarget::stderr(),
+        );
+        bar.set_style(
+            indicatif::ProgressStyle::with_template("{bar:40.cyan/blue} {pos}/{len} {msg}")
+                .expect("valid progress template"),
+        );
+        bar.enable_steady_tick(std::time::Duration::from_millis(100));
+        Some(bar)
+    } else {
+        None
+    };
+    let total = files.len();
+    let (mut succeeded, mut failed, mut errors) = (0usize, 0usize, 0usize);
+    for path in files {
+        if let Some(bar) = &bar {
+            bar.set_message(path.display().to_string());
+        }
+        let mut job = resolved.clone();
+        job.formula = Some(path.clone());
+        job.progress = Some(false);
+        match run_single(
+            job,
+            Some(BatchContext {
+                input: &path,
+                bar: bar.as_ref(),
+            }),
+        ) {
+            Ok(code) if code == ExitCode::SUCCESS => succeeded += 1,
+            Ok(_) => failed += 1,
+            Err(error) => {
+                errors += 1;
+                let record = serde_json::json!({"input":path.to_string_lossy(), "status":"error", "error":error.to_string()});
+                if let Some(bar) = &bar {
+                    bar.suspend(|| println!("{record}"));
+                } else {
+                    println!("{record}");
+                }
+            }
+        }
+        if let Some(bar) = &bar {
+            bar.inc(1);
+        }
+    }
+    if let Some(bar) = bar {
+        bar.finish_and_clear();
+    }
+    println!(
+        "{}",
+        serde_json::json!({"batch":true,"total":total,"succeeded":succeeded,"failed":failed,"errors":errors})
+    );
+    std::io::stdout().flush()?;
+    Ok(if errors > 0 {
+        ExitCode::from(2)
+    } else if failed > 0 {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    })
+}
+
+fn run_single(
+    resolved: Resolved,
+    batch: Option<BatchContext<'_>>,
+) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let Resolved {
         formula: source,
         preserve_literal_order,
@@ -267,7 +395,15 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
             fields: &report,
             messages: dump_messages.then(|| solver.messages()),
         };
-        finish(live, &clock, &report_path, unique_output, &output, &report)?;
+        finish(
+            live,
+            &clock,
+            &report_path,
+            unique_output,
+            &output,
+            &report,
+            batch,
+        )?;
         return Ok(ExitCode::SUCCESS);
     }
     let result = solver.solve();
@@ -306,6 +442,7 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         unique_output,
         &report,
         &summary_fields,
+        batch,
     )?;
     Ok(code)
 }
@@ -317,6 +454,7 @@ fn finish(
     unique: bool,
     report: &impl serde::Serialize,
     summary_fields: &serde_json::Value,
+    batch: Option<BatchContext<'_>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let times = clock.seconds();
     if let Some(line) = live.as_mut() {
@@ -324,7 +462,15 @@ fn finish(
         println!();
     }
     let written = cli::output::write_json(path, report, unique)?;
-    println!("{}", cli::output::summary(&written, summary_fields, times));
+    let mut summary = cli::output::summary(&written, summary_fields, times);
+    if let Some(context) = batch {
+        summary["input"] = serde_json::Value::String(context.input.to_string_lossy().into_owned());
+    }
+    if let Some(bar) = batch.and_then(|context| context.bar) {
+        bar.suspend(|| println!("{summary}"));
+    } else {
+        println!("{summary}");
+    }
     std::io::stdout().flush()?;
     Ok(())
 }

@@ -36,6 +36,8 @@ The JSON field residual is the largest undamped message change in the last sweep
 Exit code 0 means a verified SAT assignment.
 Exit code 1 means a heuristic failure or a limit.
 Exit code 2 means invalid input.
+For batches, each input produces a JSON summary followed by one aggregate summary.
+Exit code 2 takes precedence over 1 if any input fails to load or execute.
 Assignments use 0 and 1. A partial assignment uses -1 for a free variable.";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum, serde::Deserialize)]
@@ -54,8 +56,8 @@ pub enum FeistelEnsemble {
     after_help = AFTER_HELP
 )]
 pub struct Cli {
-    /// DIMACS CNF formula path
-    pub formula: Option<PathBuf>,
+    /// DIMACS paths or directories (directories contain .cnf files; processed sequentially)
+    pub formula: Vec<PathBuf>,
 
     /// Retain DIMACS literal order for same-seed replay of an exported Feistel formula
     #[arg(long)]
