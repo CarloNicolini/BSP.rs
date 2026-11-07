@@ -37,9 +37,11 @@ Override detection with `BACKEND=cpu`, `metal`, or `cuda` (for example
 
 Install on PATH with `cargo install --path . --locked`, then use `bsp-rust --help`.
 Pass shared parameters with `--config PATH` (`.toml`, `.yaml`, `.yml`, or
-`.json`); explicit flags override the file. The program writes the full JSON
+`.json`); a partial `--options` JSON overrides supplied fields, then explicit flags
+override both files. The program writes the full JSON
 result to a file. The default file name contains the main run variables and the
-UTC time. `--output PATH` selects another file. `--progress` prints one stdout
+UTC time; collisions receive a numeric suffix without overwriting existing files.
+`--output PATH` selects a file and overwrites it if it exists. `--progress` prints one stdout
 line with timers for formula setup, BSP, and WalkSAT. Stdout then prints one
 JSON summary with `status` and `output`. Exit code 0 means a verified SAT
 assignment. Exit code 1 means a heuristic failure or a limit. Exit code 2 means
@@ -50,7 +52,7 @@ Other Makefile targets: `make python` installs the Python package with the same
 backend detection, `make docs` builds Sphinx HTML, and `make docs-serve` serves
 it (`PORT=8001` changes the port). After a GPU Python build, use
 `uv run --no-sync ...` so a plain `uv run` does not rebuild with CPU defaults.
-GitHub Actions exercises the Makefile builds on Linux, macOS, and Windows; the
+GitHub Actions exercises the Makefile builds on Linux and macOS; the
 hosted CUDA job uses an explicit override because that runner has no GPU.
 
 ## Experimental implicit topology

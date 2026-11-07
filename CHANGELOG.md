@@ -5,6 +5,13 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Fix automatic report-name collisions, layered CLI options, profile-write result
+  loss, and late execution-option validation. Existing explicit output paths keep
+  their overwrite behavior; partial options files now preserve earlier settings.
+- Stream DIMACS files through the CLI and Python `from_file` without retaining
+  the input text and all unpacked clauses. Rust adds buffered-reader constructors,
+  a compatible new API requiring a minor increment under the 0.x policy.
+
 - Expose both implicit Feistel ensembles and their topology metadata in the
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.

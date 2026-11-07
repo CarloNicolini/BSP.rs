@@ -23,7 +23,14 @@ fn resolve(cli: Cli) -> Result<Resolved, Box<dyn std::error::Error>> {
         FileConfig::load(path)?.apply(&mut resolved);
     }
     if let Some(path) = &cli.options {
-        resolved.options = serde_json::from_str(&fs::read_to_string(path)?)?;
+        let patch: serde_json::Value = serde_json::from_str(&fs::read_to_string(path)?)?;
+        let patch = patch.as_object().ok_or("options must be a JSON object")?;
+        let mut merged = serde_json::to_value(&resolved.options)?;
+        merged
+            .as_object_mut()
+            .expect("Options serializes as an object")
+            .extend(patch.clone());
+        resolved.options = serde_json::from_value(merged)?;
     }
     if let Some(path) = cli.formula {
         resolved.formula = Some(path);
@@ -142,11 +149,11 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let construction_started = std::time::Instant::now();
     let (formula_name, formula) = match (source, generate, feistel) {
         (Some(path), None, None) => (cli::output::formula_token(&path.to_string_lossy()), {
-            let text = fs::read_to_string(&path)?;
+            let reader = std::io::BufReader::new(fs::File::open(&path)?);
             if preserve_literal_order {
-                Formula::from_dimacs_preserving_order(&text)?
+                Formula::from_dimacs_reader_preserving_order(reader)?
             } else {
-                Formula::from_dimacs(&text)?
+                Formula::from_dimacs_reader(reader)?
             }
         }),
         (None, Some((k, alpha, n)), None) => (
@@ -216,6 +223,7 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
             path,
         )?)?)?;
     }
+    let unique_output = output.is_none();
     let report_path = output.unwrap_or_else(|| {
         cli::output::default_path(
             &formula_name,
@@ -259,11 +267,10 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
             fields: &report,
             messages: dump_messages.then(|| solver.messages()),
         };
-        finish(live, &clock, &report_path, &output, &report)?;
+        finish(live, &clock, &report_path, unique_output, &output, &report)?;
         return Ok(ExitCode::SUCCESS);
     }
     let result = solver.solve();
-    solver.write_profile()?;
     let code = if result.status == Status::Sat {
         ExitCode::SUCCESS
     } else {
@@ -292,7 +299,14 @@ fn run(resolved: Resolved) -> Result<ExitCode, Box<dyn std::error::Error>> {
         result,
         topology: topology_report,
     };
-    finish(live, &clock, &report_path, &report, &summary_fields)?;
+    finish(
+        live,
+        &clock,
+        &report_path,
+        unique_output,
+        &report,
+        &summary_fields,
+    )?;
     Ok(code)
 }
 
@@ -300,6 +314,7 @@ fn finish(
     mut live: Option<cli::progress::LiveLine>,
     clock: &PhaseClock,
     path: &Path,
+    unique: bool,
     report: &impl serde::Serialize,
     summary_fields: &serde_json::Value,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -308,8 +323,8 @@ fn finish(
         line.stop();
         println!();
     }
-    cli::output::write_json(path, report)?;
-    println!("{}", cli::output::summary(path, summary_fields, times));
+    let written = cli::output::write_json(path, report, unique)?;
+    println!("{}", cli::output::summary(&written, summary_fields, times));
     std::io::stdout().flush()?;
     Ok(())
 }

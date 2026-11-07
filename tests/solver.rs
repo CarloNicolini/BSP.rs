@@ -470,3 +470,36 @@ fn dimacs_preserved_order_still_normalizes_duplicates_and_tautologies() {
         vec![vec![-1, 2, 4], vec![]]
     );
 }
+
+#[test]
+fn buffered_dimacs_matches_text_and_validates_input() {
+    use std::io::{BufReader, Cursor};
+    let text = "c comment\np cnf 6 5\n3 1 3\nc multiline\n-2 0 4 -4 0 0\n-5 2 0\n6 0\n";
+    for preserve in [false, true] {
+        let read = |input: &str| {
+            let reader = BufReader::with_capacity(2, Cursor::new(input.as_bytes()));
+            if preserve {
+                Formula::from_dimacs_reader_preserving_order(reader)
+            } else {
+                Formula::from_dimacs_reader(reader)
+            }
+        };
+        let expected = if preserve {
+            Formula::from_dimacs_preserving_order(text)
+        } else {
+            Formula::from_dimacs(text)
+        }
+        .unwrap();
+        assert_eq!(read(text).unwrap().clauses(), expected.clauses());
+        for invalid in [
+            "",
+            "1 0",
+            "p cnf 1 1\n1",
+            "p cnf 1 0\n0",
+            "p cnf 1 1\n2 0",
+            "p cnf 1 0\np cnf 1 0",
+        ] {
+            assert!(read(invalid).is_err(), "{invalid}");
+        }
+    }
+}

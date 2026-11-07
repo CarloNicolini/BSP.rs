@@ -86,6 +86,16 @@ impl PyFormula {
         })
     }
     #[staticmethod]
+    fn _from_file(py: Python<'_>, path: std::path::PathBuf) -> PyResult<Self> {
+        py.allow_threads(|| {
+            let file = std::fs::File::open(path)?;
+            let inner =
+                Formula::from_dimacs_reader(std::io::BufReader::new(file)).map_err(value_error)?;
+            Ok(Self { inner })
+        })
+    }
+
+    #[staticmethod]
     /// Parse DIMACS text with one p cnf N M header and zero-terminated clauses.
     ///
     /// The header counts input clauses before normalization. Comments beginning

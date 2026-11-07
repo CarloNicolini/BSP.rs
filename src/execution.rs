@@ -261,9 +261,41 @@ impl Solver {
                 "Feistel formulas require --backend cpu or cpu-parallel".into(),
             ));
         }
+        let construction_started = Instant::now();
+        options.validate()?;
+        #[cfg(not(all(feature = "metal", target_os = "macos")))]
+        if execution.backend == Backend::Metal {
+            return Err(Error(
+                "Metal requires macOS and a build with --features metal".into(),
+            ));
+        }
+        #[cfg(not(all(feature = "cuda", target_os = "linux")))]
+        if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
+            return Err(Error(
+                "CUDA requires Linux and a build with --features cuda".into(),
+            ));
+        }
         let setup = execution.profile.as_ref().map(|_| Instant::now());
+        let configured = Execution::new(execution)?;
+        // Check device availability before allocating the host solver arrays.
+        // Unsupported f32 settings intentionally fall back to CPU without a device.
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        if configured.options.backend == Backend::Metal
+            && options.damping as f32 != 1.0
+            && options.epsilon as f32 != 0.0
+        {
+            bsp_metal::device_budget().map_err(Error)?;
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if matches!(configured.options.backend, Backend::Cuda | Backend::CudaF32)
+            && (configured.options.backend == Backend::Cuda
+                || options.damping as f32 != 1.0 && options.epsilon as f32 != 0.0)
+        {
+            bsp_cuda::device_budget().map_err(Error)?;
+        }
         let mut s = Self::new(formula, options)?;
-        s.execution = Execution::new(execution)?;
+        s.started = construction_started;
+        s.execution = configured;
         match s.execution.options.backend {
             Backend::Cpu => (),
             Backend::CpuParallel => {

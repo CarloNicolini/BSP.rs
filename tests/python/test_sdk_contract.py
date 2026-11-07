@@ -89,3 +89,14 @@ def test_per_job_seeds_reject_invalid_or_ambiguous_inputs(settings, error):
 def test_empty_batches_still_validate_shared_settings(settings):
     with pytest.raises(ValueError):
         solve_many(formulas=[], **settings)
+
+
+def test_from_file_streams_dimacs_and_preserves_errors(tmp_path):
+    source = tmp_path / "example.cnf"
+    source.write_text("c comment\np cnf 3 2\n1 1 -2 0\n3 0\n", encoding="utf-8")
+    assert from_file(source).clauses == Formula.from_dimacs(source.read_text()).clauses
+    source.write_text("p cnf 1 1\n2 0\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        from_file(source)
+    with pytest.raises(OSError):
+        from_file(tmp_path / "missing.cnf")

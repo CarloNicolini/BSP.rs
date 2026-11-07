@@ -80,13 +80,35 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 pub fn write_json(
     path: &Path,
     value: &impl serde::Serialize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut file = std::io::BufWriter::new(std::fs::File::create(path)?);
+    unique: bool,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let mut candidate = path.to_path_buf();
+    let mut suffix = 0u64;
+    let file = loop {
+        let result = if unique {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&candidate)
+        } else {
+            std::fs::File::create(&candidate)
+        };
+        match result {
+            Ok(file) => break file,
+            Err(e) if unique && e.kind() == std::io::ErrorKind::AlreadyExists => {
+                suffix += 1;
+                let stem = path.file_stem().unwrap_or_default().to_string_lossy();
+                candidate = path.with_file_name(format!("{stem}_{suffix}.json"));
+            }
+            Err(e) => return Err(e.into()),
+        }
+    };
+    let mut file = std::io::BufWriter::new(file);
     serde_json::to_writer(&mut file, value)?;
     use std::io::Write;
     file.write_all(b"\n")?;
     file.flush()?;
-    Ok(())
+    Ok(candidate)
 }
 
 const SUMMARY_KEYS: &[&str] = &[
