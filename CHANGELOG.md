@@ -5,6 +5,10 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Support both implicit Feistel ensembles on Metal without materializing the
+  packed factor graph. This compatible backend addition requires a minor
+  release under the 0.x policy.
+
 - Add sequential CLI solving of multiple DIMACS paths and directories, with a
   terminal progress bar, per-input JSON results, and aggregate status. This
   compatible CLI addition requires a minor release under the 0.x policy.

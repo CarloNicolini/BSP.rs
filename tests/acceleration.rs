@@ -215,6 +215,23 @@ mod metal {
             );
             assert!(result.is_err());
         }
+        let result = bsp_metal::MetalSolver::new_feistel(
+            bsp_metal::FeistelTopology {
+                n: 2,
+                m: 1,
+                k: 2,
+                sign_key: 0,
+                round_keys: &[[0; 8]],
+                fluctuating: Some(bsp_metal::FeistelRepairs {
+                    stub_offsets: &[0, 1, 2],
+                    clauses: &[0],
+                    insertions: &[[0, 0], [1, 0]],
+                }),
+            },
+            &[0.2, 0.3],
+            false,
+        );
+        assert_eq!(result.err().as_deref(), Some("invalid Feistel insertion"));
     }
     #[test]
     fn unsafe_f32_options_record_a_cpu_fallback() {
@@ -287,6 +304,110 @@ mod metal {
             variable_term += (edges.len() as f64 - 1.0) * (plus + (1.0 - plus) * minus).ln();
         }
         clause_term - variable_term
+    }
+    #[test]
+    #[ignore = "requires an available Apple GPU; run explicitly with --ignored"]
+    fn metal_feistel_sweeps_match_oracle_for_both_ensembles() {
+        for build in [Formula::feistel, Formula::feistel_fluctuating] {
+            // Non-power-of-four domains, uneven groups, and generic clause widths.
+            for (k, alpha, n) in [(3, 4.0, 41), (5, 2.0, 25), (64, 0.016, 129)] {
+                let f = build(k, alpha, n, u64::MAX).unwrap();
+                let topology = f.feistel_topology().unwrap();
+                if topology.version() == bsp_rust::FeistelTopology::FLUCTUATING_VERSION {
+                    assert!(topology.repair_count() > 0);
+                    if k == 64 {
+                        assert_eq!(topology.repair_count(), f.m());
+                    }
+                }
+                let options = Options {
+                    damping: 0.2,
+                    ..Options::default()
+                };
+                let mut s =
+                    Solver::with_execution(f.clone(), options, execution(Backend::Metal)).unwrap();
+                let mut eta: Vec<_> = (0..f.edges())
+                    .map(|e| 0.04 + 0.15 * ((e * 37) % 97) as f64 / 97.0)
+                    .collect();
+                // A zero factor in an otherwise finite same-sign product.
+                eta[0] = 1.0;
+                s.set_messages(&eta).unwrap();
+                let check_sweep = |s: &mut Solver| {
+                    let expected = common::f32_oracle(&f, s.messages(), s.assignment(), 0.2);
+                    s.sweep().unwrap();
+                    close(s.messages(), &expected);
+                };
+                check_sweep(&mut s);
+                let before = s.messages().to_vec();
+                let v = topology.literal(0).0 as usize;
+                s.fix(v, true).unwrap();
+                s.release(v).unwrap();
+                assert_eq!(s.messages(), before);
+                s.fix(v, false).unwrap();
+                check_sweep(&mut s);
+                s.release(v).unwrap();
+                check_sweep(&mut s);
+                assert_eq!(s.execution_report().metal_sweeps, 3);
+                assert!(s.execution_report().fallbacks.is_empty());
+            }
+        }
+    }
+    #[test]
+    #[ignore = "requires an available Apple GPU; run explicitly with --ignored"]
+    fn metal_feistel_observables_memory_and_verified_solutions() {
+        for build in [Formula::feistel, Formula::feistel_fluctuating] {
+            let f = build(3, 4.0, 79, 7).unwrap();
+            let options = Options {
+                epsilon: 0.99,
+                ..Options::default()
+            };
+            let mut s =
+                Solver::with_execution(f.clone(), options.clone(), execution(Backend::Metal))
+                    .unwrap();
+            let explicit = Solver::with_execution(
+                Formula::new(f.n(), f.clauses()).unwrap(),
+                options,
+                execution(Backend::Metal),
+            )
+            .unwrap();
+            assert!(
+                s.execution_report().allocated_bytes + 16 * f.edges()
+                    < explicit.execution_report().allocated_bytes
+            );
+            let eta: Vec<_> = (0..f.edges())
+                .map(|e| 0.15 + 0.1 * (e % 7) as f64)
+                .collect();
+            s.set_messages(&eta).unwrap();
+            let report = s.converge().unwrap();
+            assert!(!report.paramagnetic);
+            assert!((report.complexity - direct_complexity(&f, s.messages())).abs() < 0.002);
+            assert_eq!(s.execution_report().backend, Backend::Metal);
+
+            let easy = build(3, 2.0, 41, 7).unwrap();
+            let mut s =
+                Solver::with_execution(easy.clone(), Options::default(), execution(Backend::Metal))
+                    .unwrap();
+            let r = s.solve();
+            assert_eq!(r.status, Status::Sat);
+            assert!(easy.is_satisfied(r.assignment.as_ref().unwrap()));
+            assert!(r.execution.metal_sweeps > 0);
+        }
+        let empty = Formula::feistel_fluctuating(3, 0.0, 11, 7).unwrap();
+        let mut s =
+            Solver::with_execution(empty, Options::default(), execution(Backend::Metal)).unwrap();
+        assert!(s.converge().unwrap().paramagnetic);
+        assert_eq!(s.execution_report().metal_sweeps, 1);
+
+        let dense = Formula::feistel(2, 15.0, 2, 7).unwrap();
+        let mut cpu = Solver::new(dense.clone(), Options::default()).unwrap();
+        let mut gpu =
+            Solver::with_execution(dense, Options::default(), execution(Backend::Metal)).unwrap();
+        let eta = vec![1.0 - 2f64.powi(-16); cpu.formula().edges()];
+        cpu.set_messages(&eta).unwrap();
+        gpu.set_messages(&eta).unwrap();
+        assert_eq!(cpu.sweep(), gpu.sweep());
+        assert_eq!(cpu.messages(), gpu.messages());
+        assert_eq!(gpu.execution_report().backend, Backend::Cpu);
+        assert!(!gpu.execution_report().fallbacks.is_empty());
     }
     #[test]
     #[ignore = "requires an available Apple GPU; run explicitly with --ignored"]

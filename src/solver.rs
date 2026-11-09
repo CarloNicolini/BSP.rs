@@ -49,30 +49,37 @@ impl Default for Options {
 }
 impl Options {
     pub fn validate(&self) -> Result<()> {
-        if !self.backtrack_ratio.is_finite()
-            || !(0.0..1.0).contains(&self.backtrack_ratio)
-            || !self.batch_fraction.is_finite()
-            || !(0.0..=1.0).contains(&self.batch_fraction)
-            || self.batch_fraction == 0.0
-            || !self.epsilon.is_finite()
-            || self.epsilon <= 0.0
-            || self.epsilon >= 1.0
-            || !self.damping.is_finite()
-            || !(0.0..1.0).contains(&self.damping)
-            || !self.walksat_noise.is_finite()
-            || !(0.0..=1.0).contains(&self.walksat_noise)
-            || self.max_sweeps == 0
-            || self.max_steps == 0
-            || self.walksat_restarts == 0
-            || self
-                .timeout_seconds
-                .is_some_and(|t| !t.is_finite() || t <= 0.0)
-        {
-            return Err(Error(
-                "invalid BSP options: check probability ranges, positive limits, and timeout"
-                    .into(),
-            ));
+        let check_float = |v: f64, min: f64, max: f64, inclusive: bool, name: &str| -> Result<()> {
+            let ok = v.is_finite() && if inclusive { (min..=max).contains(&v) } else { (min..max).contains(&v) };
+            if !ok {
+                return Err(Error(format!("invalid option '{}': must be between {} and {}", name, min, max).into()));
+            }
+            Ok(())
+        };
+
+        check_float(self.backtrack_ratio, 0.0, 1.0, false, "backtrack_ratio")?;
+        check_float(self.batch_fraction, 0.0, 1.0, true, "batch_fraction")?;
+        if self.batch_fraction == 0.0 {
+            return Err(Error("invalid option 'batch_fraction': cannot be zero".into()));
         }
+        check_float(self.epsilon, 0.0, 1.0, false, "epsilon")?;
+        check_float(self.damping, 0.0, 1.0, false, "damping")?;
+        check_float(self.walksat_noise, 0.0, 1.0, true, "walksat_noise")?;
+        if self.max_sweeps == 0 {
+            return Err(Error("invalid option 'max_sweeps': must be greater than 0".into()));
+        }
+        if self.max_steps == 0 {
+            return Err(Error("invalid option 'max_steps': must be greater than 0".into()));
+        }
+        if self.walksat_restarts == 0 {
+            return Err(Error("invalid option 'walksat_restarts': must be greater than 0".into()));
+        }
+        if let Some(t) = self.timeout_seconds {
+            if !t.is_finite() || t <= 0.0 {
+                return Err(Error("invalid option 'timeout_seconds': must be positive".into()));
+            }
+        }
+
         Ok(())
     }
 }

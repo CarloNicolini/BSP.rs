@@ -30,7 +30,7 @@ def test_feistel_matches_cli_and_solves(ensemble, digest):
         assert result.status == "sat"
         assert f.is_satisfied(result.assignment)
     with pytest.raises(ValueError, match="Feistel formulas require"):
-        Solver(formula=f, backend="metal")
+        Solver(formula=f, backend="cuda")
 
 
 def test_feistel_validation_and_empty_formula():

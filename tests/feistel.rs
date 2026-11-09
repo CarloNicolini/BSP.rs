@@ -60,7 +60,7 @@ fn billion_variable_descriptor_and_solver_guard() {
         .unwrap()
         .0
         .contains("capacity"));
-    for backend in [Backend::Metal, Backend::Cuda, Backend::CudaF32] {
+    for backend in [Backend::Cuda, Backend::CudaF32] {
         let error = Solver::with_execution(
             f.clone(),
             Options::default(),

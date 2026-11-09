@@ -26,6 +26,7 @@ fn mix(mut x: u64) -> u64 {
 }
 const MATCH: u64 = 0x243f6a8885a308d3;
 const SIGN: u64 = 0x13198a2e03707344;
+const FLUCTUATING_SIGN: u64 = 0xbe5466cf34e90c6c;
 const ROUND: u64 = 0x9e3779b97f4a7c15;
 
 #[derive(Clone, Debug)]
@@ -253,12 +254,50 @@ impl FeistelTopology {
         (start + local, self.negative(edge))
     }
     pub(crate) fn negative(&self, edge: u64) -> bool {
+        mix(edge ^ self.sign_key()) & 1 != 0
+    }
+    fn sign_key(&self) -> u64 {
         let domain = if self.fluctuating.is_some() {
-            0xbe5466cf34e90c6c
+            FLUCTUATING_SIGN
         } else {
             SIGN
         };
-        mix(edge ^ mix(self.seed ^ domain)) & 1 != 0
+        mix(self.seed ^ domain)
+    }
+
+    #[cfg(all(feature = "metal", target_os = "macos"))]
+    pub(crate) fn metal_solver(
+        &self,
+        eta: &[f64],
+        profile: bool,
+    ) -> std::result::Result<bsp_metal::MetalSolver, String> {
+        let metadata = self.fluctuating.as_ref().map(|f| f.metal_metadata());
+        let round_keys = match &self.fluctuating {
+            Some(f) => vec![f.match_keys()],
+            None => (0..self.k)
+                .map(|q| Permutation::round_keys(self.key(q)))
+                .collect(),
+        };
+        bsp_metal::MetalSolver::new_feistel(
+            bsp_metal::FeistelTopology {
+                n: self.n as usize,
+                m: self.m as usize,
+                k: self.k as usize,
+                sign_key: self.sign_key(),
+                round_keys: &round_keys,
+                fluctuating: metadata
+                    .as_ref()
+                    .map(
+                        |(stub_offsets, clauses, insertions)| bsp_metal::FeistelRepairs {
+                            stub_offsets,
+                            clauses,
+                            insertions,
+                        },
+                    ),
+            },
+            eta,
+            profile,
+        )
     }
     fn partition_stubs(&self, v: u64) -> (u64, std::ops::Range<u64>) {
         let (q, local, size) = self.variable_partition(v);
