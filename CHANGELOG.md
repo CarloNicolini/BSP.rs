@@ -24,6 +24,13 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.1]
+
+- Report invalid options with one table-driven validator that names the accepted
+  range. Convert I/O, JSON, lock, and thread-pool errors to `Error` with `From`
+  implementations, and name the solver stop result `StatusResult` internally.
+  Behavior of valid runs is unchanged.
+
 ## [0.5.0]
 
 - Add experimental CPU and CPU-parallel `--feistel K ALPHA N` and configuration

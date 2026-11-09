@@ -1,6 +1,6 @@
 use crate::bitset::{BitSet, Ones};
 use crate::decision_heap::DecisionHeap;
-use crate::{Error, Formula, Result};
+use crate::{Error, Formula, Result, StatusResult};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::sync::{
@@ -49,38 +49,44 @@ impl Default for Options {
 }
 impl Options {
     pub fn validate(&self) -> Result<()> {
-        let check_float = |v: f64, min: f64, max: f64, inclusive: bool, name: &str| -> Result<()> {
-            let ok = v.is_finite() && if inclusive { (min..=max).contains(&v) } else { (min..max).contains(&v) };
-            if !ok {
-                return Err(Error(format!("invalid option '{}': must be between {} and {}", name, min, max).into()));
-            }
-            Ok(())
-        };
-
-        check_float(self.backtrack_ratio, 0.0, 1.0, false, "backtrack_ratio")?;
-        check_float(self.batch_fraction, 0.0, 1.0, true, "batch_fraction")?;
-        if self.batch_fraction == 0.0 {
-            return Err(Error("invalid option 'batch_fraction': cannot be zero".into()));
+        let checks = [
+            (
+                "backtrack_ratio",
+                (0.0..1.0).contains(&self.backtrack_ratio),
+                "in [0, 1)",
+            ),
+            (
+                "batch_fraction",
+                self.batch_fraction > 0.0 && self.batch_fraction <= 1.0,
+                "in (0, 1]",
+            ),
+            ("epsilon", (0.0..1.0).contains(&self.epsilon), "in [0, 1)"),
+            ("damping", (0.0..1.0).contains(&self.damping), "in [0, 1)"),
+            (
+                "walksat_noise",
+                (0.0..=1.0).contains(&self.walksat_noise),
+                "in [0, 1]",
+            ),
+            ("max_sweeps", self.max_sweeps > 0, "greater than 0"),
+            ("max_steps", self.max_steps > 0, "greater than 0"),
+            (
+                "walksat_restarts",
+                self.walksat_restarts > 0,
+                "greater than 0",
+            ),
+            (
+                "timeout_seconds",
+                self.timeout_seconds
+                    .is_none_or(|t| t.is_finite() && t > 0.0),
+                "positive and finite",
+            ),
+        ];
+        match checks.iter().find(|(_, valid, _)| !valid) {
+            Some((name, _, expected)) => Err(Error(format!(
+                "invalid option '{name}': must be {expected}"
+            ))),
+            None => Ok(()),
         }
-        check_float(self.epsilon, 0.0, 1.0, false, "epsilon")?;
-        check_float(self.damping, 0.0, 1.0, false, "damping")?;
-        check_float(self.walksat_noise, 0.0, 1.0, true, "walksat_noise")?;
-        if self.max_sweeps == 0 {
-            return Err(Error("invalid option 'max_sweeps': must be greater than 0".into()));
-        }
-        if self.max_steps == 0 {
-            return Err(Error("invalid option 'max_steps': must be greater than 0".into()));
-        }
-        if self.walksat_restarts == 0 {
-            return Err(Error("invalid option 'walksat_restarts': must be greater than 0".into()));
-        }
-        if let Some(t) = self.timeout_seconds {
-            if !t.is_finite() || t <= 0.0 {
-                return Err(Error("invalid option 'timeout_seconds': must be positive".into()));
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -271,7 +277,7 @@ impl ScalarCavity<'_> {
         store_norms: bool,
         edges: impl Fn(usize) -> I,
         clause_of: impl Fn(usize) -> usize,
-    ) -> std::result::Result<(), Status> {
+    ) -> StatusResult<()> {
         let mut products = [1.0; 2];
         for (sign, product) in products.iter_mut().enumerate() {
             for e in edges(sign) {
@@ -416,11 +422,7 @@ impl Solver {
         &self.steps
     }
     pub fn set_messages(&mut self, values: &[f64]) -> Result<()> {
-        if values.len() != self.eta.len()
-            || values
-                .iter()
-                .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
-        {
+        if values.len() != self.eta.len() || values.iter().any(|v| !(0.0..=1.0).contains(v)) {
             return Err(Error(
                 "messages must have one finite value in [0, 1] per normalized edge".into(),
             ));
@@ -445,7 +447,7 @@ impl Solver {
         }
         Ok(())
     }
-    pub(crate) fn check_stop(&self) -> std::result::Result<(), Status> {
+    pub(crate) fn check_stop(&self) -> StatusResult<()> {
         if self.execution.report.device_error.is_some() {
             return Err(Status::NumericalFailure);
         }
@@ -653,7 +655,7 @@ impl Solver {
         unit_edge.map_or((0, 0), |edge| (1, edge))
     }
 
-    pub fn propagate(&mut self) -> std::result::Result<usize, Status> {
+    pub fn propagate(&mut self) -> StatusResult<usize> {
         let result = self.timed("propagation", Self::propagate_inner);
         self.sync_messages();
         if self.execution.report.device_error.is_some() {
@@ -661,7 +663,7 @@ impl Solver {
         }
         result
     }
-    fn propagate_inner(&mut self) -> std::result::Result<usize, Status> {
+    fn propagate_inner(&mut self) -> StatusResult<usize> {
         let before = self.free.len();
         while let Some(c) = self.unit_queue.pop() {
             self.check_stop()?;
@@ -686,10 +688,10 @@ impl Solver {
     }
     /// Prefix/suffix products exclude an edge without division by (1-eta).
     /// This covers exact zero factors and makes every cavity O(1) after O(E) work.
-    fn cavities(&mut self, store_norms: bool) -> std::result::Result<(), Status> {
+    fn cavities(&mut self, store_norms: bool) -> StatusResult<()> {
         self.timed("cavities", |s| s.scalar_cavities(store_norms))
     }
-    fn scalar_cavities(&mut self, store_norms: bool) -> std::result::Result<(), Status> {
+    fn scalar_cavities(&mut self, store_norms: bool) -> StatusResult<()> {
         let formula = self.formula.clone();
         let f = &formula.0;
         let mut state = ScalarCavity {
@@ -736,7 +738,7 @@ impl Solver {
 
     /// One synchronous SP sweep, returning the largest undamped message change.
     /// Clause exclusion uses prefix/suffix products, including multiple zero q's.
-    pub fn sweep(&mut self) -> std::result::Result<f64, Status> {
+    pub fn sweep(&mut self) -> StatusResult<f64> {
         let result = self.sweep_inner();
         self.sync_messages();
         if self.execution.report.device_error.is_some() {
@@ -745,7 +747,7 @@ impl Solver {
         result
     }
     /// Run raw synchronous sweeps, synchronizing snapshots once at the end.
-    pub fn sweep_many(&mut self, count: usize) -> std::result::Result<f64, Status> {
+    pub fn sweep_many(&mut self, count: usize) -> StatusResult<f64> {
         self.check_stop()?;
         if count == 0 {
             return Ok(0.0);
@@ -767,7 +769,7 @@ impl Solver {
         }
         result
     }
-    fn sweep_inner(&mut self) -> std::result::Result<f64, Status> {
+    fn sweep_inner(&mut self) -> StatusResult<f64> {
         self.check_stop()?;
         if let Some(result) = self.gpu_converge(true) {
             return result.map(|r| r.residual);
@@ -782,7 +784,7 @@ impl Solver {
         }
         result
     }
-    fn scalar_clauses(&mut self) -> std::result::Result<f64, Status> {
+    fn scalar_clauses(&mut self) -> StatusResult<f64> {
         let f = &self.formula.0;
         let damping = self.options.damping;
         let mut residual: f64 = 0.0;
@@ -824,7 +826,7 @@ impl Solver {
         }
         Ok(residual)
     }
-    fn observables(&mut self) -> std::result::Result<(f64, bool), Status> {
+    fn observables(&mut self) -> StatusResult<(f64, bool)> {
         self.timed("observables", |s| {
             if let Some(result) = s.parallel_observables() {
                 result
@@ -833,11 +835,11 @@ impl Solver {
             }
         })
     }
-    fn scalar_observables(&mut self) -> std::result::Result<(f64, bool), Status> {
+    fn scalar_observables(&mut self) -> StatusResult<(f64, bool)> {
         self.cavities(true)?;
         self.scalar_observables_from_cavities()
     }
-    fn scalar_observables_from_cavities(&mut self) -> std::result::Result<(f64, bool), Status> {
+    fn scalar_observables_from_cavities(&mut self) -> StatusResult<(f64, bool)> {
         let f = &self.formula.0;
         let mut variable_term = 0.0;
         let mut paramagnetic = true;
@@ -887,7 +889,7 @@ impl Solver {
         }
         Ok((complexity, paramagnetic))
     }
-    pub fn converge(&mut self) -> std::result::Result<SpReport, Status> {
+    pub fn converge(&mut self) -> StatusResult<SpReport> {
         let result = self.converge_inner();
         self.sync_messages();
         if self.execution.report.device_error.is_some() {
@@ -895,7 +897,7 @@ impl Solver {
         }
         result
     }
-    fn converge_inner(&mut self) -> std::result::Result<SpReport, Status> {
+    fn converge_inner(&mut self) -> StatusResult<SpReport> {
         self.timed("propagation", Self::propagate_inner)?;
         if let Some(result) = self.gpu_converge(false) {
             return result;
@@ -981,7 +983,7 @@ impl Solver {
         k
     }
     /// Advance through one fixed point and one BSP action. Terminal states are sticky.
-    pub fn advance(&mut self) -> std::result::Result<Step, Status> {
+    pub fn advance(&mut self) -> StatusResult<Step> {
         let result = self.advance_internal();
         self.sync_messages();
         if self.execution.report.device_error.is_some() {
@@ -989,7 +991,7 @@ impl Solver {
         }
         result
     }
-    fn advance_internal(&mut self) -> std::result::Result<Step, Status> {
+    fn advance_internal(&mut self) -> StatusResult<Step> {
         if let Some(status) = self.terminal {
             return Err(status);
         }
@@ -999,7 +1001,7 @@ impl Solver {
         }
         result
     }
-    fn advance_inner(&mut self) -> std::result::Result<Step, Status> {
+    fn advance_inner(&mut self) -> StatusResult<Step> {
         self.check_stop()?;
         if self.steps.len() >= self.options.max_steps {
             return Err(Status::StepLimit);
@@ -1015,7 +1017,7 @@ impl Solver {
             complexity: report.complexity,
             changed: 0,
         };
-        if report.paramagnetic || self.active.len() == 0 {
+        if report.paramagnetic || self.active.is_empty() {
             step.action = "walksat".into();
             self.steps.push(step.clone());
             let assignment = self.timed("walksat", Self::walksat)?;

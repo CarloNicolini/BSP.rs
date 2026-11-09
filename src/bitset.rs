@@ -33,6 +33,9 @@ impl BitSet {
     pub fn len(&self) -> usize {
         self.count
     }
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
     /// Prefix counts for a bitset whose membership will remain fixed.
     pub fn rank_index(&self) -> Vec<u32> {
         let mut total = 0;

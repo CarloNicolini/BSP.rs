@@ -1,5 +1,5 @@
 use super::{Options, SolveResult, Solver, SpReport, Status};
-use crate::{Error, Formula, Result};
+use crate::{Error, Formula, Result, StatusResult};
 use rayon::{prelude::*, ThreadPool, ThreadPoolBuilder};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -133,19 +133,11 @@ impl Execution {
 }
 fn pool(threads: usize) -> Result<Arc<ThreadPool>> {
     static POOLS: OnceLock<Mutex<HashMap<usize, Weak<ThreadPool>>>> = OnceLock::new();
-    let mut pools = POOLS
-        .get_or_init(Mutex::default)
-        .lock()
-        .map_err(|e| Error(e.to_string()))?;
+    let mut pools = POOLS.get_or_init(Mutex::default).lock()?;
     if let Some(p) = pools.get(&threads).and_then(Weak::upgrade) {
         return Ok(p);
     }
-    let p = Arc::new(
-        ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .build()
-            .map_err(|e| Error(e.to_string()))?,
-    );
+    let p = Arc::new(ThreadPoolBuilder::new().num_threads(threads).build()?);
     pools.insert(threads, Arc::downgrade(&p));
     Ok(p)
 }
@@ -175,7 +167,7 @@ pub fn solve_many(jobs: Vec<SolveJob>, execution: ExecutionOptions) -> Result<Ve
     let mut workers = threads.min(jobs.len().max(1));
     #[cfg(all(feature = "metal", target_os = "macos"))]
     if execution.backend == Backend::Metal {
-        let budget = bsp_metal::device_budget().map_err(Error)? as usize / 2;
+        let budget = bsp_metal::device_budget()? as usize / 2;
         let largest = jobs
             .iter()
             .map(|j| {
@@ -190,7 +182,7 @@ pub fn solve_many(jobs: Vec<SolveJob>, execution: ExecutionOptions) -> Result<Ve
     }
     #[cfg(all(feature = "cuda", target_os = "linux"))]
     if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
-        let budget = bsp_cuda::device_budget().map_err(Error)? as usize / 2;
+        let budget = bsp_cuda::device_budget()? as usize / 2;
         let largest = jobs
             .iter()
             .map(|j| {
@@ -225,7 +217,7 @@ pub fn solve_many(jobs: Vec<SolveJob>, execution: ExecutionOptions) -> Result<Ve
             .map(|_| {
                 let mut results = Vec::new();
                 loop {
-                    let next = jobs.lock().map_err(|e| Error(e.to_string()))?.next();
+                    let next = jobs.lock()?.next();
                     let Some((i, job)) = next else { break };
                     let mut s =
                         Solver::with_execution(job.formula, job.options, execution.clone())?;
@@ -284,14 +276,14 @@ impl Solver {
             && options.damping as f32 != 1.0
             && options.epsilon as f32 != 0.0
         {
-            bsp_metal::device_budget().map_err(Error)?;
+            bsp_metal::device_budget()?;
         }
         #[cfg(all(feature = "cuda", target_os = "linux"))]
         if matches!(configured.options.backend, Backend::Cuda | Backend::CudaF32)
             && (configured.options.backend == Backend::Cuda
                 || options.damping as f32 != 1.0 && options.epsilon as f32 != 0.0)
         {
-            bsp_cuda::device_budget().map_err(Error)?;
+            bsp_cuda::device_budget()?;
         }
         let mut s = Self::new(formula, options)?;
         s.started = construction_started;
@@ -344,8 +336,7 @@ impl Solver {
                                 &s.eta,
                                 profile,
                             )
-                        }
-                        .map_err(Error)?;
+                        }?;
                         s.execution.report.device = Some(gpu.device.clone());
                         s.execution.report.allocated_bytes = gpu.allocated_bytes;
                         s.execution.gpu = Some(gpu);
@@ -384,8 +375,7 @@ impl Solver {
                             &s.eta,
                             fp32,
                             s.execution.options.profile.is_some(),
-                        )
-                        .map_err(Error)?;
+                        )?;
                         s.execution.report.device = Some(cuda.device.clone());
                         s.execution.report.allocated_bytes = cuda.allocated_bytes;
                         s.execution.cuda = Some(cuda);
@@ -416,11 +406,7 @@ impl Solver {
                 "edges":self.formula.edges(),"sp_sweeps":self.sp_sweeps,"flips":self.flips,"arch":std::env::consts::ARCH,"os":std::env::consts::OS,
                 "package_version":env!("CARGO_PKG_VERSION"),"compiler":env!("BSP_RUSTC"),"build_profile":env!("BSP_BUILD_PROFILE"),
                 "rustflags":env!("BSP_RUSTFLAGS"),"wall_seconds":self.started.elapsed().as_secs_f64()});
-            std::fs::write(
-                path,
-                serde_json::to_vec_pretty(&report).map_err(|e| Error(e.to_string()))?,
-            )
-            .map_err(|e| Error(e.to_string()))?;
+            std::fs::write(path, serde_json::to_vec_pretty(&report)?)?;
         }
         Ok(())
     }
@@ -536,7 +522,7 @@ impl Solver {
         self.free.len().saturating_mul(self.formula.edges()) / self.formula.n().max(1) >= min
     }
 
-    pub(super) fn parallel_sweep(&mut self) -> Option<std::result::Result<f64, Status>> {
+    pub(super) fn parallel_sweep(&mut self) -> Option<StatusResult<f64>> {
         if !self.parallel_work_available() {
             return None;
         }
@@ -564,9 +550,7 @@ impl Solver {
         Some(result)
     }
 
-    pub(super) fn parallel_observables(
-        &mut self,
-    ) -> Option<std::result::Result<(f64, bool), Status>> {
+    pub(super) fn parallel_observables(&mut self) -> Option<StatusResult<(f64, bool)>> {
         if !self.parallel_work_available() {
             return None;
         }
@@ -584,17 +568,14 @@ impl Solver {
         self.execution.parallel = Some(scratch);
         Some(result)
     }
-    pub(super) fn gpu_converge(
-        &mut self,
-        single: bool,
-    ) -> Option<std::result::Result<SpReport, Status>> {
+    pub(super) fn gpu_converge(&mut self, single: bool) -> Option<StatusResult<SpReport>> {
         self.gpu_compute(single, if single { 1 } else { self.options.max_sweeps })
     }
     pub(super) fn gpu_compute(
         &mut self,
         single: bool,
         limit: usize,
-    ) -> Option<std::result::Result<SpReport, Status>> {
+    ) -> Option<StatusResult<SpReport>> {
         if let Some(result) = self.metal_compute(single, limit) {
             Some(result)
         } else {
@@ -612,7 +593,7 @@ impl Solver {
         &mut self,
         single: bool,
         limit: usize,
-    ) -> Option<std::result::Result<SpReport, Status>> {
+    ) -> Option<StatusResult<SpReport>> {
         #[cfg(all(feature = "metal", target_os = "macos"))]
         {
             let mut gpu = self.execution.gpu.take()?;
@@ -732,7 +713,7 @@ impl Solver {
         &mut self,
         single: bool,
         limit: usize,
-    ) -> Option<std::result::Result<SpReport, Status>> {
+    ) -> Option<StatusResult<SpReport>> {
         #[cfg(all(feature = "cuda", target_os = "linux"))]
         {
             let mut gpu = self.execution.cuda.take()?;
@@ -893,7 +874,7 @@ impl Parallel {
                 .collect(),
         }
     }
-    fn cavities(&mut self, s: &mut Solver, store_norms: bool) -> std::result::Result<(), Status> {
+    fn cavities(&mut self, s: &mut Solver, store_norms: bool) -> StatusResult<()> {
         let f = &s.formula.0;
         let mut q = self.q.as_mut_slice();
         let mut norm = self.norm.as_mut_slice();
@@ -978,7 +959,7 @@ impl Parallel {
             });
         Ok(())
     }
-    fn observables(&mut self, s: &mut Solver) -> std::result::Result<(f64, bool), Status> {
+    fn observables(&mut self, s: &mut Solver) -> StatusResult<(f64, bool)> {
         let f = &s.formula.0;
         self.norm
             .par_iter_mut()
@@ -1057,7 +1038,7 @@ impl Parallel {
     }
 }
 
-fn parallel_clauses(s: &mut Solver) -> std::result::Result<f64, Status> {
+fn parallel_clauses(s: &mut Solver) -> StatusResult<f64> {
     let f = &s.formula.0;
     let chunk = s
         .formula
@@ -1155,7 +1136,7 @@ impl ImplicitParallel {
         }
     }
 
-    fn cavities(&mut self, s: &mut Solver, store_norms: bool) -> std::result::Result<(), Status> {
+    fn cavities(&mut self, s: &mut Solver, store_norms: bool) -> StatusResult<()> {
         let topology = s.formula.feistel_topology().unwrap();
         let k = topology.k() as usize;
         if s.degree.iter().any(|&d| d as usize > self.outputs.len()) {

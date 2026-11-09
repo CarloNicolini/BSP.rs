@@ -275,11 +275,7 @@ impl Formula {
         let mut line = String::new();
         let (n, m) = loop {
             line.clear();
-            if reader
-                .read_line(&mut line)
-                .map_err(|e| Error(e.to_string()))?
-                == 0
-            {
+            if reader.read_line(&mut line)? == 0 {
                 return Err(Error("missing DIMACS header".into()));
             }
             let text = line.trim();
@@ -309,11 +305,7 @@ impl Formula {
         Self::build(n, preserve_order, (0, 0), |packed| loop {
             if pos >= line.len() {
                 line.clear();
-                if reader
-                    .read_line(&mut line)
-                    .map_err(|e| Error(e.to_string()))?
-                    == 0
-                {
+                if reader.read_line(&mut line)? == 0 {
                     if !packed.is_empty() || count != m {
                         return Err(Error("DIMACS clause count or terminator mismatch".into()));
                     }

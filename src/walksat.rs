@@ -1,4 +1,4 @@
-use crate::{bitset::BitSet, Solver, Status};
+use crate::{bitset::BitSet, Solver, Status, StatusResult};
 use rand::Rng;
 
 /// Random selection and removal both cost O(1). A word mask would make random
@@ -30,7 +30,7 @@ impl Unsatisfied {
 }
 
 impl Solver {
-    pub(crate) fn walksat(&mut self) -> std::result::Result<Vec<i8>, Status> {
+    pub(crate) fn walksat(&mut self) -> StatusResult<Vec<i8>> {
         self.mark_walksat();
         // Arc clone lets the flip loop mutate the solver's counters and RNG.
         let formula = self.formula.clone();
