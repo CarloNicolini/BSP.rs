@@ -71,7 +71,6 @@ impl Default for PhaseClock {
     }
 }
 
-const ROW_SECONDS: u64 = 3;
 const COLUMNS: [(&str, usize); 9] = [
     ("time", 8),
     ("step", 6),
@@ -117,7 +116,7 @@ pub struct LiveLine {
 }
 
 impl LiveLine {
-    pub fn start(clock: PhaseClock) -> Self {
+    pub fn start(clock: PhaseClock, row_interval: Duration) -> Self {
         let multi = MultiProgress::with_draw_target(ProgressDrawTarget::stdout());
         let decided = multi.add(ProgressBar::new(0));
         decided.set_style(
@@ -155,7 +154,7 @@ impl LiveLine {
                             " | step {} sweeps {} complexity {:.4}",
                             step.index, step.sp_sweeps, step.complexity
                         );
-                        if finished || last_row.elapsed().as_secs() >= ROW_SECONDS {
+                        if finished || last_row.elapsed() >= row_interval {
                             if !printed_header {
                                 let _ =
                                     multi.println(table_row(COLUMNS.map(|(name, _)| name.into())));

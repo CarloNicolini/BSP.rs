@@ -52,6 +52,7 @@ pub struct FileConfig {
     pub write_formula: Option<PathBuf>,
     pub output: Option<PathBuf>,
     pub progress: Option<bool>,
+    pub update_frequency: Option<f64>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -69,6 +70,7 @@ pub struct Resolved {
     pub write_formula: Option<PathBuf>,
     pub output: Option<PathBuf>,
     pub progress: Option<bool>,
+    pub update_frequency: Option<f64>,
 }
 
 /// Explicit flags layer over earlier sources exactly like a run file.
@@ -100,6 +102,7 @@ impl From<&Cli> for FileConfig {
                 (_, true) => Some(false),
                 _ => None,
             },
+            update_frequency: cli.update_frequency,
             ..Self::default()
         }
     }
@@ -194,6 +197,9 @@ impl FileConfig {
         }
         if let Some(value) = self.progress {
             resolved.progress = Some(value);
+        }
+        if let Some(value) = self.update_frequency {
+            resolved.update_frequency = Some(value);
         }
     }
 }

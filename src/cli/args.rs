@@ -135,6 +135,10 @@ pub struct Cli {
     #[arg(long, overrides_with = "no_progress")]
     pub progress: bool,
 
+    /// Seconds between progress table rows [default: 3]
+    #[arg(long, value_name = "SECONDS")]
+    pub update_frequency: Option<f64>,
+
     /// Write structured JSON logs of every BSP step to stderr [default: off]
     #[arg(long, value_name = "LEVEL", value_enum)]
     pub enable_tracing: Option<TraceLevel>,
