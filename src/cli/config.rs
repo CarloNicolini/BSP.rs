@@ -1,4 +1,4 @@
-use super::args::FeistelEnsemble;
+use super::args::{Cli, FeistelEnsemble};
 use bsp_rust::{Backend, ExecutionOptions, Options};
 use serde::Deserialize;
 use std::fs;
@@ -69,6 +69,40 @@ pub struct Resolved {
     pub write_formula: Option<PathBuf>,
     pub output: Option<PathBuf>,
     pub progress: Option<bool>,
+}
+
+/// Explicit flags layer over earlier sources exactly like a run file.
+/// Formula inputs, `--generate`, and `--feistel` are resolved separately.
+impl From<&Cli> for FileConfig {
+    fn from(cli: &Cli) -> Self {
+        Self {
+            preserve_literal_order: cli.preserve_literal_order.then_some(true),
+            seed: cli.seed,
+            backtrack_ratio: cli.backtrack_ratio,
+            batch_fraction: cli.batch_fraction,
+            epsilon: cli.epsilon,
+            damping: cli.damping,
+            max_sweeps: cli.max_sweeps,
+            max_steps: cli.max_steps,
+            max_flips: cli.max_flips,
+            walksat_restarts: cli.restarts,
+            timeout_seconds: cli.timeout,
+            backend: cli.backend.map(Into::into),
+            threads: cli.threads,
+            profile: cli.profile.clone(),
+            sweeps: cli.sweeps,
+            messages: cli.messages.clone(),
+            dump_messages: cli.dump_messages.then_some(true),
+            write_formula: cli.write_formula.clone(),
+            output: cli.output.clone(),
+            progress: match (cli.progress, cli.no_progress) {
+                (true, _) => Some(true),
+                (_, true) => Some(false),
+                _ => None,
+            },
+            ..Self::default()
+        }
+    }
 }
 
 impl FileConfig {

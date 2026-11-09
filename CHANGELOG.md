@@ -24,6 +24,13 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.5]
+
+- Split the CLI binary into `cli::resolve`, `cli::batch`, and `cli::single`, and
+  layer explicit flags through `FileConfig` so run files and flags share one
+  option-merging path. Flags, defaults, JSON output, and exit codes are
+  unchanged.
+
 ## [0.5.4]
 
 - Reuse one incidence scratch buffer in the fix and release paths, borrow the
