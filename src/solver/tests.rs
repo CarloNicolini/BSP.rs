@@ -1,7 +1,7 @@
 use super::mutation::FreeLiterals;
 use super::*;
 
-fn check_indexes(s: &Solver) {
+pub(super) fn check_indexes(s: &Solver) {
     let f = s.formula.data();
     let mut degree = vec![0u32; f.n];
     for c in 0..s.formula.m() {
