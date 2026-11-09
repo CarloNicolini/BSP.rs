@@ -14,8 +14,8 @@ mod walksat;
 
 pub use formula::Formula;
 pub use solver::{
-    solve_many, Backend, CancellationToken, ExecutionOptions, ExecutionReport, Options, SolveJob,
-    SolveResult, Solver, SpReport, Status, Step,
+    solve_many, Action, Backend, CancellationToken, ExecutionOptions, ExecutionReport, Options,
+    Precision, SolveJob, SolveResult, Solver, SpReport, Status, Step,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

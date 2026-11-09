@@ -48,6 +48,12 @@ pub struct ExecutionOptions {
     /// Profiling intentionally adds synchronization to resolve GPU phase durations.
     pub profile: Option<PathBuf>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Precision {
+    F32,
+    F64,
+}
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Phase {
     pub calls: u64,
@@ -57,7 +63,7 @@ pub struct Phase {
 pub struct ExecutionReport {
     pub requested_backend: Backend,
     pub backend: Backend,
-    pub precision: String,
+    pub precision: Precision,
     pub threads: usize,
     pub device: Option<String>,
     pub allocated_bytes: usize,
@@ -107,11 +113,10 @@ impl Execution {
                 requested_backend: options.backend,
                 backend: options.backend,
                 precision: if matches!(options.backend, Backend::Metal | Backend::CudaF32) {
-                    "f32"
+                    Precision::F32
                 } else {
-                    "f64"
-                }
-                .into(),
+                    Precision::F64
+                },
                 threads: if matches!(
                     options.backend,
                     Backend::Metal | Backend::Cuda | Backend::CudaF32
@@ -510,7 +515,7 @@ impl Solver {
     fn cpu_fallback(&mut self, reason: &str) {
         self.execution.report.fallbacks.push(reason.into());
         self.execution.report.backend = Backend::Cpu;
-        self.execution.report.precision = "f64".into();
+        self.execution.report.precision = Precision::F64;
         self.execution.report.threads = 1;
         #[cfg(all(feature = "metal", target_os = "macos"))]
         {
@@ -530,7 +535,7 @@ impl Solver {
         }
         #[cfg(all(feature = "cuda", target_os = "linux"))]
         if self.execution.cuda.is_some() {
-            if self.execution.report.precision == "f32"
+            if self.execution.report.precision == Precision::F32
                 && (!bsp_cuda::safe_conversion(&self.eta)
                     || !bsp_cuda::safe_conversion(&self.saved_eta))
             {
@@ -807,7 +812,7 @@ impl Solver {
                         // Re-evaluate decision-sensitive observables in f64 on
                         // the current rounded messages, without changing them.
                         let guard =
-                            32.0 * if self.execution.report.precision == "f32" {
+                            32.0 * if self.execution.report.precision == Precision::F32 {
                                 f32::EPSILON as f64
                             } else {
                                 f64::EPSILON

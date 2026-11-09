@@ -11,7 +11,7 @@ use std::time::Instant;
 #[path = "execution.rs"]
 mod execution;
 use execution::Execution;
-pub use execution::{solve_many, Backend, ExecutionOptions, ExecutionReport, SolveJob};
+pub use execution::{solve_many, Backend, ExecutionOptions, ExecutionReport, Precision, SolveJob};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -137,10 +137,17 @@ pub struct SpReport {
     pub complexity: f64,
     pub paramagnetic: bool,
 }
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Action {
+    Decimate,
+    Backtrack,
+    Walksat,
+}
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Step {
     pub index: usize,
-    pub action: String,
+    pub action: Action,
     pub free_variables: usize,
     pub active_clauses: usize,
     pub sp_sweeps: u64,
@@ -205,6 +212,13 @@ pub struct Solver {
     terminal: Option<Status>,
     solution: Option<Vec<i8>>,
     walksat_hook: Option<Arc<dyn Fn() + Send + Sync>>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum FreeLiterals {
+    None,
+    One(usize),
+    Many,
 }
 
 enum TrueCounts {
@@ -538,7 +552,9 @@ impl Solver {
                         }
                     }
                 }
-            } else if self.active.contains(c) && self.free_literals_up_to_two(c).0 <= 1 {
+            } else if self.active.contains(c)
+                && !matches!(self.free_literals(c), FreeLiterals::Many)
+            {
                 self.unit_queue.push(c as u32);
             }
         }
@@ -588,7 +604,7 @@ impl Solver {
                         }
                     }
                 }
-                if self.free_literals_up_to_two(c).0 <= 1 {
+                if !matches!(self.free_literals(c), FreeLiterals::Many) {
                     self.unit_queue.push(c as u32);
                 }
             }
@@ -596,7 +612,7 @@ impl Solver {
     }
     // Unit propagation only distinguishes zero, one and multiple free bits.
     // Stop as soon as two bits are found, even for very wide clauses.
-    fn free_literals_up_to_two(&self, c: usize) -> (u8, usize) {
+    fn free_literals(&self, c: usize) -> FreeLiterals {
         let f = &self.formula.0;
         let mut unit_edge = None;
         let first = f.mask_offset(c);
@@ -606,11 +622,11 @@ impl Solver {
                 continue;
             }
             if unit_edge.is_some() || mask & (mask - 1) != 0 {
-                return (2, 0);
+                return FreeLiterals::Many;
             }
             unit_edge = Some(f.offset(c) + 64 * (w - first) + mask.trailing_zeros() as usize);
         }
-        unit_edge.map_or((0, 0), |edge| (1, edge))
+        unit_edge.map_or(FreeLiterals::None, FreeLiterals::One)
     }
 
     pub fn propagate(&mut self) -> StatusResult<usize> {
@@ -629,14 +645,14 @@ impl Solver {
             if !self.active.contains(c) {
                 continue;
             }
-            let (count, e) = self.free_literals_up_to_two(c);
-            if count == 0 {
-                self.unit_queue.push(c as u32);
-                return Err(Status::Contradiction);
-            }
-            if count != 1 {
-                continue;
-            }
+            let e = match self.free_literals(c) {
+                FreeLiterals::None => {
+                    self.unit_queue.push(c as u32);
+                    return Err(Status::Contradiction);
+                }
+                FreeLiterals::One(edge) => edge,
+                FreeLiterals::Many => continue,
+            };
             let f = &self.formula.0;
             let lit = f.literal(e);
             self.cert[(lit >> 1) as usize] = 1.0;
@@ -965,37 +981,49 @@ impl Solver {
             return Err(Status::StepLimit);
         }
         let report = self.converge_inner()?;
-        let mut step = Step {
-            index: self.steps.len(),
-            action: String::new(),
-            free_variables: self.free.len(),
-            active_clauses: self.active.len(),
-            sp_sweeps: self.sp_sweeps,
+        // Counters are recorded before the action changes them.
+        let (index, free_variables, active_clauses, sp_sweeps) = (
+            self.steps.len(),
+            self.free.len(),
+            self.active.len(),
+            self.sp_sweeps,
+        );
+        let step = |action, changed| Step {
+            index,
+            action,
+            free_variables,
+            active_clauses,
+            sp_sweeps,
             residual: report.residual,
             complexity: report.complexity,
-            changed: 0,
+            changed,
         };
         if report.paramagnetic || self.active.is_empty() {
-            step.action = "walksat".into();
-            self.steps.push(step.clone());
+            let step = step(Action::Walksat, 0);
+            self.steps.push(step);
             let assignment = self.timed("walksat", Self::walksat)?;
             self.solution = Some(assignment);
             self.terminal = Some(Status::Sat);
             return Ok(step);
         }
-        if self.back_moves as f64 / (self.dec_moves as f64) < self.options.backtrack_ratio {
-            self.back_moves += 1;
-            step.action = "backtrack".into();
-            step.changed = self.timed("backtracking", Self::backtrack_inner);
-        } else {
-            self.dec_moves += 1;
-            if report.complexity < -2.0 {
-                return Err(Status::NegativeComplexity);
-            }
-            step.action = "decimate".into();
-            step.changed = self.timed("decimation", Self::decimate_inner);
-        }
-        self.steps.push(step.clone());
+        let step =
+            if self.back_moves as f64 / (self.dec_moves as f64) < self.options.backtrack_ratio {
+                self.back_moves += 1;
+                step(
+                    Action::Backtrack,
+                    self.timed("backtracking", Self::backtrack_inner),
+                )
+            } else {
+                self.dec_moves += 1;
+                if report.complexity < -2.0 {
+                    return Err(Status::NegativeComplexity);
+                }
+                step(
+                    Action::Decimate,
+                    self.timed("decimation", Self::decimate_inner),
+                )
+            };
+        self.steps.push(step);
         Ok(step)
     }
     pub(crate) fn residual_variable_count(&self) -> usize {
@@ -1077,7 +1105,16 @@ mod index_tests {
                     true_count += 1;
                 }
             }
-            assert_eq!(s.free_literals_up_to_two(c).0, free.min(2) as u8);
+            let expected = match free {
+                0 => FreeLiterals::None,
+                1 => FreeLiterals::One(
+                    (f.offset(c)..f.offset(c + 1))
+                        .find(|&e| s.assignment[(f.literal(e) >> 1) as usize] < 0)
+                        .unwrap(),
+                ),
+                _ => FreeLiterals::Many,
+            };
+            assert_eq!(s.free_literals(c), expected);
             assert_eq!(s.true_count.get(c), true_count);
             assert_eq!(s.active.contains(c), true_count == 0);
             if true_count == 0 {

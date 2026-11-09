@@ -24,6 +24,16 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.3]
+
+- Replace the stringly typed `Step.action` and `ExecutionReport.precision` with
+  the `Action` and `Precision` enums. JSON output keeps the same strings
+  (`decimate`, `backtrack`, `walksat`, `f32`, `f64`). Rust callers that compared
+  these fields with strings must compare with the enum values. `Step` is now
+  `Copy`, so recording a step no longer allocates.
+- Return a three-case value from the unit-propagation clause scan instead of a
+  count and edge pair.
+
 ## [0.5.2]
 
 - Move device mutation hooks (`freeze`, `restore`, `set_active`, `set_assignment`) and
