@@ -501,7 +501,7 @@ impl Solver {
         }
         self.degree[v] = 0;
         self.assignment[v] = value;
-        self.gpu_assignment(v, value);
+        self.execution.set_assignment(v, value);
         self.free.set(v, false);
         self.forced[v] = forced;
         self.surveys[v] = if value == 1 {
@@ -518,42 +518,21 @@ impl Solver {
             self.masks
                 .set_bit(f.mask_offset(c) + local / 64, local % 64, false);
             if self.active.contains(c) {
-                #[cfg(all(feature = "metal", target_os = "macos"))]
-                if let Some(gpu) = &mut self.execution.gpu {
-                    gpu.freeze(e);
-                }
-                #[cfg(all(feature = "cuda", target_os = "linux"))]
-                if let Some(cuda) = &mut self.execution.cuda {
-                    cuda.freeze(e);
-                }
+                self.execution.freeze_edge(e);
                 self.saved_eta[e] = self.eta[e];
                 self.eta[e] = 0.0;
             }
             if value != i8::from(f.negative(e)) {
                 if self.true_count.change(c, true) == 1 {
                     self.active.set(c, false);
-                    #[cfg(all(feature = "metal", target_os = "macos"))]
-                    if let Some(gpu) = &mut self.execution.gpu {
-                        gpu.set_active(c, false);
-                    }
-                    #[cfg(all(feature = "cuda", target_os = "linux"))]
-                    if let Some(cuda) = &mut self.execution.cuda {
-                        cuda.set_active(c, false);
-                    }
+                    self.execution.set_clause_active(c, false);
                     for w in f.mask_offset(c)..f.mask_offset(c + 1) {
                         for other in (Ones {
                             word: self.masks.get(w),
                             base: start + 64 * (w - f.mask_offset(c)),
                         }) {
                             self.degree[(f.literal(other) >> 1) as usize] -= 1;
-                            #[cfg(all(feature = "metal", target_os = "macos"))]
-                            if let Some(gpu) = &mut self.execution.gpu {
-                                gpu.freeze(other);
-                            }
-                            #[cfg(all(feature = "cuda", target_os = "linux"))]
-                            if let Some(cuda) = &mut self.execution.cuda {
-                                cuda.freeze(other);
-                            }
+                            self.execution.freeze_edge(other);
                             self.saved_eta[other] = self.eta[other];
                             self.eta[other] = 0.0;
                         }
@@ -575,7 +554,7 @@ impl Solver {
         self.decisions.remove(v as u32, &self.cert);
         let value = self.assignment[v];
         self.assignment[v] = -1;
-        self.gpu_assignment(v, -1);
+        self.execution.set_assignment(v, -1);
         self.free.set(v, true);
         let f = &self.formula.0;
         let mut incident = Vec::new();
@@ -593,39 +572,18 @@ impl Solver {
             if true_count == 0 {
                 if self.active.contains(c) {
                     self.degree[v] += 1;
-                    #[cfg(all(feature = "metal", target_os = "macos"))]
-                    if let Some(gpu) = &mut self.execution.gpu {
-                        gpu.restore(e);
-                    }
-                    #[cfg(all(feature = "cuda", target_os = "linux"))]
-                    if let Some(cuda) = &mut self.execution.cuda {
-                        cuda.restore(e);
-                    }
+                    self.execution.restore_edge(e);
                     self.eta[e] = self.saved_eta[e];
                 } else {
                     self.active.set(c, true);
-                    #[cfg(all(feature = "metal", target_os = "macos"))]
-                    if let Some(gpu) = &mut self.execution.gpu {
-                        gpu.set_active(c, true);
-                    }
-                    #[cfg(all(feature = "cuda", target_os = "linux"))]
-                    if let Some(cuda) = &mut self.execution.cuda {
-                        cuda.set_active(c, true);
-                    }
+                    self.execution.set_clause_active(c, true);
                     for w in f.mask_offset(c)..f.mask_offset(c + 1) {
                         for other in (Ones {
                             word: self.masks.get(w),
                             base: start + 64 * (w - f.mask_offset(c)),
                         }) {
                             self.degree[(f.literal(other) >> 1) as usize] += 1;
-                            #[cfg(all(feature = "metal", target_os = "macos"))]
-                            if let Some(gpu) = &mut self.execution.gpu {
-                                gpu.restore(other);
-                            }
-                            #[cfg(all(feature = "cuda", target_os = "linux"))]
-                            if let Some(cuda) = &mut self.execution.cuda {
-                                cuda.restore(other);
-                            }
+                            self.execution.restore_edge(other);
                             self.eta[other] = self.saved_eta[other];
                         }
                     }

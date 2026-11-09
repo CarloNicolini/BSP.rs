@@ -24,6 +24,13 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.2]
+
+- Move device mutation hooks (`freeze`, `restore`, `set_active`, `set_assignment`) and
+  backend availability checks into `Execution` and `Backend`. The solver no
+  longer repeats Metal and CUDA `cfg` blocks, and Metal and CUDA setup share the
+  f32 message rounding. No change to results.
+
 ## [0.5.1]
 
 - Report invalid options with one table-driven validator that names the accepted

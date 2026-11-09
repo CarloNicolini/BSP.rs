@@ -20,6 +20,25 @@ pub enum Backend {
     Cuda,
     CudaF32,
 }
+impl Backend {
+    pub(crate) fn is_cuda(self) -> bool {
+        matches!(self, Self::Cuda | Self::CudaF32)
+    }
+
+    /// Reject a device backend that this build or host OS cannot run.
+    pub(crate) fn ensure_available(self) -> Result<()> {
+        let message = match self {
+            Self::Metal if cfg!(not(all(feature = "metal", target_os = "macos"))) => {
+                "Metal requires macOS and a build with --features metal"
+            }
+            Self::Cuda | Self::CudaF32 if cfg!(not(all(feature = "cuda", target_os = "linux"))) => {
+                "CUDA requires Linux and a build with --features cuda"
+            }
+            _ => return Ok(()),
+        };
+        Err(Error(message.into()))
+    }
+}
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ExecutionOptions {
@@ -130,6 +149,59 @@ impl Execution {
             p.seconds += seconds;
         }
     }
+
+    /// Mirror graph mutations on the device. Without a device these compile to nothing.
+    #[inline]
+    pub fn freeze_edge(&mut self, edge: usize) {
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        if let Some(gpu) = &mut self.gpu {
+            gpu.freeze(edge);
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if let Some(cuda) = &mut self.cuda {
+            cuda.freeze(edge);
+        }
+        let _ = edge;
+    }
+
+    #[inline]
+    pub fn restore_edge(&mut self, edge: usize) {
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        if let Some(gpu) = &mut self.gpu {
+            gpu.restore(edge);
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if let Some(cuda) = &mut self.cuda {
+            cuda.restore(edge);
+        }
+        let _ = edge;
+    }
+
+    #[inline]
+    pub fn set_clause_active(&mut self, clause: usize, active: bool) {
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        if let Some(gpu) = &mut self.gpu {
+            gpu.set_active(clause, active);
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if let Some(cuda) = &mut self.cuda {
+            cuda.set_active(clause, active);
+        }
+        let _ = (clause, active);
+    }
+
+    #[inline]
+    pub fn set_assignment(&mut self, variable: usize, value: i8) {
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        if let Some(gpu) = &mut self.gpu {
+            gpu.set_assignment(variable, value);
+        }
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        if let Some(cuda) = &mut self.cuda {
+            cuda.set_assignment(variable, value);
+        }
+        let _ = (variable, value);
+    }
 }
 fn pool(threads: usize) -> Result<Arc<ThreadPool>> {
     static POOLS: OnceLock<Mutex<HashMap<usize, Weak<ThreadPool>>>> = OnceLock::new();
@@ -163,50 +235,31 @@ pub fn solve_many(jobs: Vec<SolveJob>, execution: ExecutionOptions) -> Result<Ve
     for job in &jobs {
         job.options.validate()?;
     }
-    #[allow(unused_mut)]
-    let mut workers = threads.min(jobs.len().max(1));
-    #[cfg(all(feature = "metal", target_os = "macos"))]
-    if execution.backend == Backend::Metal {
-        let budget = bsp_metal::device_budget()? as usize / 2;
-        let largest = jobs
-            .iter()
-            .map(|j| {
-                j.formula.edges().saturating_mul(112)
-                    + j.formula.n().saturating_mul(128)
-                    + j.formula.m().saturating_mul(48)
-            })
-            .max()
-            .unwrap_or(1)
-            .max(1);
-        workers = workers.min((budget / largest).max(1));
-    }
-    #[cfg(all(feature = "cuda", target_os = "linux"))]
-    if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
-        let budget = bsp_cuda::device_budget()? as usize / 2;
-        let largest = jobs
-            .iter()
-            .map(|j| {
-                j.formula.edges().saturating_mul(112)
-                    + j.formula.n().saturating_mul(128)
-                    + j.formula.m().saturating_mul(48)
-            })
-            .max()
-            .unwrap_or(1)
-            .max(1);
-        workers = workers.min((budget / largest).max(1));
-    }
-    #[cfg(not(all(feature = "cuda", target_os = "linux")))]
-    if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
-        return Err(Error(
-            "CUDA requires Linux and a build with --features cuda".into(),
-        ));
-    }
-    #[cfg(not(all(feature = "metal", target_os = "macos")))]
-    if execution.backend == Backend::Metal {
-        return Err(Error(
-            "Metal requires macOS and a build with --features metal".into(),
-        ));
-    }
+    execution.backend.ensure_available()?;
+    let device_budget: Option<u64> = match execution.backend {
+        #[cfg(all(feature = "metal", target_os = "macos"))]
+        Backend::Metal => Some(bsp_metal::device_budget()?),
+        #[cfg(all(feature = "cuda", target_os = "linux"))]
+        Backend::Cuda | Backend::CudaF32 => Some(bsp_cuda::device_budget()?),
+        _ => None,
+    };
+    let workers = threads.min(jobs.len().max(1));
+    let workers = match device_budget {
+        Some(budget) => {
+            let largest = jobs
+                .iter()
+                .map(|j| {
+                    j.formula.edges().saturating_mul(112)
+                        + j.formula.n().saturating_mul(128)
+                        + j.formula.m().saturating_mul(48)
+                })
+                .max()
+                .unwrap_or(1)
+                .max(1);
+            workers.min((budget as usize / 2 / largest).max(1))
+        }
+        None => workers,
+    };
     let p = pool(threads)?;
     // Fixed worker lanes cap GPU/host memory while sharing the CPU parallel pool.
     let jobs: Mutex<_> = Mutex::new(jobs.into_iter().enumerate());
@@ -246,27 +299,14 @@ impl Solver {
         options: Options,
         execution: ExecutionOptions,
     ) -> Result<Self> {
-        if formula.feistel_topology().is_some()
-            && matches!(execution.backend, Backend::Cuda | Backend::CudaF32)
-        {
+        if formula.feistel_topology().is_some() && execution.backend.is_cuda() {
             return Err(Error(
                 "Feistel formulas require --backend cpu, cpu-parallel, or metal".into(),
             ));
         }
         let construction_started = Instant::now();
         options.validate()?;
-        #[cfg(not(all(feature = "metal", target_os = "macos")))]
-        if execution.backend == Backend::Metal {
-            return Err(Error(
-                "Metal requires macOS and a build with --features metal".into(),
-            ));
-        }
-        #[cfg(not(all(feature = "cuda", target_os = "linux")))]
-        if matches!(execution.backend, Backend::Cuda | Backend::CudaF32) {
-            return Err(Error(
-                "CUDA requires Linux and a build with --features cuda".into(),
-            ));
-        }
+        execution.backend.ensure_available()?;
         let setup = execution.profile.as_ref().map(|_| Instant::now());
         let configured = Execution::new(execution)?;
         // Check device availability before allocating the host solver arrays.
@@ -279,7 +319,7 @@ impl Solver {
             bsp_metal::device_budget()?;
         }
         #[cfg(all(feature = "cuda", target_os = "linux"))]
-        if matches!(configured.options.backend, Backend::Cuda | Backend::CudaF32)
+        if configured.options.backend.is_cuda()
             && (configured.options.backend == Backend::Cuda
                 || options.damping as f32 != 1.0 && options.epsilon as f32 != 0.0)
         {
@@ -306,86 +346,8 @@ impl Solver {
                     }
                 }
             }
-            Backend::Metal => {
-                #[cfg(all(feature = "metal", target_os = "macos"))]
-                {
-                    if s.options.damping as f32 == 1.0 || s.options.epsilon as f32 == 0.0 {
-                        s.cpu_fallback("epsilon or damping cannot be represented safely in f32");
-                    } else {
-                        // Random initialization has no externally supplied precision
-                        // to preserve. Keep its f32 distribution inside [0,1).
-                        for eta in &mut s.eta {
-                            *eta = (*eta as f32).min(f32::from_bits(0x3f7fffff)) as f64;
-                        }
-                        s.saved_eta.clone_from(&s.eta);
-                        let f = &s.formula.0;
-                        let profile = s.execution.options.profile.is_some();
-                        let gpu = if let Some(topology) = &f.feistel {
-                            topology.metal_solver(&s.eta, profile)
-                        } else {
-                            let (offsets, edge_clause) = f.device_clause_indexes();
-                            bsp_metal::MetalSolver::new(
-                                bsp_metal::Topology {
-                                    n: f.n,
-                                    offsets: &offsets,
-                                    literals: &f.literals,
-                                    edge_clause: &edge_clause,
-                                    var_offsets: &f.var_offsets,
-                                    var_edges: &f.var_edges,
-                                },
-                                &s.eta,
-                                profile,
-                            )
-                        }?;
-                        s.execution.report.device = Some(gpu.device.clone());
-                        s.execution.report.allocated_bytes = gpu.allocated_bytes;
-                        s.execution.gpu = Some(gpu);
-                    }
-                }
-                #[cfg(not(all(feature = "metal", target_os = "macos")))]
-                return Err(Error(
-                    "Metal requires macOS and a build with --features metal".into(),
-                ));
-            }
-            Backend::Cuda | Backend::CudaF32 => {
-                #[cfg(all(feature = "cuda", target_os = "linux"))]
-                {
-                    let fp32 = s.execution.options.backend == Backend::CudaF32;
-                    if fp32 && (s.options.damping as f32 == 1.0 || s.options.epsilon as f32 == 0.0)
-                    {
-                        s.cpu_fallback("epsilon or damping cannot be represented safely in f32");
-                    } else {
-                        if fp32 {
-                            for eta in &mut s.eta {
-                                *eta = (*eta as f32).min(f32::from_bits(0x3f7fffff)) as f64;
-                            }
-                            s.saved_eta.clone_from(&s.eta);
-                        }
-                        let f = &s.formula.0;
-                        let (offsets, edge_clause) = f.device_clause_indexes();
-                        let cuda = bsp_cuda::CudaSolver::new(
-                            bsp_cuda::Topology {
-                                n: f.n,
-                                offsets: &offsets,
-                                literals: &f.literals,
-                                edge_clause: &edge_clause,
-                                var_offsets: &f.var_offsets,
-                                var_edges: &f.var_edges,
-                            },
-                            &s.eta,
-                            fp32,
-                            s.execution.options.profile.is_some(),
-                        )?;
-                        s.execution.report.device = Some(cuda.device.clone());
-                        s.execution.report.allocated_bytes = cuda.allocated_bytes;
-                        s.execution.cuda = Some(cuda);
-                    }
-                }
-                #[cfg(not(all(feature = "cuda", target_os = "linux")))]
-                return Err(Error(
-                    "CUDA requires Linux and a build with --features cuda".into(),
-                ));
-            }
+            Backend::Metal => s.init_metal()?,
+            Backend::Cuda | Backend::CudaF32 => s.init_cuda()?,
         }
         s.sync_messages();
         if let Some(error) = &s.execution.report.device_error {
@@ -397,6 +359,92 @@ impl Solver {
         }
         Ok(s)
     }
+    #[cfg(all(feature = "metal", target_os = "macos"))]
+    fn init_metal(&mut self) -> Result<()> {
+        if self.options.damping as f32 == 1.0 || self.options.epsilon as f32 == 0.0 {
+            self.cpu_fallback("epsilon or damping cannot be represented safely in f32");
+            return Ok(());
+        }
+        self.round_messages_to_f32();
+        let f = &self.formula.0;
+        let profile = self.execution.options.profile.is_some();
+        let gpu = if let Some(topology) = &f.feistel {
+            topology.metal_solver(&self.eta, profile)
+        } else {
+            let (offsets, edge_clause) = f.device_clause_indexes();
+            bsp_metal::MetalSolver::new(
+                bsp_metal::Topology {
+                    n: f.n,
+                    offsets: &offsets,
+                    literals: &f.literals,
+                    edge_clause: &edge_clause,
+                    var_offsets: &f.var_offsets,
+                    var_edges: &f.var_edges,
+                },
+                &self.eta,
+                profile,
+            )
+        }?;
+        self.execution.report.device = Some(gpu.device.clone());
+        self.execution.report.allocated_bytes = gpu.allocated_bytes;
+        self.execution.gpu = Some(gpu);
+        Ok(())
+    }
+
+    #[cfg(not(all(feature = "metal", target_os = "macos")))]
+    fn init_metal(&mut self) -> Result<()> {
+        Backend::Metal.ensure_available()
+    }
+
+    #[cfg(all(feature = "cuda", target_os = "linux"))]
+    fn init_cuda(&mut self) -> Result<()> {
+        let fp32 = self.execution.options.backend == Backend::CudaF32;
+        if fp32 && (self.options.damping as f32 == 1.0 || self.options.epsilon as f32 == 0.0) {
+            self.cpu_fallback("epsilon or damping cannot be represented safely in f32");
+            return Ok(());
+        }
+        if fp32 {
+            self.round_messages_to_f32();
+        }
+        let f = &self.formula.0;
+        let (offsets, edge_clause) = f.device_clause_indexes();
+        let cuda = bsp_cuda::CudaSolver::new(
+            bsp_cuda::Topology {
+                n: f.n,
+                offsets: &offsets,
+                literals: &f.literals,
+                edge_clause: &edge_clause,
+                var_offsets: &f.var_offsets,
+                var_edges: &f.var_edges,
+            },
+            &self.eta,
+            fp32,
+            self.execution.options.profile.is_some(),
+        )?;
+        self.execution.report.device = Some(cuda.device.clone());
+        self.execution.report.allocated_bytes = cuda.allocated_bytes;
+        self.execution.cuda = Some(cuda);
+        Ok(())
+    }
+
+    #[cfg(not(all(feature = "cuda", target_os = "linux")))]
+    fn init_cuda(&mut self) -> Result<()> {
+        Backend::Cuda.ensure_available()
+    }
+
+    /// Random initialization has no externally supplied precision to preserve.
+    /// Keep its f32 distribution inside [0,1).
+    #[cfg(any(
+        all(feature = "metal", target_os = "macos"),
+        all(feature = "cuda", target_os = "linux")
+    ))]
+    fn round_messages_to_f32(&mut self) {
+        for eta in &mut self.eta {
+            *eta = (*eta as f32).min(f32::from_bits(0x3f7fffff)) as f64;
+        }
+        self.saved_eta.clone_from(&self.eta);
+    }
+
     pub fn execution_report(&self) -> &ExecutionReport {
         &self.execution.report
     }
@@ -493,17 +541,6 @@ impl Solver {
                 }
             }
         }
-    }
-    pub(super) fn gpu_assignment(&mut self, v: usize, value: i8) {
-        #[cfg(all(feature = "metal", target_os = "macos"))]
-        if let Some(gpu) = &mut self.execution.gpu {
-            gpu.set_assignment(v, value);
-        }
-        #[cfg(all(feature = "cuda", target_os = "linux"))]
-        if let Some(cuda) = &mut self.execution.cuda {
-            cuda.set_assignment(v, value);
-        }
-        let _ = (v, value);
     }
     fn parallel_work_available(&self) -> bool {
         if self
