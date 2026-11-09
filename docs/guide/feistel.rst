@@ -3,12 +3,13 @@ Implicit Feistel formulas
 
 The experimental ``--feistel`` source reconstructs graph connections on demand.
 The default ``fluctuating`` mode targets the ordinary random K-SAT ensemble
-used by ``--generate``. Both Feistel modes support scalar CPU BSP and WalkSAT
-and verify every returned SAT assignment::
+used by ``--generate``. Both Feistel modes support CPU, CPU-parallel, and
+Metal survey propagation. WalkSAT and SAT assignment verification run on the CPU::
 
     target/release/bsp-rust --feistel 3 4 100 --seed 7 --backend cpu
     target/release/bsp-rust --feistel 3 4 1000 --seed 7 --sweeps 8
     target/release/bsp-rust --feistel 3 4 100 --feistel-ensemble partitioned
+    target/release/bsp-rust --feistel 3 4 1000 --seed 7 --backend metal --sweeps 8
 
 A TOML configuration can select the same source.
 
@@ -46,7 +47,8 @@ Python uses the same constructors and generation seed as the CLI::
 The generation seed and solver seed are independent. ``formula.topology``
 reports the generator version, ensemble, dimensions, seed, repaired clauses,
 and owned topology bytes; it is ``None`` for explicit formulas. Python supports
-``cpu`` and ``cpu-parallel`` for these formulas; GPU backends reject them.
+``cpu``, ``cpu-parallel``, and ``metal`` for these formulas. Metal requires
+macOS, a unified-memory Apple GPU, and a Metal-enabled build or Python wheel.
 Accessing ``formula.clauses`` or ``formula.to_dimacs()`` materializes output.
 The fluctuating constructor scans the clauses for repairs before solver capacity
 is checked, so avoid constructing instances beyond the solver limits below.
@@ -147,7 +149,17 @@ Limits and measurements
 Topology retains a descriptor, empty explicit-array headers, and in
 fluctuating mode a sparse repair index. Mutable messages, clause masks and
 counters, assignments, queues, and WalkSAT state still scale with the
-instance. Connectivity reconstruction costs more than cached explicit lookup.
+instance. Connectivity reconstruction trades cached lookups for computation.
+
+Metal keeps messages and cavity values in clause order. Its variable kernel
+reconstructs incident edge IDs with the inverse permutation. The partitioned
+ensemble uploads one set of round keys per group. The fluctuating ensemble
+uploads one set of keys, ``N+1`` original stub boundaries, and sparse repair
+data sampled by the CPU generator. The kernel skips original edges of repaired
+clauses and visits the replacement edges from the repair data. The packed
+edge maps and per-clause offsets used by the explicit Metal backend are omitted.
+Metal retains its FP32 survey propagation, numerical fallback, and device
+memory limits. CUDA currently requires explicit formulas.
 
 Tests query the partitioned descriptor and sample the raw fluctuating
 matching at N=10^9 and E=12*10^9. The latter test skips the full repair scan.

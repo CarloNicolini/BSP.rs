@@ -178,7 +178,7 @@ impl PyFormula {
     /// Returns
     /// -------
     /// Formula
-    ///     Implicit topology supported by CPU and CPU-parallel solvers.
+    ///     Implicit topology supported by CPU, CPU-parallel, and Metal solvers.
     ///
     /// Raises
     /// ------

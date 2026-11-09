@@ -338,6 +338,33 @@ impl Fluctuating {
         self.repairs.len()
     }
 
+    #[cfg(all(feature = "metal", target_os = "macos"))]
+    pub(super) fn metal_metadata(&self) -> (Vec<u32>, Vec<u32>, Vec<[u32; 2]>) {
+        // Sample the original tree on the CPU so the GPU uses exactly the same
+        // integer stub intervals, including stubs of subsequently repaired clauses.
+        let mut offsets = self.tree.initial_degrees();
+        offsets.push(0);
+        let mut start = 0;
+        for degree in &mut offsets {
+            let end = start + *degree;
+            *degree = start;
+            start = end;
+        }
+        (
+            offsets,
+            self.repairs.iter().map(|&c| c as u32).collect(),
+            self.insertions
+                .iter()
+                .map(|&(v, e)| [v as u32, e as u32])
+                .collect(),
+        )
+    }
+
+    #[cfg(all(feature = "metal", target_os = "macos"))]
+    pub(super) fn match_keys(&self) -> [u64; 8] {
+        self.match_keys
+    }
+
     pub(super) fn walk_steps(&self, index: u64, inverse: bool) -> u64 {
         self.walk(index, inverse).1
     }

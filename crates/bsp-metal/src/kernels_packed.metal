@@ -1,6 +1,6 @@
 #include <metal_stdlib>
 using namespace metal;
-struct Config { uint n, m; float epsilon, damping; uint observables; };
+struct Config { uint n, m; float epsilon, damping; uint observables, width; };
 struct Control { atomic_uint error; uint done, sweeps, paramagnetic; float residual, complexity; uint unused[2]; };
 inline bool stopped(device Control &s) { return s.done || atomic_load_explicit(&s.error,memory_order_relaxed); }
 inline float log_one_plus(float x) { float y=1+x; return y==1 ? x : log(y)*(x/(y-1)); }
@@ -162,16 +162,121 @@ kernel void cavities_wide(CAVITY_BUFFERS, const device uint *ids [[buffer(24)]],
     }
 }
 
+struct FeistelConfig { ulong sign_key; uint half_bits, fluctuating, repairs, unused; };
+
+// SplitMix64 finalizer and reverse cycle walk, matching the Rust generator.
+inline ulong feistel_mix(ulong x) {
+    x=(x^(x>>30))*0xbf58476d1ce4e5b9UL;
+    x=(x^(x>>27))*0x94d049bb133111ebUL;
+    return x^(x>>31);
+}
+inline uint inverse_matching(uint x, uint limit, uint bits, const device ulong *keys) {
+    uint mask=(1u<<bits)-1;
+    do {
+        uint left=x>>bits, right=x&mask;
+        for (int round=7; round>=0; --round) {
+            uint previous=right^(uint(feistel_mix(ulong(left)^keys[round]))&mask);
+            right=left;
+            left=previous;
+        }
+        x=(left<<bits)|right;
+    } while (x>=limit);
+    return x;
+}
+inline uint lower_bound_variable(const device uint2 *rows, uint count, uint variable) {
+    uint first=0;
+    while (first<count) {
+        uint mid=first+(count-first)/2;
+        if (rows[mid].x<variable) first=mid+1; else count=mid;
+    }
+    return first;
+}
+inline bool repaired(const device uint *clauses, uint count, uint clause) {
+    uint first=0, last=count;
+    while (first<last) {
+        uint mid=first+(last-first)/2;
+        uint candidate=clauses[mid];
+        if (candidate==clause) return true;
+        if (candidate<clause) first=mid+1; else last=mid;
+    }
+    return false;
+}
+
+// One owner per variable writes q directly to clause-major slots. Only the
+// original stub intervals and sparse repair exceptions need device metadata.
+kernel void cavities_feistel(const device uint *stub_offsets [[buffer(0)]],
+    device float *q [[buffer(1)]], const device uint *repairs [[buffer(2)]],
+    const device uint2 *insertions [[buffer(4)]], const device char *assignment [[buffer(5)]],
+    const device uint *active [[buffer(6)]], device uint *degree [[buffer(7)]],
+    const device float *eta [[buffer(8)]], const device ulong *keys [[buffer(11)]],
+    device float2 *products [[buffer(13)]], device Control &state [[buffer(19)]],
+    constant Config &cfg [[buffer(20)]], constant FeistelConfig &f [[buffer(21)]],
+    uint v [[thread_position_in_grid]]) {
+    if (v>=cfg.n || stopped(state)) return;
+    uint k=cfg.width, group=0, start, count, inserted=0, added=0, limit=cfg.m;
+    if (f.fluctuating) {
+        limit*=k;
+        start=stub_offsets[v];
+        count=stub_offsets[v+1]-start;
+        inserted=lower_bound_variable(insertions,f.repairs*k,v);
+        added=lower_bound_variable(insertions,f.repairs*k,v+1)-inserted;
+    } else {
+        uint base=cfg.n/k, extra=cfg.n%k, split=extra*(base+1);
+        group=v<split ? v/(base+1) : extra+(v-split)/base;
+        uint local=v-(group*base+min(group,extra)), size=base+uint(group<extra);
+        uint d=cfg.m/size, remainder=cfg.m%size;
+        start=local*d+min(local,remainder);
+        count=d+uint(local<remainder);
+    }
+    float p[2]={1,1}, suffix[2]={1,1};
+    uint d=0, total=count+added;
+    bool fixed=assignment[v]>=0;
+    for (uint pass=0; pass<(fixed ? 1u : 2u); ++pass) {
+        // Reverse the traversal for suffixes. Prefixes live in the output
+        // slots until overwritten with the full zero-safe exclusion product.
+        for (uint i=0; i<total; ++i) {
+            uint pos=pass ? total-1-i : i;
+            uint e;
+            if (pos<count) {
+                e=inverse_matching(start+pos,limit,f.half_bits,keys+8*group);
+                if (f.fluctuating) {
+                    if (repaired(repairs,f.repairs,e/k)) continue;
+                } else e=e*k+group;
+            } else e=insertions[inserted+pos-count].y;
+            if (!active[e/k]) continue;
+            if (fixed) { put_q(q,e,FIXED,0,cfg); continue; }
+            uint sign=uint(feistel_mix(ulong(e)^f.sign_key))&1u;
+            float factor=1-eta[e];
+            if (!pass) {
+                put_q(q,e,p[sign],0,cfg);
+                p[sign]=checked_product(p[sign],factor,state);
+                ++d;
+            } else {
+                float prefix=cfg.observables ? ((device float2 *)q)[e].x : q[e];
+                float same=checked_product(prefix,suffix[sign],state);
+                suffix[sign]=checked_product(suffix[sign],factor,state);
+                float opposite=p[1-sign], z=opposite+(1-opposite)*same;
+                if (!(z>0) || !isfinite(z)) {
+                    atomic_fetch_or_explicit(&state.error,1u,memory_order_relaxed);
+                    return;
+                }
+                put_q(q,e,clamp((1-opposite)*same/z,0.0f,1.0f),z,cfg);
+            }
+        }
+    }
+    if (cfg.observables && !fixed) { products[v]=float2(p[0],p[1]); degree[v]=d; }
+}
+
 // Short clauses retain prefixes in registers; arbitrary widths use E-sized scratch.
-template<uint Width> inline void clause_update(uint c, const device uint *offsets, const device uint *active,
+template<uint Width, bool Implicit> inline void clause_update(uint c, uint start, uint end, const device uint *active,
     device float *eta, const device float *q_packed, const device uint *q_at, device float *scratch, device float *residual,
     device Control &state, constant Config &cfg) {
     if (stopped(state)) return;
     if (!active[c]) { residual[c]=0; return; }
-    uint start=offsets[c], end=offsets[c+1], free_count=0;
+    uint free_count=0;
     float product=1, local[Width ? Width : 1], local_q[Width ? Width : 1];
     for (uint e=start; e<end; ++e) {
-        float value=q_packed[q_at[e]];
+        float value=q_packed[Implicit ? e : q_at[e]];
         if (Width) local_q[e-start]=value;
         if (!free_q(value)) continue;
         if (Width) local[e-start]=product; else scratch[e]=product;
@@ -180,7 +285,7 @@ template<uint Width> inline void clause_update(uint c, const device uint *offset
     if (!free_count) { atomic_fetch_or_explicit(&state.error,2u,memory_order_relaxed); return; }
     float suffix=1, r=0;
     for (uint e=end; e>start;) {
-        --e; float value=Width ? local_q[e-start] : q_packed[q_at[e]];
+        --e; float value=Width ? local_q[e-start] : q_packed[Implicit ? e : q_at[e]];
         if (!free_q(value)) continue;
         float raw=(Width ? local[e-start] : scratch[e])*suffix;
         suffix*=value;
@@ -191,12 +296,18 @@ template<uint Width> inline void clause_update(uint c, const device uint *offset
 }
 #define CLAUSE_KERNEL(Name,Width) \
 kernel void Name(const device uint *offsets [[buffer(2)]], const device uint *active [[buffer(6)]], \
-    device float *eta [[buffer(8)]], const device float *q_packed [[buffer(1)]], const device uint *q_at [[buffer(29)]], \
+    device float *eta [[buffer(8)]], device float *q_packed [[buffer(1)]], const device uint *q_at [[buffer(29)]], \
     device float *scratch [[buffer(12)]], \
     device float *residual [[buffer(15)]], device Control &state [[buffer(19)]], constant Config &cfg [[buffer(20)]], \
     const device uint *ids [[buffer(25)]], constant uint &base [[buffer(26)]], uint i [[thread_position_in_grid]]) { \
-    uint end=ids[base]; if (i>=end) return; \
-    clause_update<Width>(ids[base+1+i],offsets,active,eta,q_packed,q_at,scratch,residual,state,cfg); }
+    if (cfg.width) { \
+        if (i>=cfg.m) return; \
+        /* The second half of q is available as scratch during sweeps. */ \
+        clause_update<Width,true>(i,i*cfg.width,(i+1)*cfg.width,active,eta,q_packed,q_at,q_packed+base,residual,state,cfg); \
+    } else { \
+        if (i>=ids[base]) return; uint c=ids[base+1+i]; \
+        clause_update<Width,false>(c,offsets[c],offsets[c+1],active,eta,q_packed,q_at,scratch,residual,state,cfg); \
+    } }
 CLAUSE_KERNEL(clauses3,3)
 CLAUSE_KERNEL(clauses4,4)
 CLAUSE_KERNEL(clauses6,6)
@@ -244,8 +355,9 @@ kernel void clause_observables(const device uint *offsets [[buffer(2)]], const d
     if (c>=cfg.m) return;
     if (!active[c]) { terms[c]=0; return; }
     float product=1, sum=0, correction=0;
-    for (uint e=offsets[c]; e<offsets[c+1]; ++e) {
-        float2 qz=q_packed[q_at[e]];
+    uint start=cfg.width ? c*cfg.width : offsets[c], end=cfg.width ? (c+1)*cfg.width : offsets[c+1];
+    for (uint e=start; e<end; ++e) {
+        float2 qz=q_packed[cfg.width ? e : q_at[e]];
         if (!free_q(qz.x)) continue;
         if (qz.y>0 && isfinite(qz.y)) norms[e]=qz.y; else qz.y=norms[e];
         product*=qz.x; float y=log(qz.y)-correction, t=sum+y; correction=(t-sum)-y; sum=t;

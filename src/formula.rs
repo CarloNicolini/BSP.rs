@@ -132,7 +132,7 @@ impl Formula {
             mask_offsets,
         })))
     }
-    /// Construct an implicit partitioned formula. Only scalar CPU solving is supported.
+    /// Construct an implicit partitioned formula for CPU or Metal solving.
     pub fn feistel(k: usize, alpha: f64, n: usize, seed: u64) -> Result<Self> {
         if n > i32::MAX as usize || !alpha.is_finite() || alpha <= 0.0 {
             return Err(Error(

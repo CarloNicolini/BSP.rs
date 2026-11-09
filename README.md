@@ -83,10 +83,15 @@ clause. Choose `--feistel-ensemble partitioned` for the faster fixed-group
 construction, which samples a different ensemble. Both modes still allocate
 messages and mutable solver state.
 
+On Apple Silicon, `make rust-metal` enables `--backend metal` for either
+ensemble. Metal reconstructs incident edges on the GPU and stores the messages
+in clause order.
+
 Python exposes the same generators through
 `Formula.feistel(k=3, alpha=4.0, n=1000, seed=7)`. Pass
 `ensemble="partitioned"` to select the fixed-group ensemble; solve with
-`backend="cpu"` or `backend="cpu-parallel"`.
+`backend="cpu"`, `backend="cpu-parallel"`, or `backend="metal"` with a
+Metal-enabled installation.
 
 See the [generator and limits](docs/guide/feistel.rst).
 

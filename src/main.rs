@@ -267,12 +267,12 @@ fn run_single(
     let start_live = || show_progress.then(|| cli::progress::LiveLine::start(clock.clone()));
     let mut live = if partitioned { None } else { start_live() };
     if feistel.is_some()
-        && !matches!(
+        && matches!(
             execution.backend,
-            bsp_rust::Backend::Cpu | bsp_rust::Backend::CpuParallel
+            bsp_rust::Backend::Cuda | bsp_rust::Backend::CudaF32
         )
     {
-        return Err("Feistel formulas require --backend cpu or cpu-parallel".into());
+        return Err("Feistel formulas require --backend cpu, cpu-parallel, or metal".into());
     }
     let construction_started = std::time::Instant::now();
     let (formula_name, formula) = match (source, generate, feistel) {

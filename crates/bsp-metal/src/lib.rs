@@ -27,6 +27,29 @@ pub struct Topology<'a> {
     pub var_offsets: &'a [u32],
     pub var_edges: &'a [u32],
 }
+pub struct FeistelTopology<'a> {
+    pub n: usize,
+    pub m: usize,
+    pub k: usize,
+    pub sign_key: u64,
+    pub round_keys: &'a [[u64; 8]],
+    pub fluctuating: Option<FeistelRepairs<'a>>,
+}
+pub struct FeistelRepairs<'a> {
+    pub stub_offsets: &'a [u32],
+    pub clauses: &'a [u32],
+    // Sorted by variable and then clause-major edge ID.
+    pub insertions: &'a [[u32; 2]],
+}
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct FeistelConfig {
+    sign_key: u64,
+    half_bits: u32,
+    fluctuating: u32,
+    repairs: u32,
+    unused: u32,
+}
 #[derive(Clone, Copy, Default)]
 #[repr(C)]
 struct Control {
@@ -46,6 +69,7 @@ struct Config {
     epsilon: f32,
     damping: f32,
     observables: u32,
+    width: u32,
 }
 #[derive(Default)]
 pub struct Report {
@@ -69,6 +93,7 @@ pub struct MetalSolver {
     n: usize,
     m: usize,
     edges: usize,
+    feistel_width: u32,
     wide_variables: usize,
     medium_variables: usize,
     buckets: Vec<(String, usize, u32)>,
@@ -201,39 +226,133 @@ impl MetalSolver {
         } else {
             0
         };
-        let lengths = [
-            t.var_offsets.len() * 4,
-            edges * 8, // Packed q; observables pair each q with its normalizer.
-            t.offsets.len() * 4,
-            0, // Clause kernels read free incidences from packed q, not literals.
-            edges * 4,
-            t.n,
+        let mut lengths = Self::buffer_lengths(t.n, m, edges);
+        lengths[0] = t.var_offsets.len() * 4;
+        lengths[2] = t.offsets.len() * 4;
+        lengths[4] = edges * 4;
+        lengths[10] = scratch_q * 4;
+        lengths[11] = edges * 4;
+        lengths[12] = general_edges * 4;
+        lengths[21] = medium.len() * 4;
+        lengths[24] = wide.len() * 4;
+        lengths[25] = ids.len() * 4;
+        lengths[27..=30].fill(edges * 4);
+        let mut s = Self::allocate(t.n, m, edges, lengths, profile)?;
+        s.wide_variables = wide.len() - 1;
+        s.medium_variables = medium.len() - 1;
+        s.buckets = buckets;
+        s.write(0, t.var_offsets);
+        s.write(2, t.offsets);
+        s.write(4, t.edge_clause);
+        s.pack_layout(t.var_edges);
+        s.write(24, &wide);
+        s.write(25, &ids);
+        s.write(21, &medium);
+        s.initialize(eta);
+        Ok(s)
+    }
+    pub fn new_feistel(t: FeistelTopology<'_>, eta: &[f64], profile: bool) -> Result<Self, String> {
+        let edges = t.m.checked_mul(t.k).ok_or("invalid Feistel dimensions")?;
+        if !(1..=64).contains(&t.k)
+            || t.k > t.n
+            || t.n > (u32::MAX / 32) as usize
+            || t.m > (u32::MAX - 255) as usize
+            || edges >= u32::MAX as usize
+            || t.round_keys.len() != if t.fluctuating.is_some() { 1 } else { t.k }
+            || eta.len() != edges
+            || !safe_conversion(eta)
+        {
+            return Err("invalid Feistel topology or unsafe f32 conversion".into());
+        }
+        let mut lengths = Self::buffer_lengths(t.n, t.m, edges);
+        if let Some(f) = &t.fluctuating {
+            if f.stub_offsets.len() != t.n + 1
+                || f.stub_offsets[0] != 0
+                || f.stub_offsets[t.n] as usize != edges
+                || f.stub_offsets.windows(2).any(|w| w[0] > w[1])
+                || f.clauses.len() > t.m
+                || f.clauses.last().is_some_and(|&c| c as usize >= t.m)
+                || f.clauses.windows(2).any(|w| w[0] >= w[1])
+                || f.insertions.len() != f.clauses.len() * t.k
+                || f.insertions.windows(2).any(|w| w[0] >= w[1])
+            {
+                return Err("invalid Feistel stub or repair table".into());
+            }
+            // Every repaired edge has one writer. Validate only the sparse patch.
+            let mut seen = vec![false; f.insertions.len()];
+            for &[v, e] in f.insertions {
+                let e = e as usize;
+                let row = f
+                    .clauses
+                    .binary_search(&((e / t.k) as u32))
+                    .map_err(|_| "invalid Feistel insertion")?;
+                if v as usize >= t.n || std::mem::replace(&mut seen[row * t.k + e % t.k], true) {
+                    return Err("invalid Feistel insertion".into());
+                }
+            }
+            lengths[0] = std::mem::size_of_val(f.stub_offsets);
+            lengths[2] = std::mem::size_of_val(f.clauses);
+            lengths[4] = std::mem::size_of_val(f.insertions);
+        }
+        lengths[11] = std::mem::size_of_val(t.round_keys);
+        lengths[21] = std::mem::size_of::<FeistelConfig>();
+        let limit = if t.fluctuating.is_some() { edges } else { t.m } as u32;
+        let mut s = Self::allocate(t.n, t.m, edges, lengths, profile)?;
+        s.feistel_width = t.k as u32;
+        let clause_kernel = match t.k {
+            3 => "clauses3",
+            4 => "clauses4",
+            6 => "clauses6",
+            12 => "clauses12",
+            _ => "clauses_general",
+        };
+        s.buckets.push((clause_kernel.into(), t.m, edges as u32));
+        s.write(11, t.round_keys);
+        s.write(
+            21,
+            &[FeistelConfig {
+                sign_key: t.sign_key,
+                half_bits: (u32::BITS - limit.saturating_sub(1).leading_zeros())
+                    .div_ceil(2)
+                    .max(1),
+                fluctuating: u32::from(t.fluctuating.is_some()),
+                repairs: t.fluctuating.as_ref().map_or(0, |f| f.clauses.len() as u32),
+                unused: 0,
+            }],
+        );
+        if let Some(f) = t.fluctuating {
+            s.write(0, f.stub_offsets);
+            s.write(2, f.clauses);
+            s.write(4, f.insertions);
+        }
+        s.initialize(eta);
+        Ok(s)
+    }
+    fn buffer_lengths(n: usize, m: usize, edges: usize) -> [usize; 31] {
+        let mut lengths = [0; 31];
+        lengths[1] = edges * 8; // q; observables pair each q with its normalizer.
+        lengths[5..=9].copy_from_slice(&[n, m * 4, n * 4, edges * 4, edges * 4]);
+        lengths[13..=20].copy_from_slice(&[
+            n * 8,
+            n * 16,
             m * 4,
-            t.n * 4,
-            edges * 4,
-            edges * 4, // Normalizers reuse active entries of saved_eta (slot 9).
-            scratch_q * 4,
-            edges * 4,
-            general_edges * 4,
-            t.n * 8,
-            t.n * 16,
+            n * 4,
+            n * 4,
             m * 4,
-            t.n * 4,
-            t.n * 4,
-            m * 4,
-            32,
-            20,
-            medium.len() * 4,
-            edges * 4,
-            t.n.max(m).div_ceil(256).max(1) * 16,
-            wide.len() * 4,
-            ids.len() * 4,
-            0, // Dispatch parameters are bound to slot 26 with setBytes.
-            edges * 4,
-            edges * 4,
-            edges * 4,
-            edges * 4,
-        ];
+            std::mem::size_of::<Control>(),
+            std::mem::size_of::<Config>(),
+        ]);
+        lengths[22] = edges * 4;
+        lengths[23] = n.max(m).div_ceil(256).max(1) * 16;
+        lengths
+    }
+    fn allocate(
+        n: usize,
+        m: usize,
+        edges: usize,
+        lengths: [usize; 31],
+        profile: bool,
+    ) -> Result<Self, String> {
         let source = CString::new(include_str!("kernels_packed.metal")).unwrap();
         let mut error = [0i8; 4096];
         let context = NonNull::new(unsafe {
@@ -247,12 +366,13 @@ impl MetalSolver {
         let mut s = Self {
             context,
             buffers: Vec::new(),
-            n: t.n,
+            n,
             m,
             edges,
-            wide_variables: wide.len() - 1,
-            medium_variables: medium.len() - 1,
-            buckets,
+            feistel_width: 0,
+            wide_variables: 0,
+            medium_variables: 0,
+            buckets: Vec::new(),
             device: unsafe { CStr::from_ptr(bsp_metal_name(context.as_ptr())) }
                 .to_string_lossy()
                 .into_owned(),
@@ -275,19 +395,17 @@ impl MetalSolver {
                 bytes: bytes.max(4),
             });
         }
-        s.write(0, t.var_offsets);
-        s.write(2, t.offsets);
-        s.write(4, t.edge_clause);
-        s.pack_layout(t.var_edges);
-        s.write(5, &vec![-1i8; t.n]);
-        s.write(6, &vec![1u32; m]);
-        s.write(24, &wide);
-        s.write(25, &ids);
-        s.write(21, &medium);
-        let values: Vec<f32> = eta.iter().map(|&v| v as f32).collect();
-        s.write(8, &values);
-        s.write(9, &values);
         Ok(s)
+    }
+    fn initialize(&mut self, eta: &[f64]) {
+        let (n, m) = (self.n, self.m);
+        self.slice_mut::<i8>(5)[..n].fill(-1);
+        self.slice_mut::<u32>(6)[..m].fill(1);
+        for slot in [8, 9] {
+            for (dst, &v) in self.slice_mut::<f32>(slot).iter_mut().zip(eta) {
+                *dst = v as f32;
+            }
+        }
     }
     fn slice<T>(&self, slot: usize) -> &[T] {
         let b = &self.buffers[slot];
@@ -456,10 +574,20 @@ impl MetalSolver {
                 epsilon: epsilon as f32,
                 damping: damping as f32,
                 observables: 0,
+                width: self.feistel_width,
             }],
         );
         self.gpu_seconds = 0.0;
         self.phases.clear();
+    }
+    fn cavities(&mut self) -> Result<(), String> {
+        if self.feistel_width != 0 {
+            return self.dispatch("cavities_feistel", self.n, 0);
+        }
+        self.dispatch("pack_eta", self.edges.div_ceil(4), self.edges as u32)?;
+        self.dispatch("cavities", self.medium_variables, 0)?;
+        self.dispatch("cavities_simd", self.n * 32, 0)?;
+        self.dispatch("cavities_wide", self.wide_variables * 256, 0)
     }
     fn report(&mut self, started: Instant) -> Report {
         let s = self.slice::<Control>(19)[0];
@@ -486,10 +614,7 @@ impl MetalSolver {
         self.reset(epsilon, damping);
         self.begin(checkpoint);
         for _ in 0..count {
-            self.dispatch("pack_eta", self.edges.div_ceil(4), self.edges as u32)?;
-            self.dispatch("cavities", self.medium_variables, 0)?;
-            self.dispatch("cavities_simd", self.n * 32, 0)?;
-            self.dispatch("cavities_wide", self.wide_variables * 256, 0)?;
+            self.cavities()?;
             for i in 0..self.buckets.len() {
                 let (name, count, base) = self.buckets[i].clone();
                 self.dispatch(&name, count, base)?;
@@ -505,10 +630,7 @@ impl MetalSolver {
         self.reset(0.0, 0.0);
         self.slice_mut::<Config>(20)[0].observables = 1;
         self.begin(false);
-        self.dispatch("pack_eta", self.edges.div_ceil(4), self.edges as u32)?;
-        self.dispatch("cavities", self.medium_variables, 0)?;
-        self.dispatch("cavities_simd", self.n * 32, 0)?;
-        self.dispatch("cavities_wide", self.wide_variables * 256, 0)?;
+        self.cavities()?;
         self.dispatch("variables", self.n, 0)?;
         self.dispatch("clause_observables", self.m, 0)?;
         self.dispatch("observable_blocks", self.n.max(self.m), 0)?;

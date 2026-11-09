@@ -67,7 +67,7 @@ pub struct Cli {
     #[arg(long, num_args = 3, value_names = ["K", "ALPHA", "N"])]
     pub generate: Option<Vec<String>>,
 
-    /// Implicit random formula with fluctuating variable degrees (CPU backends)
+    /// Implicit random formula with fluctuating variable degrees (CPU or Metal)
     #[arg(long, num_args = 3, value_names = ["K", "ALPHA", "N"])]
     pub feistel: Option<Vec<String>>,
 

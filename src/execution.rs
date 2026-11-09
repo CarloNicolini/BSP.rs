@@ -255,10 +255,10 @@ impl Solver {
         execution: ExecutionOptions,
     ) -> Result<Self> {
         if formula.feistel_topology().is_some()
-            && !matches!(execution.backend, Backend::Cpu | Backend::CpuParallel)
+            && matches!(execution.backend, Backend::Cuda | Backend::CudaF32)
         {
             return Err(Error(
-                "Feistel formulas require --backend cpu or cpu-parallel".into(),
+                "Feistel formulas require --backend cpu, cpu-parallel, or metal".into(),
             ));
         }
         let construction_started = Instant::now();
@@ -327,19 +327,24 @@ impl Solver {
                         }
                         s.saved_eta.clone_from(&s.eta);
                         let f = &s.formula.0;
-                        let (offsets, edge_clause) = f.device_clause_indexes();
-                        let gpu = bsp_metal::MetalSolver::new(
-                            bsp_metal::Topology {
-                                n: f.n,
-                                offsets: &offsets,
-                                literals: &f.literals,
-                                edge_clause: &edge_clause,
-                                var_offsets: &f.var_offsets,
-                                var_edges: &f.var_edges,
-                            },
-                            &s.eta,
-                            s.execution.options.profile.is_some(),
-                        )
+                        let profile = s.execution.options.profile.is_some();
+                        let gpu = if let Some(topology) = &f.feistel {
+                            topology.metal_solver(&s.eta, profile)
+                        } else {
+                            let (offsets, edge_clause) = f.device_clause_indexes();
+                            bsp_metal::MetalSolver::new(
+                                bsp_metal::Topology {
+                                    n: f.n,
+                                    offsets: &offsets,
+                                    literals: &f.literals,
+                                    edge_clause: &edge_clause,
+                                    var_offsets: &f.var_offsets,
+                                    var_edges: &f.var_edges,
+                                },
+                                &s.eta,
+                                profile,
+                            )
+                        }
                         .map_err(Error)?;
                         s.execution.report.device = Some(gpu.device.clone());
                         s.execution.report.allocated_bytes = gpu.allocated_bytes;
