@@ -167,13 +167,15 @@ struct Seg {
 };
 __device__ Seg prepare_seg(const Params &p, unsigned w, unsigned lane) {
   uint4 packed_warp = load<uint4>(p, 33, w);
-  Quad<unsigned> warp = {packed_warp.x, packed_warp.y, packed_warp.z, packed_warp.w};
+  Quad<unsigned> warp = {packed_warp.x, packed_warp.y, packed_warp.z,
+                         packed_warp.w};
   unsigned position = load<unsigned>(p, 35, w);
   unsigned up_to = (2u << lane) - 1, below = warp.y & up_to;
   unsigned first = 31 - __clz(below), v = warp.x + __popc(below) - 1;
   unsigned after = warp.y & ~up_to;
   unsigned next = after ? __ffs(after) - 1 : 32;
-  unsigned segment = (next == 32 ? ~0u : (1u << next) - 1) & ~((1u << first) - 1);
+  unsigned segment =
+      (next == 32 ? ~0u : (1u << next) - 1) & ~((1u << first) - 1);
   unsigned degree = __popc(warp.z & segment), r = lane - first;
   bool wider = !(warp.z >> first & 1) && (warp.w >> first & 1);
   unsigned width = degree < 2 ? 1 : 1u << (32 - __clz(degree - 1));
@@ -182,10 +184,12 @@ __device__ Seg prepare_seg(const Params &p, unsigned w, unsigned lane) {
        positive = warp.w >> lane & 1;
   unsigned i = position + __popc(warp.z & (1u << lane) - 1);
   bool fixed = load<signed char>(p, 5, v) >= 0;
-  return {v, first, r, width, mask, i, mine, edge, positive, fixed, edge && !fixed};
+  return {v,    first, r,        width, mask,          i,
+          mine, edge,  positive, fixed, edge && !fixed};
 }
 template <class T>
-__device__ void finish_seg(const Params &p, Control &s, Seg g, T x, unsigned k) {
+__device__ void finish_seg(const Params &p, Control &s, Seg g, T x,
+                           unsigned k) {
   T factor = g.valid ? T(1) - absolute(x) : T(1);
   T fp = g.valid && g.positive ? factor : T(1),
     fm = g.valid && !g.positive ? factor : T(1);
@@ -195,27 +199,34 @@ __device__ void finish_seg(const Params &p, Control &s, Seg g, T x, unsigned k) 
   // scans d = 16. Narrower records stop before that step.
   unsigned bound = __any_sync(0xffffffffu, width > 16u) ? 32u : 16u;
   for (unsigned d = 1; d < bound; d *= 2) {
-    T a = __shfl_up_sync(0xffffffffu, xp, d), b = __shfl_up_sync(0xffffffffu, xm, d),
-      c = __shfl_down_sync(0xffffffffu, yp, d), e = __shfl_down_sync(0xffffffffu, ym, d);
+    T a = __shfl_up_sync(0xffffffffu, xp, d),
+      b = __shfl_up_sync(0xffffffffu, xm, d),
+      c = __shfl_down_sync(0xffffffffu, yp, d),
+      e = __shfl_down_sync(0xffffffffu, ym, d);
     if (r >= d) {
       xp *= a;
       xm *= b;
     }
-    // A down-scan multiplies in the order of an up-scan over lane-reversed factors.
+    // A down-scan multiplies in the order of an up-scan over lane-reversed
+    // factors.
     if (r + d < width) {
       yp *= c;
       ym *= e;
     }
   }
   unsigned last = g.first + width - 1;
-  T plus = __shfl_sync(0xffffffffu, xp, last), minus = __shfl_sync(0xffffffffu, xm, last);
-  T pp = __shfl_up_sync(0xffffffffu, xp, 1), pm = __shfl_up_sync(0xffffffffu, xm, 1);
-  T sp = __shfl_down_sync(0xffffffffu, yp, 1), sm = __shfl_down_sync(0xffffffffu, ym, 1);
+  T plus = __shfl_sync(0xffffffffu, xp, last),
+    minus = __shfl_sync(0xffffffffu, xm, last);
+  T pp = __shfl_up_sync(0xffffffffu, xp, 1),
+    pm = __shfl_up_sync(0xffffffffu, xm, 1);
+  T sp = __shfl_down_sync(0xffffffffu, yp, 1),
+    sm = __shfl_down_sync(0xffffffffu, ym, 1);
   unsigned positive_plus = __ballot_sync(0xffffffffu, fp > 0) & g.mask,
            positive_minus = __ballot_sync(0xffffffffu, fm > 0) & g.mask,
            zero_plus = __popc(__ballot_sync(0xffffffffu, fp == 0) & g.mask),
            zero_minus = __popc(__ballot_sync(0xffffffffu, fm == 0) & g.mask),
-           active = __popc(__ballot_sync(0xffffffffu, g.valid && active_of(x)) & g.mask);
+           active = __popc(__ballot_sync(0xffffffffu, g.valid && active_of(x)) &
+                           g.mask);
   if (g.edge && g.fixed) {
     if (p.observables)
       buf<Pair<T>>(p, 1)[k] = {T(-1), T(0)};
@@ -226,7 +237,8 @@ __device__ void finish_seg(const Params &p, Control &s, Seg g, T x, unsigned k) 
     return;
   if (!r) {
     pp = pm = 1;
-    if ((plus == 0 && positive_plus == g.mask) || (minus == 0 && positive_minus == g.mask))
+    if ((plus == 0 && positive_plus == g.mask) ||
+        (minus == 0 && positive_minus == g.mask))
       atomicOr(&s.error, 4u);
     if (p.observables) {
       buf<unsigned>(p, 7)[g.v] = active;
@@ -236,7 +248,8 @@ __device__ void finish_seg(const Params &p, Control &s, Seg g, T x, unsigned k) 
   if (r == width - 1)
     sp = sm = 1;
   if (g.valid) {
-    T same = g.positive ? pp * sp : pm * sm, opposite = g.positive ? minus : plus;
+    T same = g.positive ? pp * sp : pm * sm,
+      opposite = g.positive ? minus : plus;
     // With exactly one zero, excluding that edge must produce a positive
     // product. The full-product check above cannot detect this underflow.
     if (factor == 0 && same == 0 && (g.positive ? zero_plus : zero_minus) == 1)
@@ -533,12 +546,12 @@ template <class T> __global__ void observable_final(Params p) {
   // record order unchanged. The barrier keeps loads ahead of consumption.
   for (unsigned i = 0; i < count; i += 8) {
     Quad<T> records[8];
-    #pragma unroll
+#pragma unroll
     for (unsigned j = 0; j < 8; ++j)
       if (i + j < count)
         records[j] = buf<Quad<T>>(p, 23)[i + j];
     asm volatile("" ::: "memory");
-    #pragma unroll
+#pragma unroll
     for (unsigned j = 0; j < 8; ++j) {
       if (i + j < count) {
         Quad<T> a = records[j];
