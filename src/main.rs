@@ -17,6 +17,13 @@ fn main() -> ExitCode {
             return code;
         }
     };
+    if let Some(level) = cli.enable_tracing {
+        tracing_subscriber::fmt()
+            .json()
+            .with_max_level(tracing::Level::from(level))
+            .with_writer(std::io::stderr)
+            .init();
+    }
     match cli::resolve::resolve(cli).and_then(cli::batch::run) {
         Ok(code) => code,
         Err(error) => {

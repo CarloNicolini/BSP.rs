@@ -120,6 +120,9 @@ pub fn run_single(
     let mut solver = Solver::with_execution(formula.clone(), options.clone(), execution.clone())?;
     let watched = clock.clone();
     solver.on_walksat(Arc::new(move || watched.enter(WALKSAT)));
+    if let Some(line) = &live {
+        solver.on_step(line.step_hook());
+    }
     clock.enter(BSP);
     if let Some(path) = messages {
         solver.set_messages(&serde_json::from_str::<Vec<f64>>(&fs::read_to_string(

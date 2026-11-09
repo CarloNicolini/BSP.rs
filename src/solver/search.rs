@@ -111,7 +111,7 @@ impl Solver {
         };
         if report.paramagnetic || self.active.is_empty() {
             let step = step(Action::Walksat, 0);
-            self.steps.push(step);
+            self.record(step);
             let assignment = self.timed("walksat", Self::walksat)?;
             self.solution = Some(assignment);
             self.terminal = Some(Status::Sat);
@@ -134,8 +134,24 @@ impl Solver {
                     self.timed("decimation", Self::decimate_inner),
                 )
             };
-        self.steps.push(step);
+        self.record(step);
         Ok(step)
+    }
+    fn record(&mut self, step: Step) {
+        tracing::info!(
+            step = step.index,
+            action = ?step.action,
+            free_variables = step.free_variables,
+            active_clauses = step.active_clauses,
+            sp_sweeps = step.sp_sweeps,
+            residual = step.residual,
+            complexity = step.complexity,
+            changed = step.changed,
+        );
+        self.steps.push(step);
+        if let Some(hook) = &self.step_hook {
+            hook(&step);
+        }
     }
     pub(crate) fn residual_variable_count(&self) -> usize {
         self.free.ones().filter(|&v| self.degree[v] > 0).count()
@@ -145,6 +161,9 @@ impl Solver {
             let _ = self.advance_internal();
         }
         self.sync_messages();
+        if self.terminal != Some(Status::Sat) {
+            tracing::warn!(status = %self.terminal.unwrap(), "solve ended without a solution");
+        }
         if let Err(error) = self.write_profile() {
             self.execution.report.profile_error = Some(error.to_string());
         }
