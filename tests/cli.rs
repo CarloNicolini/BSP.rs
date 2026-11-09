@@ -329,13 +329,18 @@ fn feistel_config_export_messages_and_conflicts() {
     for extra in [
         vec!["--generate", "3", "4", "100"],
         vec!["f.cnf"],
-        vec!["--backend", "metal"],
         vec!["--backend", "cuda"],
         vec!["--backend", "cuda-f32"],
     ] {
         let mut args = vec!["--config", "run.toml"];
         args.extend(extra);
         assert_eq!(run(&dir, &args).status.code(), Some(2));
+    }
+    #[cfg(not(all(feature = "metal", target_os = "macos")))]
+    {
+        let output = run(&dir, &["--config", "run.toml", "--backend", "metal"]);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("build with --features metal"));
     }
     for text in [
         "feistel: {k: 3, alpha: 4, n: 100}\nsweeps: 1\n",
