@@ -1,4 +1,4 @@
-use crate::bitset::{BitSet, Ones};
+use crate::bitset::BitSet;
 use crate::decision_heap::DecisionHeap;
 use crate::{Error, Formula, Result, StatusResult};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
@@ -195,6 +195,7 @@ pub struct Solver {
     cert: Vec<f64>,
     candidates: Vec<u32>,
     unit_queue: Vec<u32>,
+    incident: Vec<u64>,
     clause_edges: Vec<usize>,
     prefix: Vec<f64>,
     started: Instant,
@@ -378,6 +379,7 @@ impl Solver {
             cert: vec![0.0; n],
             candidates: Vec::with_capacity(n),
             unit_queue,
+            incident: Vec::new(),
             clause_edges: Vec::with_capacity(width),
             prefix: Vec::with_capacity(width),
             started,
@@ -524,7 +526,7 @@ impl Solver {
             [0.0, 1.0, 0.0]
         };
         let f = &self.formula.0;
-        let mut incident = Vec::new();
+        let mut incident = std::mem::take(&mut self.incident);
         for e in f.variable_edges(v, &mut incident) {
             let c = f.edge_clause(e);
             let start = f.offset(c);
@@ -540,16 +542,11 @@ impl Solver {
                 if self.true_count.change(c, true) == 1 {
                     self.active.set(c, false);
                     self.execution.set_clause_active(c, false);
-                    for w in f.mask_offset(c)..f.mask_offset(c + 1) {
-                        for other in (Ones {
-                            word: self.masks.get(w),
-                            base: start + 64 * (w - f.mask_offset(c)),
-                        }) {
-                            self.degree[(f.literal(other) >> 1) as usize] -= 1;
-                            self.execution.freeze_edge(other);
-                            self.saved_eta[other] = self.eta[other];
-                            self.eta[other] = 0.0;
-                        }
+                    for other in self.masks.free_edges(f, c) {
+                        self.degree[(f.literal(other) >> 1) as usize] -= 1;
+                        self.execution.freeze_edge(other);
+                        self.saved_eta[other] = self.eta[other];
+                        self.eta[other] = 0.0;
                     }
                 }
             } else if self.active.contains(c)
@@ -558,6 +555,7 @@ impl Solver {
                 self.unit_queue.push(c as u32);
             }
         }
+        self.incident = incident;
         if forced {
             self.unit_assignments += 1;
             self.pending_units += 1;
@@ -573,7 +571,7 @@ impl Solver {
         self.execution.set_assignment(v, -1);
         self.free.set(v, true);
         let f = &self.formula.0;
-        let mut incident = Vec::new();
+        let mut incident = std::mem::take(&mut self.incident);
         for e in f.variable_edges(v, &mut incident) {
             let c = f.edge_clause(e);
             let start = f.offset(c);
@@ -593,15 +591,10 @@ impl Solver {
                 } else {
                     self.active.set(c, true);
                     self.execution.set_clause_active(c, true);
-                    for w in f.mask_offset(c)..f.mask_offset(c + 1) {
-                        for other in (Ones {
-                            word: self.masks.get(w),
-                            base: start + 64 * (w - f.mask_offset(c)),
-                        }) {
-                            self.degree[(f.literal(other) >> 1) as usize] += 1;
-                            self.execution.restore_edge(other);
-                            self.eta[other] = self.saved_eta[other];
-                        }
+                    for other in self.masks.free_edges(f, c) {
+                        self.degree[(f.literal(other) >> 1) as usize] += 1;
+                        self.execution.restore_edge(other);
+                        self.eta[other] = self.saved_eta[other];
                     }
                 }
                 if !matches!(self.free_literals(c), FreeLiterals::Many) {
@@ -609,6 +602,7 @@ impl Solver {
                 }
             }
         }
+        self.incident = incident;
     }
     // Unit propagation only distinguishes zero, one and multiple free bits.
     // Stop as soon as two bits are found, even for very wide clauses.
@@ -666,8 +660,7 @@ impl Solver {
         self.timed("cavities", |s| s.scalar_cavities(store_norms))
     }
     fn scalar_cavities(&mut self, store_norms: bool) -> StatusResult<()> {
-        let formula = self.formula.clone();
-        let f = &formula.0;
+        let f = &self.formula.0;
         let mut state = ScalarCavity {
             q: &mut self.q,
             eta: &self.eta,
@@ -777,7 +770,7 @@ impl Solver {
             }
             let mut product = 1.0;
             for w in first_word..f.mask_offset(c + 1) {
-                for e in (Ones {
+                for e in (crate::bitset::Ones {
                     word: self.masks.get(w),
                     base: start + 64 * (w - first_word),
                 }) {
@@ -837,16 +830,9 @@ impl Solver {
         let mut clause_term = 0.0;
         for c in self.active.ones() {
             let mut product = 1.0;
-            let start = f.offset(c);
-            let first_word = f.mask_offset(c);
-            for w in first_word..f.mask_offset(c + 1) {
-                for e in (Ones {
-                    word: self.masks.get(w),
-                    base: start + 64 * (w - first_word),
-                }) {
-                    product *= self.q[e];
-                    clause_term += self.saved_eta[e].ln();
-                }
+            for e in self.masks.free_edges(f, c) {
+                product *= self.q[e];
+                clause_term += self.saved_eta[e].ln();
             }
             if product >= 1.0 {
                 return Err(Status::NumericalFailure);

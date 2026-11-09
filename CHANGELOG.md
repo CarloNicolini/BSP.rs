@@ -24,6 +24,14 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.4]
+
+- Reuse one incidence scratch buffer in the fix and release paths, borrow the
+  formula instead of cloning its `Arc` on every cavity pass, and share the
+  free-edge iterator between the fix, release, and observable code. The SP
+  sweeps keep their direct word loop because the iterator adaptor measured
+  about 1.5% slower on random 4-SAT. Results are unchanged.
+
 ## [0.5.3]
 
 - Replace the stringly typed `Step.action` and `ExecutionReport.precision` with

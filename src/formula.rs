@@ -1,3 +1,4 @@
+use crate::bitset::Ones;
 use crate::{Error, FeistelTopology, Result};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use std::sync::Arc;
@@ -392,6 +393,18 @@ impl ClauseMasks {
             Self::Byte(masks) => u64::from(masks[index]),
             Self::Word(masks) => masks[index],
         }
+    }
+
+    /// Edges of clause `c` whose variable is still free, in increasing order.
+    /// The SP sweeps walk the words directly: this adaptor measured slower there.
+    #[inline]
+    pub fn free_edges(&self, f: &Data, c: usize) -> impl Iterator<Item = usize> + '_ {
+        let start = f.offset(c);
+        let first = f.mask_offset(c);
+        (first..f.mask_offset(c + 1)).flat_map(move |w| Ones {
+            word: self.get(w),
+            base: start + 64 * (w - first),
+        })
     }
 
     #[inline]
