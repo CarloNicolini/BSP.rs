@@ -164,7 +164,7 @@ impl Solver {
         }
     }
     pub fn residual_formula(&self) -> Formula {
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let clauses = self
             .active
             .ones()

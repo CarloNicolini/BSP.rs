@@ -72,7 +72,7 @@ impl Solver {
         self.timed("cavities", |s| s.scalar_cavities(store_norms))
     }
     pub(super) fn scalar_cavities(&mut self, store_norms: bool) -> StatusResult<()> {
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let mut state = ScalarCavity {
             q: &mut self.q,
             eta: &self.eta,
@@ -164,7 +164,7 @@ impl Solver {
         result
     }
     pub(super) fn scalar_clauses(&mut self) -> StatusResult<f64> {
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let damping = self.options.damping;
         let mut residual: f64 = 0.0;
         for c in self.active.ones() {
@@ -219,7 +219,7 @@ impl Solver {
         self.scalar_observables_from_cavities()
     }
     pub(super) fn scalar_observables_from_cavities(&mut self) -> StatusResult<(f64, bool)> {
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let mut variable_term = 0.0;
         let mut paramagnetic = true;
         for v in self.free.ones() {

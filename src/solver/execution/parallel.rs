@@ -76,7 +76,7 @@ impl Solver {
 }
 
 fn parallel_clauses(s: &mut Solver) -> StatusResult<f64> {
-    let f = &s.formula.0;
+    let f = s.formula.data();
     let chunk = s
         .formula
         .m()

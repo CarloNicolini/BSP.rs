@@ -75,7 +75,7 @@ impl Solver {
             return Ok(());
         }
         self.round_messages_to_f32();
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let profile = self.execution.options.profile.is_some();
         let gpu = if let Some(topology) = &f.feistel {
             topology.metal_solver(&self.eta, profile)
@@ -115,7 +115,7 @@ impl Solver {
         if fp32 {
             self.round_messages_to_f32();
         }
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let (offsets, edge_clause) = f.device_clause_indexes();
         let cuda = bsp_cuda::CudaSolver::new(
             bsp_cuda::Topology {

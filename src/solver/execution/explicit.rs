@@ -17,7 +17,7 @@ impl Parallel {
             + self.ranges.len() * 16
     }
     pub(super) fn new(s: &Solver) -> Self {
-        let f = &s.formula.0;
+        let f = s.formula.data();
         let mut slot = vec![0; f.literals.len()];
         for (p, &e) in f.var_edges.iter().enumerate() {
             slot[e as usize] = p as u32;
@@ -37,7 +37,7 @@ impl Parallel {
         }
     }
     pub(super) fn cavities(&mut self, s: &mut Solver, store_norms: bool) -> StatusResult<()> {
-        let f = &s.formula.0;
+        let f = s.formula.data();
         let mut q = self.q.as_mut_slice();
         let mut norm = self.norm.as_mut_slice();
         let mut products = self.products.as_mut_slice();
@@ -122,7 +122,7 @@ impl Parallel {
         Ok(())
     }
     pub(super) fn observables(&mut self, s: &mut Solver) -> StatusResult<(f64, bool)> {
-        let f = &s.formula.0;
+        let f = s.formula.data();
         self.norm
             .par_iter_mut()
             .zip(&s.saved_eta)

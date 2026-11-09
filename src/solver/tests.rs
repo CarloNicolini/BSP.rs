@@ -2,7 +2,7 @@ use super::mutation::FreeLiterals;
 use super::*;
 
 fn check_indexes(s: &Solver) {
-    let f = &s.formula.0;
+    let f = s.formula.data();
     let mut degree = vec![0u32; f.n];
     for c in 0..s.formula.m() {
         let mut free = 0usize;
@@ -58,16 +58,16 @@ fn generated_width_indexes_match_generic_indexes() {
     for (k, alpha) in [(1, 1.0), (3, 4.0), (64, 1.0), (65, 1.0), (3, 0.0)] {
         let generated = Formula::random(k, alpha, 130, 17).unwrap();
         let generic = Formula::new(generated.n(), generated.clauses()).unwrap();
-        let f = &generated.0;
+        let f = generated.data();
         assert!(f.offsets.is_empty() && f.edge_clause.is_empty() && f.mask_offsets.is_empty());
-        assert_eq!(f.var_offsets, generic.0.var_offsets);
-        assert_eq!(f.var_edges, generic.0.var_edges);
+        assert_eq!(f.var_offsets, generic.data().var_offsets);
+        assert_eq!(f.var_edges, generic.data().var_edges);
         assert_eq!(generated.to_dimacs(), generic.to_dimacs());
         for e in 0..f.edges() {
-            assert_eq!(f.edge_clause(e), generic.0.edge_clause(e));
+            assert_eq!(f.edge_clause(e), generic.data().edge_clause(e));
         }
         for c in 0..=f.m() {
-            assert_eq!(f.mask_offset(c), generic.0.mask_offset(c));
+            assert_eq!(f.mask_offset(c), generic.data().mask_offset(c));
         }
 
         let mut a = Solver::new(generated, Options::default()).unwrap();

@@ -62,7 +62,7 @@ impl Solver {
         } else {
             [0.0, 1.0, 0.0]
         };
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let mut incident = std::mem::take(&mut self.incident);
         for e in f.variable_edges(v, &mut incident) {
             let c = f.edge_clause(e);
@@ -107,7 +107,7 @@ impl Solver {
         self.assignment[v] = -1;
         self.execution.set_assignment(v, -1);
         self.free.set(v, true);
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let mut incident = std::mem::take(&mut self.incident);
         for e in f.variable_edges(v, &mut incident) {
             let c = f.edge_clause(e);
@@ -144,7 +144,7 @@ impl Solver {
     // Unit propagation only distinguishes zero, one and multiple free bits.
     // Stop as soon as two bits are found, even for very wide clauses.
     pub(super) fn free_literals(&self, c: usize) -> FreeLiterals {
-        let f = &self.formula.0;
+        let f = self.formula.data();
         let mut unit_edge = None;
         let first = f.mask_offset(c);
         for w in first..f.mask_offset(c + 1) {
@@ -184,7 +184,7 @@ impl Solver {
                 FreeLiterals::One(edge) => edge,
                 FreeLiterals::Many => continue,
             };
-            let f = &self.formula.0;
+            let f = self.formula.data();
             let lit = f.literal(e);
             self.cert[(lit >> 1) as usize] = 1.0;
             self.set_fixed((lit >> 1) as usize, (1 - (lit & 1)) as i8, true);

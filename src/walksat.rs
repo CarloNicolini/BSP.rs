@@ -34,7 +34,7 @@ impl Solver {
         self.mark_walksat();
         // Arc clone lets the flip loop mutate the solver's counters and RNG.
         let formula = self.formula.clone();
-        let f = &formula.0;
+        let f = formula.data();
         let mut values = self.assignment.clone();
         // Clause activity is immutable during WalkSAT. Store dense state for
         // the residual when it is sparse, using rank to map original IDs.

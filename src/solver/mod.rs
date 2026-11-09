@@ -68,7 +68,7 @@ impl Solver {
     pub fn new(formula: Formula, options: Options) -> Result<Self> {
         let started = Instant::now();
         options.validate()?;
-        let f = &formula.0;
+        let f = formula.data();
         let n = f.n;
         let m = formula.m();
         let edges = f.edges();
@@ -185,7 +185,7 @@ impl Solver {
         }
         for (e, &value) in values.iter().enumerate() {
             self.saved_eta[e] = value;
-            let f = &self.formula.0;
+            let f = self.formula.data();
             self.eta[e] = if self.active.contains(f.edge_clause(e))
                 && self.assignment[(f.literal(e) >> 1) as usize] < 0
             {

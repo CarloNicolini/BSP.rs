@@ -24,6 +24,13 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.7]
+
+- Split `formula.rs` into `formula::{data, dimacs}` and move the Feistel
+  permutation and its tests into `feistel::{permutation, tests}`. Add the
+  crate-private `Formula::data()` accessor in place of tuple-field access.
+  No behavior change.
+
 ## [0.5.6]
 
 - Split `solver.rs` and `execution.rs` into modules of at most 300 lines:
