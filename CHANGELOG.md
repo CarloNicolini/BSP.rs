@@ -24,6 +24,14 @@ policy in [RELEASING.md](RELEASING.md).
   Python `Formula` API. This is compatible new functionality; a future 0.x
   release containing it requires a minor version increment.
 
+## [0.5.6]
+
+- Split `solver.rs` and `execution.rs` into modules of at most 300 lines:
+  `solver::{options, report, mutation, sp, search}` and
+  `solver::execution::{setup, device, metal, cuda, explicit, implicit, parallel, many}`.
+  Code moved without changes to behavior; `Execution` no longer exposes the
+  `parallel` scratch field.
+
 ## [0.5.5]
 
 - Split the CLI binary into `cli::resolve`, `cli::batch`, and `cli::single`, and
