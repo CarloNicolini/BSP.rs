@@ -1,4 +1,5 @@
 //! Synchronous, bounds-checked compute boundary. No GPU work outlives a call.
+mod plan;
 use std::{
     ffi::{c_char, c_void, CStr, CString},
     ptr::NonNull,
@@ -59,7 +60,8 @@ struct Control {
     paramagnetic: u32,
     residual: f32,
     complexity: f32,
-    unused: [u32; 2],
+    residual_bits: u32,
+    unused: u32,
 }
 #[derive(Clone, Copy)]
 #[repr(C)]
@@ -96,6 +98,7 @@ pub struct MetalSolver {
     feistel_width: u32,
     wide_variables: usize,
     medium_variables: usize,
+    records: usize,
     buckets: Vec<(String, usize, u32)>,
     pub device: String,
     pub allocated_bytes: usize,
@@ -208,6 +211,13 @@ impl MetalSolver {
             }
             let count = ids.len() - base - 1;
             ids[base] = count as u32;
+            // A contiguous fixed-width bucket keeps only its first clause and
+            // edge; the top header bit marks this form.
+            if width != 0 && count > 0 && ids[base + count] - ids[base + 1] == count as u32 - 1 {
+                let first = ids[base + 1];
+                ids.truncate(base);
+                ids.extend([count as u32 | 1 << 31, first, t.offsets[first as usize]]);
+            }
             buckets.push((name.to_string(), count, base as u32));
         }
         // Specialized widths keep prefixes in registers. Only the generic
@@ -233,6 +243,8 @@ impl MetalSolver {
         lengths[10] = scratch_q * 4;
         lengths[11] = edges * 4;
         lengths[12] = general_edges * 4;
+        let plan = plan::warp_plan(t.var_offsets);
+        lengths[3] = plan.len() * 16;
         lengths[21] = medium.len() * 4;
         lengths[24] = wide.len() * 4;
         lengths[25] = ids.len() * 4;
@@ -240,6 +252,8 @@ impl MetalSolver {
         let mut s = Self::allocate(t.n, m, edges, lengths, profile)?;
         s.wide_variables = wide.len() - 1;
         s.medium_variables = medium.len() - 1;
+        s.records = plan.len();
+        s.write(3, &plan);
         s.buckets = buckets;
         s.write(0, t.var_offsets);
         s.write(2, t.offsets);
@@ -335,7 +349,7 @@ impl MetalSolver {
         lengths[13..=20].copy_from_slice(&[
             n * 8,
             n * 16,
-            m * 4,
+            0,
             n * 4,
             n * 4,
             m * 4,
@@ -372,6 +386,7 @@ impl MetalSolver {
             feistel_width: 0,
             wide_variables: 0,
             medium_variables: 0,
+            records: 0,
             buckets: Vec::new(),
             device: unsafe { CStr::from_ptr(bsp_metal_name(context.as_ptr())) }
                 .to_string_lossy()
@@ -586,7 +601,7 @@ impl MetalSolver {
         }
         self.dispatch("pack_eta", self.edges.div_ceil(4), self.edges as u32)?;
         self.dispatch("cavities", self.medium_variables, 0)?;
-        self.dispatch("cavities_simd", self.n * 32, 0)?;
+        self.dispatch("cavities_packed", self.records * 32, self.records as u32)?;
         self.dispatch("cavities_wide", self.wide_variables * 256, 0)
     }
     fn report(&mut self, started: Instant) -> Report {
@@ -619,8 +634,7 @@ impl MetalSolver {
                 let (name, count, base) = self.buckets[i].clone();
                 self.dispatch(&name, count, base)?;
             }
-            self.dispatch("residual_blocks", self.m, 0)?;
-            self.dispatch("residual_final", 256, 0)?;
+            self.dispatch("residual_final", 1, 0)?;
         }
         self.finish()?;
         Ok(self.report(started))

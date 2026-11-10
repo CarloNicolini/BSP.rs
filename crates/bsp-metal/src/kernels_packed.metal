@@ -9,7 +9,10 @@ struct Control {
   atomic_uint error;
   uint done, sweeps, paramagnetic;
   float residual, complexity;
-  uint unused[2];
+  // Clause kernels publish the sweep maximum here; residuals are
+  // nonnegative, so their bit patterns order like their values.
+  atomic_uint residual_bits;
+  uint unused;
 };
 inline bool stopped(device Control &s) {
   return s.done || atomic_load_explicit(&s.error, memory_order_relaxed);
@@ -136,14 +139,14 @@ kernel void cavities(CAVITY_BUFFERS, const device uint *ids [[buffer(21)]],
   }
 }
 
-kernel void cavities_simd(CAVITY_BUFFERS, uint i [[thread_position_in_grid]],
-                          uint lane [[thread_index_in_simdgroup]]) {
-  uint v = i / 32;
-  if (v >= cfg.n || state.done)
-    return;
+// One SIMD group computes the cavities of variable v, of degree at most 32.
+inline void simd_cavity(uint v, uint lane, const device uint *vo,
+                        const device char *assignment, device uint *degree,
+                        const device float *eta_packed,
+                        const device uint *eta_at, device float *q_packed,
+                        const device uint *q_slot, device float2 *products,
+                        device Control &state, constant Config &cfg) {
   uint start = vo[2 * v], split = vo[2 * v + 1], end = vo[2 * v + 2];
-  if (end - start > 32)
-    return;
   if (assignment[v] >= 0) {
     if (start + lane < end)
       put_q(q_packed, q_slot[start + lane], FIXED, 0, cfg);
@@ -192,6 +195,84 @@ kernel void cavities_simd(CAVITY_BUFFERS, uint i [[thread_position_in_grid]],
       put_q(q_packed, q_slot[p], clamp((1 - opposite) * same / z, 0.0f, 1.0f),
             z, cfg);
   }
+}
+
+inline uint ballot(bool b) { return uint(simd_vote::vote_t(simd_ballot(b))); }
+// One SIMD group holds several variables of degree at most 32. Variable v
+// takes P lanes, P the power of two covering its degree, at a lane offset that
+// is a multiple of P. Record w holds {first variable, lanes starting a
+// variable, lanes holding an edge, lanes holding a positive-literal edge}. A
+// start lane without an edge but with the positive bit marks a variable left
+// to the wider kernels; it always closes its record. Each sign of a variable
+// is one scan group of consecutive lanes.
+kernel void cavities_packed(CAVITY_BUFFERS,
+                            const device uint4 *plan [[buffer(3)]],
+                            constant uint &records [[buffer(26)]],
+                            uint t [[thread_position_in_grid]],
+                            uint lane [[thread_index_in_simdgroup]]) {
+  uint w = t / 32;
+  if (w >= records || state.done)
+    return;
+  uint4 r = plan[w];
+  // A record with one variable uses the unsegmented hardware scans.
+  if (popcount(r.y) == 1 && (r.z & 1)) {
+    simd_cavity(r.x, lane, vo, assignment, degree, eta_packed, eta_at, q_packed,
+                q_slot, products, state, cfg);
+    return;
+  }
+  uint up_to = (2u << lane) - 1, below = r.y & up_to;
+  uint first = 31 - clz(below), v = r.x + popcount(below) - 1;
+  uint after = r.y & ~up_to, next = after ? ctz(after) : 32;
+  uint segment = (next == 32 ? ~0u : (1u << next) - 1) & ~((1u << first) - 1);
+  bool wider = !(r.z >> first & 1) && (r.w >> first & 1);
+  uint last = first + popcount(r.z & segment),
+       split = first + popcount(r.w & segment);
+  bool edge = r.z >> lane & 1, positive = lane < split;
+  uint start = positive ? first : split, end = positive ? split : last;
+  uint p = vo[2 * r.x] + popcount(r.z & ((1u << lane) - 1));
+  bool fixed = assignment[v] >= 0, valid = edge && !fixed;
+  float x = valid ? eta_packed[eta_at[p]] : 0;
+  float factor = valid ? 1 - eta_of(x) : 1, up = factor, down = factor;
+  uint span = simd_max(valid ? end - start : 0u);
+  for (ushort d = 1; d < span; d <<= 1) {
+    float a = simd_shuffle_up(up, d), b = simd_shuffle_down(down, d);
+    if (lane >= start + d)
+      up *= a;
+    if (lane + d < end)
+      down *= b;
+  }
+  float plus = simd_shuffle(up, ushort(split > first ? split - 1 : first)),
+        minus = simd_shuffle(up, ushort(last > split ? last - 1 : first));
+  plus = split > first ? plus : 1;
+  minus = last > split ? minus : 1;
+  float prefix = lane == start ? 1 : simd_shuffle_up(up, 1),
+        suffix = lane + 1 == end ? 1 : simd_shuffle_down(down, 1);
+  uint group = (end == 32 ? ~0u : (1u << end) - 1) & ~((1u << start) - 1),
+       variable = (last == 32 ? ~0u : (1u << last) - 1) & ~((1u << first) - 1);
+  uint zeros = popcount(ballot(valid && factor == 0) & group),
+       active = popcount(ballot(valid && active_of(x)) & variable);
+  if (edge && fixed)
+    put_q(q_packed, q_slot[p], FIXED, 0, cfg);
+  if (wider || fixed)
+    return;
+  if (lane == first && cfg.observables) {
+    degree[v] = active;
+    products[v] = float2(plus, minus);
+  }
+  if (!valid)
+    return;
+  float same = prefix * suffix, opposite = positive ? minus : plus;
+  // A zero total needs a zero factor, and with exactly one zero, excluding
+  // that edge must give a positive product.
+  if ((lane == start && (positive ? plus : minus) == 0 && !zeros) ||
+      (factor == 0 && same == 0 && zeros == 1))
+    atomic_fetch_or_explicit(&state.error, 4u, memory_order_relaxed);
+  float z = opposite + (1 - opposite) * same;
+  if (!(z > 0) || !isfinite(z))
+    atomic_fetch_or_explicit(&state.error, 1u, memory_order_relaxed);
+  else
+    put_q(q_packed, q_slot[p], clamp((1 - opposite) * same / z, 0.0f, 1.0f), z,
+          cfg);
 }
 
 // High-degree variables use one cooperative group. Scans retain exclusion
@@ -422,17 +503,13 @@ kernel void cavities_feistel(const device uint *stub_offsets [[buffer(0)]],
 // Short clauses retain prefixes in registers; arbitrary widths use E-sized
 // scratch.
 template <uint Width, bool Implicit>
-inline void clause_update(uint c, uint start, uint end,
-                          const device uint *active, device float *eta,
-                          const device float *q_packed, const device uint *q_at,
-                          device float *scratch, device float *residual,
-                          device Control &state, constant Config &cfg) {
-  if (stopped(state))
-    return;
-  if (!active[c]) {
-    residual[c] = 0;
-    return;
-  }
+inline float clause_update(uint c, uint start, uint end,
+                           const device uint *active, device float *eta,
+                           const device float *q_packed,
+                           const device uint *q_at, device float *scratch,
+                           device Control &state, constant Config &cfg) {
+  if (stopped(state) || !active[c])
+    return 0;
   uint free_count = 0;
   float product = 1, local[Width ? Width : 1], local_q[Width ? Width : 1];
   for (uint e = start; e < end; ++e) {
@@ -450,7 +527,7 @@ inline void clause_update(uint c, uint start, uint end,
   }
   if (!free_count) {
     atomic_fetch_or_explicit(&state.error, 2u, memory_order_relaxed);
-    return;
+    return 0;
   }
   float suffix = 1, r = 0;
   for (uint e = end; e > start;) {
@@ -465,7 +542,7 @@ inline void clause_update(uint c, uint start, uint end,
     r = max(r, abs(raw - eta[e]));
     eta[e] = raw + (eta[e] - raw) * cfg.damping;
   }
-  residual[c] = r;
+  return r;
 }
 #define CLAUSE_KERNEL(Name, Width)                                             \
   kernel void Name(const device uint *offsets [[buffer(2)]],                   \
@@ -474,27 +551,35 @@ inline void clause_update(uint c, uint start, uint end,
                    device float *q_packed [[buffer(1)]],                       \
                    const device uint *q_at [[buffer(29)]],                     \
                    device float *scratch [[buffer(12)]],                       \
-                   device float *residual [[buffer(15)]],                      \
                    device Control &state [[buffer(19)]],                       \
                    constant Config &cfg [[buffer(20)]],                        \
                    const device uint *ids [[buffer(25)]],                      \
                    constant uint &base [[buffer(26)]],                         \
                    uint i [[thread_position_in_grid]]) {                       \
+    float r = 0;                                                               \
     if (cfg.width) {                                                           \
-      if (i >= cfg.m)                                                          \
-        return;                                                                \
       /* The second half of q is available as scratch during sweeps. */        \
-      clause_update<Width, true>(i, i * cfg.width, (i + 1) * cfg.width,        \
-                                 active, eta, q_packed, q_at, q_packed + base, \
-                                 residual, state, cfg);                        \
-    } else {                                                                   \
-      if (i >= ids[base])                                                      \
-        return;                                                                \
-      uint c = ids[base + 1 + i];                                              \
-      clause_update<Width, false>(c, offsets[c], offsets[c + 1], active, eta,  \
-                                  q_packed, q_at, scratch, residual, state,    \
-                                  cfg);                                        \
+      if (i < cfg.m)                                                           \
+        r = clause_update<Width, true>(i, i * cfg.width, (i + 1) * cfg.width,  \
+                                       active, eta, q_packed, q_at,            \
+                                       q_packed + base, state, cfg);           \
+    } else if (i < (ids[base] & 0x7fffffffu)) {                                \
+      if (Width && ids[base] >> 31) {                                          \
+        uint start = ids[base + 2] + i * Width;                                \
+        r = clause_update<Width, false>(ids[base + 1] + i, start,              \
+                                        start + Width, active, eta, q_packed,  \
+                                        q_at, scratch, state, cfg);            \
+      } else {                                                                 \
+        uint c = ids[base + 1 + i];                                            \
+        r = clause_update<Width, false>(c, offsets[c], offsets[c + 1], active, \
+                                        eta, q_packed, q_at, scratch, state,   \
+                                        cfg);                                  \
+      }                                                                        \
     }                                                                          \
+    r = simd_max(r);                                                           \
+    if (simd_is_first() && r > 0)                                              \
+      atomic_fetch_max_explicit(&state.residual_bits, as_type<uint>(r),        \
+                                memory_order_relaxed);                         \
   }
 CLAUSE_KERNEL(clauses3, 3)
 CLAUSE_KERNEL(clauses4, 4)
@@ -502,48 +587,16 @@ CLAUSE_KERNEL(clauses6, 6)
 CLAUSE_KERNEL(clauses12, 12)
 CLAUSE_KERNEL(clauses_general, 0)
 
-kernel void residual_blocks(const device float *r [[buffer(15)]],
-                            device Control &s [[buffer(19)]],
-                            constant Config &cfg [[buffer(20)]],
-                            device float4 *blocks [[buffer(23)]],
-                            uint i [[thread_position_in_grid]],
-                            uint lane [[thread_index_in_threadgroup]],
-                            uint group [[threadgroup_position_in_grid]]) {
-  if (stopped(s))
-    return;
-  threadgroup float temp[256];
-  temp[lane] = i < cfg.m ? r[i] : 0;
-  threadgroup_barrier(mem_flags::mem_threadgroup);
-  for (uint stride = 128; stride; stride >>= 1) {
-    if (lane < stride)
-      temp[lane] = max(temp[lane], temp[lane + stride]);
-    threadgroup_barrier(mem_flags::mem_threadgroup);
-  }
-  if (!lane)
-    blocks[group].x = temp[0];
-}
 kernel void residual_final(device Control &s [[buffer(19)]],
                            constant Config &cfg [[buffer(20)]],
-                           const device float4 *blocks [[buffer(23)]],
-                           uint lane [[thread_index_in_threadgroup]]) {
-  if (stopped(s))
+                           uint i [[thread_position_in_grid]]) {
+  if (i || stopped(s))
     return;
-  float r = 0;
-  for (uint i = lane; i < (cfg.m + 255) / 256; i += 256)
-    r = max(r, blocks[i].x);
-  threadgroup float temp[256];
-  temp[lane] = r;
-  threadgroup_barrier(mem_flags::mem_threadgroup);
-  for (uint stride = 128; stride; stride >>= 1) {
-    if (lane < stride)
-      temp[lane] = max(temp[lane], temp[lane + stride]);
-    threadgroup_barrier(mem_flags::mem_threadgroup);
-  }
-  if (!lane) {
-    s.residual = temp[0];
-    ++s.sweeps;
-    s.done = temp[0] <= cfg.epsilon;
-  }
+  float r = as_type<float>(
+      atomic_exchange_explicit(&s.residual_bits, 0u, memory_order_relaxed));
+  s.residual = r;
+  ++s.sweeps;
+  s.done = r <= cfg.epsilon;
 }
 kernel void variables(const device char *assignment [[buffer(5)]],
                       const device uint *degree [[buffer(7)]],
