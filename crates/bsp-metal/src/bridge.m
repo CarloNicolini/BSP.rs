@@ -37,7 +37,7 @@ void *bsp_metal_new(const char *source, char *error, size_t size) {
                 id<MTLLibrary> library = [r.device newLibraryWithSource:@(source) options:options error:&err];
                 if (!library) { snprintf(error,size,"%s",err.localizedDescription.UTF8String); return NULL; }
                 r.pipelines = [NSMutableDictionary new];
-                for (NSString *name in @[@"pack_eta", @"cavities", @"cavities_simd", @"cavities_wide", @"cavities_feistel", @"clauses3", @"clauses4", @"clauses6", @"clauses12", @"clauses_general", @"residual_blocks", @"residual_final", @"variables", @"clause_observables", @"observable_blocks", @"observable_final"]) {
+                for (NSString *name in @[@"pack_eta", @"cavities", @"cavities_packed", @"cavities_wide", @"cavities_feistel", @"clauses3", @"clauses4", @"clauses6", @"clauses12", @"clauses_general", @"residual_final", @"variables", @"clause_observables", @"observable_blocks", @"observable_final"]) {
                     id<MTLComputePipelineState> p = [r.device newComputePipelineStateWithFunction:[library newFunctionWithName:name] error:&err];
                     if (!p) { snprintf(error,size,"%s",err.localizedDescription.UTF8String); return NULL; }
                     if (p.threadExecutionWidth != 32 || p.maxTotalThreadsPerThreadgroup < 256) { snprintf(error,size,"unsupported Metal SIMD width or threadgroup limit"); return NULL; }
