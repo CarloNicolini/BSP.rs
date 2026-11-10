@@ -5,6 +5,12 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Speed up Metal sweeps with packed SIMD records for variables of degree at most
+  32, a residual maximum computed inside the clause kernels, and headers for
+  contiguous clause buckets. On an M1 Pro, random 3-SAT at alpha 4.2 runs 6%
+  faster per sweep at n=1e6, and 36% faster at alpha 2. Public APIs and outputs
+  do not change, so this needs only a patch release.
+
 - Support both implicit Feistel ensembles on Metal without materializing the
   packed factor graph. This compatible backend addition requires a minor
   release under the 0.x policy.

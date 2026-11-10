@@ -1,7 +1,13 @@
+mod cavity;
 mod execution;
 mod mutation;
 mod options;
 mod report;
+mod residual;
+#[cfg(test)]
+mod residual_measure;
+#[cfg(test)]
+mod residual_tests;
 mod search;
 mod sp;
 #[cfg(test)]
@@ -13,6 +19,7 @@ use crate::{Error, Formula, Result, StatusResult};
 use execution::Execution;
 use mutation::TrueCounts;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
+use residual::ResidualQueue;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -49,6 +56,7 @@ pub struct Solver {
     incident: Vec<u64>,
     clause_edges: Vec<usize>,
     prefix: Vec<f64>,
+    residual: Option<ResidualQueue>,
     started: Instant,
     cancel: CancellationToken,
     sp_sweeps: u64,
@@ -125,6 +133,7 @@ impl Solver {
             incident: Vec::new(),
             clause_edges: Vec::with_capacity(width),
             prefix: Vec::with_capacity(width),
+            residual: None,
             started,
             cancel: CancellationToken::default(),
             sp_sweeps: 0,
@@ -201,6 +210,9 @@ impl Solver {
             } else {
                 0.0
             };
+        }
+        if let Some(queue) = &mut self.residual {
+            queue.current = false;
         }
         self.terminal = None;
         self.solution = None;
