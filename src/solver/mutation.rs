@@ -74,16 +74,23 @@ impl Solver {
                 self.execution.freeze_edge(e);
                 self.saved_eta[e] = self.eta[e];
                 self.eta[e] = 0.0;
+                if let Some(queue) = &mut self.residual {
+                    queue.clause(c);
+                }
             }
             if value != i8::from(f.negative(e)) {
                 if self.true_count.change(c, true) == 1 {
                     self.active.set(c, false);
                     self.execution.set_clause_active(c, false);
                     for other in self.masks.free_edges(f, c) {
-                        self.degree[(f.literal(other) >> 1) as usize] -= 1;
+                        let w = (f.literal(other) >> 1) as usize;
+                        self.degree[w] -= 1;
                         self.execution.freeze_edge(other);
                         self.saved_eta[other] = self.eta[other];
                         self.eta[other] = 0.0;
+                        if let Some(queue) = &mut self.residual {
+                            queue.variable(w);
+                        }
                     }
                 }
             } else if self.active.contains(c)
@@ -107,6 +114,9 @@ impl Solver {
         self.assignment[v] = -1;
         self.execution.set_assignment(v, -1);
         self.free.set(v, true);
+        if let Some(queue) = &mut self.residual {
+            queue.variable(v);
+        }
         let f = self.formula.data();
         let mut incident = std::mem::take(&mut self.incident);
         for e in f.variable_edges(v, &mut incident) {
@@ -129,10 +139,17 @@ impl Solver {
                     self.active.set(c, true);
                     self.execution.set_clause_active(c, true);
                     for other in self.masks.free_edges(f, c) {
-                        self.degree[(f.literal(other) >> 1) as usize] += 1;
+                        let w = (f.literal(other) >> 1) as usize;
+                        self.degree[w] += 1;
                         self.execution.restore_edge(other);
                         self.eta[other] = self.saved_eta[other];
+                        if let Some(queue) = &mut self.residual {
+                            queue.variable(w);
+                        }
                     }
+                }
+                if let Some(queue) = &mut self.residual {
+                    queue.clause(c);
                 }
                 if !matches!(self.free_literals(c), FreeLiterals::Many) {
                     self.unit_queue.push(c as u32);

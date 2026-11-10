@@ -13,6 +13,13 @@ impl BitSet {
         }
         Self { words, count: len }
     }
+    #[cfg(test)]
+    pub fn empty(len: usize) -> Self {
+        Self {
+            words: vec![0; len.div_ceil(64)],
+            count: 0,
+        }
+    }
     #[inline]
     pub fn contains(&self, i: usize) -> bool {
         self.words[i / 64] & (1u64 << (i % 64)) != 0
