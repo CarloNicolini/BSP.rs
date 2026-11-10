@@ -7,6 +7,7 @@ use bsp_rust::{Formula, Solver, Status};
 use std::io::{IsTerminal, Write};
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{fs, process::ExitCode};
 
 pub fn run_single(
@@ -27,6 +28,7 @@ pub fn run_single(
         write_formula: export,
         output,
         progress,
+        update_frequency,
     } = resolved;
     options.validate()?;
     if preserve_literal_order && source.is_none() {
@@ -39,7 +41,9 @@ pub fn run_single(
     let terminal = std::io::stdout().is_terminal();
     let show_progress = progress.unwrap_or(terminal) && terminal;
     let clock = PhaseClock::new();
-    let start_live = || show_progress.then(|| progress::LiveLine::start(clock.clone()));
+    let row_interval = Duration::from_secs_f64(update_frequency.unwrap_or(3.0).max(0.1));
+    let start_live =
+        || show_progress.then(|| progress::LiveLine::start(clock.clone(), row_interval));
     let mut live = if partitioned { None } else { start_live() };
     if feistel.is_some()
         && matches!(
@@ -120,6 +124,9 @@ pub fn run_single(
     let mut solver = Solver::with_execution(formula.clone(), options.clone(), execution.clone())?;
     let watched = clock.clone();
     solver.on_walksat(Arc::new(move || watched.enter(WALKSAT)));
+    if let Some(line) = &live {
+        solver.on_step(line.step_hook());
+    }
     clock.enter(BSP);
     if let Some(path) = messages {
         solver.set_messages(&serde_json::from_str::<Vec<f64>>(&fs::read_to_string(

@@ -27,6 +27,8 @@ pub use execution::{solve_many, Backend, ExecutionOptions, ExecutionReport, Prec
 pub use options::Options;
 pub use report::{Action, CancellationToken, SolveResult, SpReport, Status, Step};
 
+pub type StepHook = Arc<dyn Fn(&Step) + Send + Sync>;
+
 /// All mutable state belongs to one solver. Formula topology is shared through Arc.
 pub struct Solver {
     pub(crate) execution: Execution,
@@ -70,6 +72,7 @@ pub struct Solver {
     terminal: Option<Status>,
     solution: Option<Vec<i8>>,
     walksat_hook: Option<Arc<dyn Fn() + Send + Sync>>,
+    step_hook: Option<StepHook>,
 }
 
 impl Solver {
@@ -146,12 +149,17 @@ impl Solver {
             terminal: None,
             solution: None,
             walksat_hook: None,
+            step_hook: None,
         })
     }
     /// Register a CPU callback for the start of WalkSAT.
     /// Device sweeps do not call it.
     pub fn on_walksat(&mut self, hook: Arc<dyn Fn() + Send + Sync>) {
         self.walksat_hook = Some(hook);
+    }
+    /// Register a callback that receives every recorded step.
+    pub fn on_step(&mut self, hook: StepHook) {
+        self.step_hook = Some(hook);
     }
     pub(crate) fn mark_walksat(&self) {
         if let Some(hook) = &self.walksat_hook {

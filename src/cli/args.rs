@@ -135,6 +135,14 @@ pub struct Cli {
     #[arg(long, overrides_with = "no_progress")]
     pub progress: bool,
 
+    /// Seconds between progress table rows [default: 3]
+    #[arg(long, value_name = "SECONDS")]
+    pub update_frequency: Option<f64>,
+
+    /// Write structured JSON logs of every BSP step to stderr [default: off]
+    #[arg(long, value_name = "LEVEL", value_enum)]
+    pub enable_tracing: Option<TraceLevel>,
+
     /// Hide the timer line. Stdout is then one JSON summary
     #[arg(long, overrides_with = "progress")]
     pub no_progress: bool,
@@ -162,4 +170,19 @@ pub struct Cli {
     /// Write the formula as DIMACS and do not solve
     #[arg(long, value_name = "PATH")]
     pub write_formula: Option<PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum TraceLevel {
+    Warn,
+    Info,
+}
+
+impl From<TraceLevel> for tracing::Level {
+    fn from(level: TraceLevel) -> Self {
+        match level {
+            TraceLevel::Warn => Self::WARN,
+            TraceLevel::Info => Self::INFO,
+        }
+    }
 }
