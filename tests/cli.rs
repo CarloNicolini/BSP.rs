@@ -148,12 +148,53 @@ fn cli_documents_options_and_rejects_invalid_input() {
     assert!(help.contains("--config"));
     assert!(help.contains("--progress"));
     assert!(help.contains("--no-progress"));
+    assert!(help.contains("--stream-table"));
     let output = Command::new(env!("CARGO_BIN_EXE_bsp-rust"))
         .arg("--invalid")
         .arg("1")
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
+fn cli_stream_table_writes_tsv_rows() {
+    let dir = temp_dir("stream-table");
+    let output = run(
+        &dir,
+        &[
+            "--no-progress",
+            "--update-frequency",
+            "0.1",
+            "--stream-table",
+            "stats.tsv",
+            "--output",
+            "result.json",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/examples/3sat.cnf"),
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = fs::read_to_string(dir.join("stats.tsv")).unwrap();
+    let mut lines = text.lines().filter(|line| !line.is_empty());
+    let header = lines.next().unwrap();
+    assert_eq!(
+        header,
+        "time\tstep\taction\tfree\tclauses\tsweeps\tresidual\tcomplexity\tchanged"
+    );
+    let row = lines.next().expect("at least one streamed data row");
+    let cells: Vec<_> = row.split('\t').collect();
+    assert_eq!(cells.len(), 9);
+    assert!(cells[0].parse::<f64>().is_ok(), "time={}", cells[0]);
+    assert!(cells[1].parse::<usize>().is_ok(), "step={}", cells[1]);
+    assert!(!cells[2].is_empty(), "action");
+    assert!(cells[7].parse::<f64>().is_ok(), "complexity={}", cells[7]);
+    let brief = summary(&output);
+    assert_eq!(brief["status"], "sat");
+    let _ = fs::remove_dir_all(dir);
 }
 
 #[test]
@@ -667,6 +708,7 @@ fn batch_rejects_ambiguous_options_and_empty_directories() {
         vec!["--sweeps", "1"],
         vec!["--messages", "messages.json"],
         vec!["--dump-messages"],
+        vec!["--stream-table", "stats.tsv"],
         vec!["--generate", "3", "2", "10"],
     ] {
         let mut args = vec!["a.cnf", "b.cnf"];

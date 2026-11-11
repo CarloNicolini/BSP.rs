@@ -42,11 +42,13 @@ override both files. The program writes the full JSON
 result to a file. The default file name contains the main run variables and the
 UTC time; collisions receive a numeric suffix without overwriting existing files.
 `--output PATH` selects a file and overwrites it if it exists. `--progress` prints one stdout
-line with timers for formula setup, BSP, and WalkSAT. Stdout then prints one
-JSON summary with `status` and `output`. Exit code 0 means a verified SAT
-assignment. Exit code 1 means a heuristic failure or a limit. Exit code 2 means
-invalid input. After a GPU-capable `make` build, select `--backend metal`,
-`cuda`, or `cuda-f32` at run time.
+line with timers for formula setup, BSP, and WalkSAT. `--stream-table PATH` writes the same
+progress columns as TSV so tools such as gnuplot or `tail -f` can follow complexity and
+other counters while the solver runs. `--update-frequency SECONDS` sets the row interval for
+both the terminal table and the TSV file. Stdout then prints one JSON summary with `status`
+and `output`. Exit code 0 means a verified SAT assignment. Exit code 1 means a heuristic
+failure or a limit. Exit code 2 means invalid input. After a GPU-capable `make` build,
+select `--backend metal`, `cuda`, or `cuda-f32` at run time.
 
 To solve multiple DIMACS inputs sequentially, pass paths or directories:
 
@@ -63,9 +65,10 @@ progress bar uses stderr; `--no-progress` disables it. Failed searches and input
 errors do not stop the batch. Exit status is 2 if any input errors occur, else 1
 if a search fails, else 0. A directory with no matching files contributes no
 inputs; an entirely empty batch is an error. Batch mode rejects `--output`,
-`--profile`, `--write-formula`, `--sweeps`, `--messages`, and `--dump-messages`
-to avoid ambiguous shared files or non-solve operations. Generation flags also
-conflict with batch input. Existing single-file behavior is unchanged.
+`--profile`, `--write-formula`, `--sweeps`, `--messages`, `--dump-messages`, and
+`--stream-table` to avoid ambiguous shared files or non-solve operations.
+Generation flags also conflict with batch input. Existing single-file behavior is
+unchanged.
 
 Other Makefile targets: `make python` installs the Python package with the same
 backend detection, `make docs` builds Sphinx HTML, and `make docs-serve` serves

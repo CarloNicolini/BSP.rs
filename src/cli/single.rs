@@ -29,6 +29,7 @@ pub fn run_single(
         output,
         progress,
         update_frequency,
+        stream_table,
     } = resolved;
     options.validate()?;
     if preserve_literal_order && source.is_none() {
@@ -42,9 +43,18 @@ pub fn run_single(
     let show_progress = progress.unwrap_or(terminal) && terminal;
     let clock = PhaseClock::new();
     let row_interval = Duration::from_secs_f64(update_frequency.unwrap_or(3.0).max(0.1));
-    let start_live =
-        || show_progress.then(|| progress::LiveLine::start(clock.clone(), row_interval));
-    let mut live = if partitioned { None } else { start_live() };
+    let start_live = || -> Result<Option<progress::LiveLine>, Box<dyn std::error::Error>> {
+        if !show_progress && stream_table.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(progress::LiveLine::start(
+            clock.clone(),
+            row_interval,
+            show_progress,
+            stream_table.clone(),
+        )?))
+    };
+    let mut live = if partitioned { None } else { start_live()? };
     if feistel.is_some()
         && matches!(
             execution.backend,
@@ -99,7 +109,7 @@ pub fn run_single(
              Each clause draws one variable from each fixed group, and variable degrees are balanced. \
              This skips the repair scan and can reduce cycle walking, depending on instance size."
         );
-        live = start_live();
+        live = start_live()?;
     }
     if let Some(path) = export {
         if let Some(line) = live.as_mut() {

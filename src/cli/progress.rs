@@ -1,5 +1,8 @@
 use bsp_rust::Step;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -93,9 +96,9 @@ fn table_row(cells: [String; 9]) -> String {
     table.to_string().trim_end().to_string()
 }
 
-fn step_row(seconds: f64, step: &Step) -> String {
-    table_row([
-        format!("{seconds:.1}s"),
+fn step_cells(seconds: f64, step: &Step) -> [String; 9] {
+    [
+        format!("{seconds:.1}"),
         step.index.to_string(),
         format!("{:?}", step.action).to_lowercase(),
         step.free_variables.to_string(),
@@ -104,7 +107,17 @@ fn step_row(seconds: f64, step: &Step) -> String {
         format!("{:.2e}", step.residual),
         format!("{:.4}", step.complexity),
         step.changed.to_string(),
-    ])
+    ]
+}
+
+fn step_row(seconds: f64, step: &Step) -> String {
+    let mut cells = step_cells(seconds, step);
+    cells[0] = format!("{}s", cells[0]);
+    table_row(cells)
+}
+
+fn tsv_line(cells: [String; 9]) -> String {
+    cells.join("\t")
 }
 
 /// Free-variable bar and status line, plus a table row on stdout every few seconds.
@@ -116,8 +129,18 @@ pub struct LiveLine {
 }
 
 impl LiveLine {
-    pub fn start(clock: PhaseClock, row_interval: Duration) -> Self {
-        let multi = MultiProgress::with_draw_target(ProgressDrawTarget::stdout());
+    pub fn start(
+        clock: PhaseClock,
+        row_interval: Duration,
+        show_ui: bool,
+        stream_table: Option<PathBuf>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let target = if show_ui {
+            ProgressDrawTarget::stdout()
+        } else {
+            ProgressDrawTarget::hidden()
+        };
+        let multi = MultiProgress::with_draw_target(target);
         let decided = multi.add(ProgressBar::new(0));
         decided.set_style(
             ProgressStyle::with_template("{bar:40.cyan/blue} {pos}/{len} variables decided")
@@ -125,7 +148,18 @@ impl LiveLine {
         );
         let status = multi.add(ProgressBar::new_spinner());
         status.set_style(ProgressStyle::with_template("{spinner:.green} {msg}").expect("template"));
-        status.enable_steady_tick(Duration::from_millis(120));
+        if show_ui {
+            status.enable_steady_tick(Duration::from_millis(120));
+        }
+        let mut stream = match stream_table {
+            Some(path) => {
+                let mut writer = BufWriter::new(File::create(path)?);
+                writeln!(writer, "{}", tsv_line(COLUMNS.map(|(name, _)| name.into())))?;
+                writer.flush()?;
+                Some(writer)
+            }
+            None => None,
+        };
         let latest = Arc::new(Mutex::new(None::<Step>));
         let stop = Arc::new(AtomicBool::new(false));
         let worker = thread::spawn({
@@ -155,16 +189,26 @@ impl LiveLine {
                             step.index, step.sp_sweeps, step.complexity
                         );
                         if finished || last_row.elapsed() >= row_interval {
-                            if !printed_header {
-                                let _ =
-                                    multi.println(table_row(COLUMNS.map(|(name, _)| name.into())));
-                                printed_header = true;
+                            let seconds = origin.elapsed().as_secs_f64();
+                            if show_ui {
+                                if !printed_header {
+                                    let _ = multi
+                                        .println(table_row(COLUMNS.map(|(name, _)| name.into())));
+                                    printed_header = true;
+                                }
+                                let _ = multi.println(step_row(seconds, &step));
                             }
-                            let _ = multi.println(step_row(origin.elapsed().as_secs_f64(), &step));
+                            if let Some(writer) = stream.as_mut() {
+                                let _ =
+                                    writeln!(writer, "{}", tsv_line(step_cells(seconds, &step)));
+                                let _ = writer.flush();
+                            }
                             last_row = Instant::now();
                         }
                     }
-                    status.set_message(message);
+                    if show_ui {
+                        status.set_message(message);
+                    }
                     if finished {
                         break;
                     }
@@ -174,12 +218,12 @@ impl LiveLine {
                 status.finish_and_clear();
             }
         });
-        Self {
+        Ok(Self {
             multi,
             latest,
             stop,
             worker: Some(worker),
-        }
+        })
     }
 
     /// Callback for `Solver::on_step` that feeds the display.

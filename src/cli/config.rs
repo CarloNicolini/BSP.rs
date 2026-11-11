@@ -53,6 +53,7 @@ pub struct FileConfig {
     pub output: Option<PathBuf>,
     pub progress: Option<bool>,
     pub update_frequency: Option<f64>,
+    pub stream_table: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -71,6 +72,7 @@ pub struct Resolved {
     pub output: Option<PathBuf>,
     pub progress: Option<bool>,
     pub update_frequency: Option<f64>,
+    pub stream_table: Option<PathBuf>,
 }
 
 /// Explicit flags layer over earlier sources exactly like a run file.
@@ -103,6 +105,7 @@ impl From<&Cli> for FileConfig {
                 _ => None,
             },
             update_frequency: cli.update_frequency,
+            stream_table: cli.stream_table.clone(),
             ..Self::default()
         }
     }
@@ -200,6 +203,9 @@ impl FileConfig {
         }
         if let Some(value) = self.update_frequency {
             resolved.update_frequency = Some(value);
+        }
+        if let Some(path) = &self.stream_table {
+            resolved.stream_table = Some(path.clone());
         }
     }
 }

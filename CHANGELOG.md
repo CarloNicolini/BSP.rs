@@ -5,6 +5,12 @@ policy in [RELEASING.md](RELEASING.md).
 
 ## [Unreleased]
 
+- Add `--stream-table PATH` so the CLI writes progress-table rows as TSV for
+  gnuplot or `tail -f`. The file uses the same columns as the terminal table,
+  flushes each row, and follows `--update-frequency`. Streaming works with
+  `--no-progress`. Batch mode rejects a shared stream path. This compatible CLI
+  addition requires a minor release under the 0.x policy.
+
 - Speed up Metal sweeps with packed SIMD records for variables of degree at most
   32, a residual maximum computed inside the clause kernels, and headers for
   contiguous clause buckets. On an M1 Pro, random 3-SAT at alpha 4.2 runs 6%

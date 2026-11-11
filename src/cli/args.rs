@@ -31,6 +31,7 @@ The WalkSAT timer starts when local search starts. A device sweep does not call 
 Load shared parameters with --config PATH (.toml, .yaml, .yml, or .json).
 Merge order is defaults, then --config, then --options, then explicit flags.
 The full JSON result goes to a file.
+--stream-table PATH writes progress rows as TSV for gnuplot or tail -f.
 Stdout then prints one JSON object with the status and the main counters.
 The JSON field residual is the largest undamped message change in the last sweep.
 Exit code 0 means a verified SAT assignment.
@@ -138,6 +139,10 @@ pub struct Cli {
     /// Seconds between progress table rows [default: 3]
     #[arg(long, value_name = "SECONDS")]
     pub update_frequency: Option<f64>,
+
+    /// Write progress table rows as TSV for gnuplot or tail -f
+    #[arg(long, value_name = "PATH")]
+    pub stream_table: Option<PathBuf>,
 
     /// Write structured JSON logs of every BSP step to stderr [default: off]
     #[arg(long, value_name = "LEVEL", value_enum)]

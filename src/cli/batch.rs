@@ -34,8 +34,9 @@ pub fn run(
         || resolved.sweeps.is_some()
         || resolved.messages.is_some()
         || resolved.dump_messages
+        || resolved.stream_table.is_some()
     {
-        return Err("batch mode does not support --output, --profile, --write-formula, --sweeps, --messages, or --dump-messages".into());
+        return Err("batch mode does not support --output, --profile, --write-formula, --sweeps, --messages, --dump-messages, or --stream-table".into());
     }
     resolved.options.validate()?;
     let mut files = Vec::new();
