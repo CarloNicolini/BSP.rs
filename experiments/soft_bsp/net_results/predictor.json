@@ -1,0 +1,394 @@
+{
+  "640": {
+    "fix": {
+      "coefficients_prior_and_immediate": [
+        -7.729421186646723e-08,
+        -4.6361607306459723e-07
+      ],
+      "holdout": {
+        "calibrated": {
+          "mae": {
+            "bootstrap95": [
+              0.00015592322846246187,
+              0.0013297372189351921
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.000662850951810151
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              0.0010158107806504046
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00041481433479764854
+          }
+        },
+        "immediate": {
+          "mae": {
+            "bootstrap95": [
+              0.0021138740624135404,
+              0.004042550195360188
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.003063469413821925
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              8.084397349092695e-13
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 3.0316490059097606e-13
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              3.8725092837704984e-05,
+              0.0010308976892502238
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00043261433803468217
+          }
+        },
+        "zero_relative": {
+          "mae": {
+            "bootstrap95": [
+              0.00015592189503068867,
+              0.0013297362863037656
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0006628496615929988
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              0.0010158107806504046
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00041481433479764854
+          }
+        }
+      },
+      "test_checkpoints": 36,
+      "train_checkpoints": 12
+    },
+    "release": {
+      "coefficients_prior_and_immediate": [
+        -0.02794787734315574,
+        0.02878268535404994
+      ],
+      "holdout": {
+        "calibrated": {
+          "mae": {
+            "bootstrap95": [
+              0.00019262049856807738,
+              0.0007580013058597728
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00041783066147027493
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              -4.446418542000982e-12,
+              1.0105496686365869e-13
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": -1.616879469818539e-12
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              1.1419789254784765e-05,
+              6.942371651386346e-05
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 3.8864175122392044e-05
+          }
+        },
+        "immediate": {
+          "mae": {
+            "bootstrap95": [
+              0.007003519354687644,
+              0.015153591867652317
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.01056236069982535
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              -4.143253641410006e-12,
+              4.0421986745463475e-13
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": -1.313714569227563e-12
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.00010136060061097665,
+              0.00021990302065904015
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00015934116765221036
+          }
+        },
+        "zero_relative": {
+          "mae": {
+            "bootstrap95": [
+              2.1524707941959303e-11,
+              0.00041623615313963254
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00013874567952775073
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          }
+        }
+      },
+      "test_checkpoints": 36,
+      "train_checkpoints": 12
+    }
+  },
+  "1280": {
+    "fix": {
+      "coefficients_prior_and_immediate": [
+        0.3515723611575514,
+        -0.004180616380940653
+      ],
+      "holdout": {
+        "calibrated": {
+          "mae": {
+            "bootstrap95": [
+              0.0007958644557361457,
+              0.001594575283715131
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.001189365954520921
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              2.205666667016125e-05
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 7.3522222233870825e-06
+          }
+        },
+        "immediate": {
+          "mae": {
+            "bootstrap95": [
+              0.0015043321058732949,
+              0.003010035201492024
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0021903120397534317
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              -1.5821226245154523e-07,
+              1.010549668636587e-12
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": -5.2737151337270106e-08
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              1.8319390080183292e-05,
+              7.6012378218001e-05
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 4.532174126309506e-05
+          }
+        },
+        "zero_relative": {
+          "mae": {
+            "bootstrap95": [
+              0.00032364225686857634,
+              0.0011897929029550545
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0007541288997446019
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              2.205666667016125e-05
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 7.3522222233870825e-06
+          }
+        }
+      },
+      "test_checkpoints": 36,
+      "train_checkpoints": 12
+    },
+    "release": {
+      "coefficients_prior_and_immediate": [
+        0.003940818632664285,
+        0.003970230252210491
+      ],
+      "holdout": {
+        "calibrated": {
+          "mae": {
+            "bootstrap95": [
+              3.597368140197793e-05,
+              0.00035845281651049
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00015880853513637608
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              1.0219163871276857e-05
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 4.292930625359636e-06
+          }
+        },
+        "immediate": {
+          "mae": {
+            "bootstrap95": [
+              0.006357169775532788,
+              0.01011048327937816
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.008200907913053218
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              -0.0005752499507960036,
+              1.8189894035458565e-12
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": -0.00019174998316076302
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              5.686983891633927e-05,
+              0.0007220353044747129
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.00030252243008703044
+          }
+        },
+        "zero_relative": {
+          "mae": {
+            "bootstrap95": [
+              3.870405230878128e-11,
+              0.00032077812162848807
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0001244548975591897
+          },
+          "net_complexity_vs_native": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          },
+          "regret_vs_evaluated_best_score": {
+            "bootstrap95": [
+              0.0,
+              0.0
+            ],
+            "checkpoints": 36,
+            "formulas": 12,
+            "mean": 0.0
+          }
+        }
+      },
+      "test_checkpoints": 36,
+      "train_checkpoints": 12
+    }
+  }
+}

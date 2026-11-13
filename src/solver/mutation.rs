@@ -7,6 +7,7 @@ pub(super) enum FreeLiterals {
     Many,
 }
 
+#[cfg_attr(test, derive(Clone))]
 pub(super) enum TrueCounts {
     Byte(Vec<u8>),
     Wide(Vec<u32>),

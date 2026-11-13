@@ -9,6 +9,9 @@ mod residual_measure;
 #[cfg(test)]
 mod residual_tests;
 mod search;
+#[cfg(test)]
+#[path = "../../experiments/soft_bsp/driver.rs"]
+mod soft_policy_experiment;
 mod sp;
 #[cfg(test)]
 mod tests;

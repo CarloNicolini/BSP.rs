@@ -1,6 +1,7 @@
 /// An indexed min-heap for fixed decisions. Scores stay frozen while a variable
 /// is in the heap; arbitrary release removes it before its score can change.
 /// Each variable has at most one entry, so repeated fixing cannot grow stale keys.
+#[cfg_attr(test, derive(Clone))]
 pub(crate) struct DecisionHeap {
     heap: Vec<u32>,
     positions: Vec<u32>,
