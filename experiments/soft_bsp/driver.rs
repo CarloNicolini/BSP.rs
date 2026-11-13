@@ -720,3 +720,6 @@ fn soft_bsp_campaign() {
         })
     });
 }
+
+#[path = "net_driver.rs"]
+mod net;
