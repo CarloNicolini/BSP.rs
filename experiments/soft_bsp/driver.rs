@@ -77,6 +77,7 @@ const POLICIES: [Policy; 7] = [
 
 fn fork(solver: &Solver) -> Solver {
     let mut copy = Solver::new(solver.formula.clone(), solver.options.clone()).unwrap();
+    copy.started = solver.started;
     copy.assignment.clone_from(&solver.assignment);
     copy.active.clone_from(&solver.active);
     copy.free.clone_from(&solver.free);
@@ -723,3 +724,6 @@ fn soft_bsp_campaign() {
 
 #[path = "net_driver.rs"]
 mod net;
+
+#[path = "staged_driver.rs"]
+mod staged;
