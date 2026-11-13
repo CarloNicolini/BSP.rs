@@ -63,11 +63,15 @@ def plot(directory, output):
         panels.extend([f"set title 'N={n}'", f"set xrange [0:{90 if n == '640' else 180}]"])
         plots = []
         for arm, stats in sorted(arms.items()):
-            key = f"${n}_{arm}"
+            key = f"$n{n}_{arm}"
             total = sum(stats["status"].values())
-            points = sorted((int(t), value / total) for t, value in stats["success_curve"]["seconds"].items())
+            limit = 90 if n == "640" else 180
+            points = sorted(
+                (int(t), value / total) for t, value in stats["success_curve"]["seconds"].items()
+                if int(t) <= limit
+            )
             blocks.extend([f"{key} << EOD", "0 0", *(f"{t} {p}" for t, p in points), "EOD"])
-            plots.append(f"{key} with linespoints title '{arm.replace('_', ' ')}'")
+            plots.append(f"{key} with steps title '{arm.replace('_', ' ')}'")
         panels.append("plot " + ", ".join(plots))
     setup = [
         "set terminal pngcairo size 1200,500 font 'Helvetica,14'",
