@@ -18,6 +18,7 @@ pub(crate) struct Data {
 }
 
 // A byte covers every mask word when all clauses have at most eight literals.
+#[cfg_attr(test, derive(Clone))]
 pub(crate) enum ClauseMasks {
     Byte(Vec<u8>),
     Word(Vec<u64>),
